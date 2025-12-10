@@ -1,0 +1,12 @@
+-- 1. Primero convierte los datos existentes en la columna VARCHAR a DATE
+	UPDATE table_es_venta
+	SET fecha_venta = STR_TO_DATE(fecha_venta, '%d-%m-%y');
+-- cierre
+	UPDATE table_es_cierre
+	SET fecha_cierre = STR_TO_DATE(fecha_cierre, '%d-%m-%y');
+-- 2. Luego cambia el tipo de la columna de VARCHAR a DATE
+	ALTER TABLE table_es_venta
+	MODIFY COLUMN fecha_venta DATE;
+-- cierre
+	ALTER TABLE table_es_cierre
+	MODIFY COLUMN fecha_cierre DATE;

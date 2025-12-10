@@ -1,0 +1,58 @@
+Nivel 1: Tablas Maestras (Sin dependencias)
+Estas son las tablas que no dependen de ninguna otra. Puedes insertar datos en ellas en cualquier orden, siempre y cuando sea antes que las del siguiente nivel.
+
+table_alm_enlace_producto
+table_alm_ubicacion
+table_bienes_departamentos
+table_bienes_grupo
+table_bienes_seccion
+table_bienes_subgrupo
+table_departamentos
+table_es_estacion
+table_es_tasa_dia
+table_es_tipos_pago
+table_es_tipos_vehiculo
+table_flota_marca
+table_flota_modelo
+table_men_menu
+table_per_cargo
+table_per_roles
+table_proveedor
+Nivel 2: Tablas con Dependencias Básicas
+Estas tablas dependen de las del Nivel 1. Debes insertar datos aquí solo después de haber poblado las tablas maestras correspondientes.
+
+table_personal: Depende de table_per_cargo.
+table_usuarios: Depende de table_per_roles y table_departamentos.
+table_flota: Depende de table_flota_marca y table_flota_modelo.
+table_alm_producto: Depende de table_alm_enlace_producto y table_alm_ubicacion.
+table_bienes_inventario: Depende de table_bienes_departamentos.
+table_bienes_qr_departamento: Depende de table_bienes_departamentos.
+Nivel 3: Tablas con Dependencias Múltiples o Compuestas
+Estas tablas dependen de las de Nivel 1 y Nivel 2.
+
+table_usuario_sessions: Depende de table_usuarios.
+table_recovery_requests: Depende de table_usuarios.
+table_alm_historial_cambio: Depende de table_usuarios.
+table_flota_status: Depende de table_flota y table_usuarios.
+table_flota_mantenimiento: Depende de table_flota y table_usuarios.
+table_flota_kilometraje: Depende de table_flota y table_usuarios.
+table_flota_aceite_historial: Depende de table_flota.
+table_men_submenu: Depende de table_men_menu.
+table_men_departamento_menu: Depende de table_departamentos y table_men_menu.
+table_men_rol_menu: Depende de table_per_roles y table_men_menu.
+table_es_venta: Depende de table_usuarios, table_es_tipos_pago y table_es_tipos_vehiculo.
+table_alm_relacion_producto: Depende de table_alm_producto y table_proveedor.
+table_alm_despacho: Depende de table_flota y table_usuarios.
+Nivel 4: Tablas de Transacciones y Detalles
+Estas son las tablas que enlazan varias de las anteriores y representan el nivel más alto de dependencia en tu estructura.
+
+table_compras_pendientes: Depende de table_alm_despacho, table_alm_producto y table_flota.
+table_alm_relacion_despacho: Depende de table_alm_despacho y table_alm_producto.
+table_alm_requisicion: Depende de table_alm_despacho y table_usuarios.
+table_men_usuario_menu: Depende de table_usuarios y table_men_menu.
+table_men_usuario_submenu: Depende de table_usuarios y table_men_submenu.
+Nivel 5: Tablas de Cierre
+Estas tablas dependen de registros creados en el Nivel 4.
+
+table_compras_costos: Depende de table_compras_pendientes y table_usuarios.
+table_alm_requisicion_detalle: Depende de table_alm_requisicion y table_alm_producto.

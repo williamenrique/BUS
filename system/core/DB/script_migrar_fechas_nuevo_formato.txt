@@ -1,0 +1,130 @@
+-- =================================================================
+-- SCRIPT DE MIGRACIÓN DE TIPOS DE DATOS DE FECHA Y HORA
+-- Objetivo: Convertir columnas VARCHAR a DATE, TIME o DATETIME
+-- sin pérdida de datos.
+-- =================================================================
+
+-- Desactivar temporalmente el modo seguro para permitir actualizaciones sin WHERE en la clave primaria.
+SET SQL_SAFE_UPDATES = 0;
+
+-- -----------------------------------------------------------------
+-- Tabla: table_alm_despacho
+-- Columna: fecha_despacho (VARCHAR -> DATE)
+-- -----------------------------------------------------------------
+ALTER TABLE `table_alm_despacho` ADD COLUMN `fecha_despacho_temp` DATE NULL AFTER `fecha_despacho`;
+
+UPDATE `table_alm_despacho`
+SET `fecha_despacho_temp` = COALESCE(
+    STR_TO_DATE(TRIM(`fecha_despacho`), '%Y-%m-%d'),
+    STR_TO_DATE(TRIM(`fecha_despacho`), '%d-%m-%Y')
+);
+
+ALTER TABLE `table_alm_despacho` DROP COLUMN `fecha_despacho`;
+ALTER TABLE `table_alm_despacho` CHANGE COLUMN `fecha_despacho_temp` `fecha_despacho` DATE NULL;
+
+-- -----------------------------------------------------------------
+-- Tabla: table_es_cierre
+-- Columna: fecha_cierre (VARCHAR -> DATE)
+-- Columna: hora_cierre (VARCHAR -> TIME)
+-- -----------------------------------------------------------------
+ALTER TABLE `table_es_cierre` ADD COLUMN `fecha_cierre_temp` DATE NULL AFTER `fecha_cierre`;
+ALTER TABLE `table_es_cierre` ADD COLUMN `hora_cierre_temp` TIME NULL AFTER `hora_cierre`;
+
+UPDATE `table_es_cierre`
+SET 
+    `fecha_cierre_temp` = COALESCE(
+        STR_TO_DATE(TRIM(`fecha_cierre`), '%Y-%m-%d'),
+        STR_TO_DATE(TRIM(`fecha_cierre`), '%d-%m-%Y')
+    ),
+    `hora_cierre_temp` = STR_TO_DATE(TRIM(`hora_cierre`), '%H:%i:%s');
+
+ALTER TABLE `table_es_cierre` DROP COLUMN `fecha_cierre`;
+ALTER TABLE `table_es_cierre` DROP COLUMN `hora_cierre`;
+ALTER TABLE `table_es_cierre` CHANGE COLUMN `fecha_cierre_temp` `fecha_cierre` DATE NULL;
+ALTER TABLE `table_es_cierre` CHANGE COLUMN `hora_cierre_temp` `hora_cierre` TIME NULL;
+
+-- -----------------------------------------------------------------
+-- Tabla: table_flota
+-- Columna: fecha_creacion (VARCHAR -> DATE)
+-- -----------------------------------------------------------------
+ALTER TABLE `table_flota` ADD COLUMN `fecha_creacion_temp` DATE NULL AFTER `fecha_creacion`;
+
+UPDATE `table_flota`
+SET `fecha_creacion_temp` = COALESCE(
+    STR_TO_DATE(TRIM(`fecha_creacion`), '%Y-%m-%d'),
+    STR_TO_DATE(TRIM(`fecha_creacion`), '%d-%m-%Y')
+);
+
+ALTER TABLE `table_flota` DROP COLUMN `fecha_creacion`;
+ALTER TABLE `table_flota` CHANGE COLUMN `fecha_creacion_temp` `fecha_creacion` DATE NULL;
+
+-- -----------------------------------------------------------------
+-- Tabla: table_flota_mantenimiento
+-- Columna: fecha_entrada (VARCHAR -> DATETIME)
+-- Columna: fecha_salida (VARCHAR -> DATETIME)
+-- -----------------------------------------------------------------
+ALTER TABLE `table_flota_mantenimiento` ADD COLUMN `fecha_entrada_temp` DATETIME NULL AFTER `fecha_entrada`;
+ALTER TABLE `table_flota_mantenimiento` ADD COLUMN `fecha_salida_temp` DATETIME NULL AFTER `fecha_salida`;
+
+UPDATE `table_flota_mantenimiento`
+SET 
+    `fecha_entrada_temp` = COALESCE(
+        STR_TO_DATE(TRIM(`fecha_entrada`), '%Y-%m-%d %H:%i:%s'),
+        STR_TO_DATE(TRIM(`fecha_entrada`), '%d-%m-%Y %H:%i:%s'),
+        STR_TO_DATE(TRIM(`fecha_entrada`), '%Y-%m-%d'),
+        STR_TO_DATE(TRIM(`fecha_entrada`), '%d-%m-%Y')
+    ),
+    `fecha_salida_temp` = COALESCE(
+        STR_TO_DATE(TRIM(`fecha_salida`), '%Y-%m-%d %H:%i:%s'),
+        STR_TO_DATE(TRIM(`fecha_salida`), '%d-%m-%Y %H:%i:%s'),
+        STR_TO_DATE(TRIM(`fecha_salida`), '%Y-%m-%d'),
+        STR_TO_DATE(TRIM(`fecha_salida`), '%d-%m-%Y')
+    );
+
+ALTER TABLE `table_flota_mantenimiento` DROP COLUMN `fecha_entrada`;
+ALTER TABLE `table_flota_mantenimiento` DROP COLUMN `fecha_salida`;
+ALTER TABLE `table_flota_mantenimiento` CHANGE COLUMN `fecha_entrada_temp` `fecha_entrada` DATETIME NULL;
+ALTER TABLE `table_flota_mantenimiento` CHANGE COLUMN `fecha_salida_temp` `fecha_salida` DATETIME NULL;
+
+-- -----------------------------------------------------------------
+-- Tabla: table_es_venta
+-- Columna: fecha_venta (VARCHAR -> DATE)
+-- Columna: hora_venta (VARCHAR -> TIME)
+-- -----------------------------------------------------------------
+ALTER TABLE `table_es_venta` ADD COLUMN `fecha_venta_temp` DATE NULL AFTER `fecha_venta`;
+ALTER TABLE `table_es_venta` ADD COLUMN `hora_venta_temp` TIME NULL AFTER `hora_venta`;
+
+UPDATE `table_es_venta`
+SET 
+    `fecha_venta_temp` = COALESCE(
+        STR_TO_DATE(TRIM(`fecha_venta`), '%Y-%m-%d'),
+        STR_TO_DATE(TRIM(`fecha_venta`), '%d-%m-%Y')
+    ),
+    `hora_venta_temp` = STR_TO_DATE(TRIM(`hora_venta`), '%H:%i:%s');
+
+ALTER TABLE `table_es_venta` DROP COLUMN `fecha_venta`;
+ALTER TABLE `table_es_venta` DROP COLUMN `hora_venta`;
+ALTER TABLE `table_es_venta` CHANGE COLUMN `fecha_venta_temp` `fecha_venta` DATE NULL;
+ALTER TABLE `table_es_venta` CHANGE COLUMN `hora_venta_temp` `hora_venta` TIME NULL;
+
+-- -----------------------------------------------------------------
+-- Tabla: table_bienes_inventario
+-- Columna: fecha_adquisicion (VARCHAR -> DATE)
+-- -----------------------------------------------------------------
+ALTER TABLE `table_bienes_inventario` ADD COLUMN `fecha_adquisicion_temp` DATE NULL AFTER `fecha_adquisicion`;
+
+UPDATE `table_bienes_inventario`
+SET `fecha_adquisicion_temp` = COALESCE(
+    STR_TO_DATE(TRIM(`fecha_adquisicion`), '%Y-%m-%d'),
+    STR_TO_DATE(TRIM(`fecha_adquisicion`), '%d-%m-%Y')
+);
+
+ALTER TABLE `table_bienes_inventario` DROP COLUMN `fecha_adquisicion`;
+ALTER TABLE `table_bienes_inventario` CHANGE COLUMN `fecha_adquisicion_temp` `fecha_adquisicion` DATE NULL;
+
+
+-- Reactivar el modo seguro.
+SET SQL_SAFE_UPDATES = 1;
+
+-- Mensaje final
+SELECT '¡Migración de tipos de datos de fecha completada con éxito!' AS `status`;

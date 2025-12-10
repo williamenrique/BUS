@@ -1,0 +1,212 @@
+🗺️ Flujograma del Proceso de Requisición y Despacho
+El proceso se divide en la Generación de la Requisición, la Gestión de Compras/Inventario, y el Despacho desde Almacén.
+1. Generación de la Requisición (Jefe de Patio)
+1.	Inicio: La Unidad/Operador reporta una falla o necesidad de artículo.
+2.	Verificación: El Chequeador confirma la falla/necesidad y notifica al Mecánico y Jefe de Patio.
+3.	Creación de la Requisición: El Jefe de Patio crea una Orden de Requisición con los detalles y los artículos requeridos.
+________________________________________
+2. Gestión de Compras/Inventario
+1.	Recepción: El departamento de Compras recibe la Orden de Requisición.
+2.	Verificación de Stock: Compras verifica si el artículo/repuesto está disponible en el inventario.
+o	Si hay stock (Tipo: Servicio/Reparación con stock): Se convierte la Requisición en una Orden de Despacho interna y se envía a Almacén.
+o	Si no hay stock (Tipo: Compra): Compras inicia el proceso de adquisición (que puede terminar en una compra pendiente, ligada a tu tabla table_compras_pendientes). Una vez adquirido, se convierte en una Orden de Despacho y se envía a Almacén.
+________________________________________
+3. Despacho y Cierre (Almacén)
+1.	Recepción de Orden: Almacén recibe la Orden de Despacho (digital).
+2.	Despacho Físico: Almacén prepara y entrega el artículo físicamente.
+3.	Confirmación y Descuento: Al recibir la confirmación del despacho físico, Almacén marca la Orden de Despacho como Despachada y procede a restar los ítems del inventario (table_alm_relacion_producto).
+________________________________________
+💾 Estructura de Tablas Propuesta
+Basándome en la estructura de tu archivo SQL, propongo las siguientes tablas para manejar el nuevo flujo:
+1. Orden de Requisición (Proceso Inicial)
+Esta tabla almacena la solicitud formal de artículos generada por el Jefe de Patio.
+Nombre de la Tabla	Campo	Tipo de Dato	Observaciones	Relación con Tablas Existentes
+table_mto_requisicion	id_requisicion	INT(11) PK, AI	ID único de la requisición.	
+	fecha_requisicion	VARCHAR(12)	Fecha de creación de la requisición.	
+	id_flota	INT(11) FK	Unidad que requiere el artículo/servicio.	table_flota
+	operador_cedula	VARCHAR(15)	Cédula del Operador que reporta.	
+	chequeador_cedula	VARCHAR(15)	Cédula del Chequeador que verifica.	
+	mecanico_cedula	VARCHAR(15)	Cédula del Mecánico involucrado (referencial).	
+	jefe_patio_id	INT(11) FK	Usuario que crea la requisición.	table_usuarios
+	tipo_orden	ENUM('Servicio', 'Compra', 'Reparacion')	Tipo de acción solicitada.	
+	diagnostico	MEDIUMTEXT	Descripción de la falla o necesidad (tomado del Operador/Chequeador).	
+	status_requisicion	INT(11)	1: Pendiente, 2: Aprobada/En Proceso, 3: Rechazada, 4: Convertida a Despacho/Compra.	
+2. Detalle de Artículos en Requisición
+Esta tabla enlaza la requisición con los artículos específicos y sus cantidades solicitadas.
+Nombre de la Tabla	Campo	Tipo de Dato	Observaciones	Relación con Tablas Existentes
+table_mto_detalle_req	id_detalle_req	INT(11) PK, AI	ID único del detalle.	
+	id_requisicion	INT(11) FK	Referencia a la requisición principal.	table_mto_requisicion
+	id_producto	INT(11) FK	Artículo solicitado.	table_alm_producto
+	cant_solicitada	FLOAT	Cantidad de artículos solicitados.	
+3. Orden de Despacho (Proceso de Almacén)
+Esta tabla sustituye el uso directo de table_alm_despacho para despachos específicos de Mantenimiento/Flota, o podrías optar por usar table_alm_despacho y agregar un campo de origen. Si optamos por usar la estructura existente de despacho, la tabla debe reflejar el origen de la solicitud.
+Opción 1: Usar la Tabla Existente (table_alm_despacho)
+Se utiliza la tabla existente, y la requisición se enlaza con ella.
+¡Excelente pregunta! Es la forma más eficiente y segura de integrar el nuevo proceso sin interrumpir los datos históricos.
+Para usar la tabla existente table_alm_despacho y diferenciar las órdenes generadas por Mantenimiento (a partir de una Requisición) de las órdenes de despacho normales, y al mismo tiempo mantener el historial, lo haremos de la siguiente manera:
+________________________________________
+🛠️ Modificación y Adaptación de Tablas Existentes
+1. Modificación de table_alm_despacho (Opcional, pero Recomendada)
+Para distinguir claramente el origen de la orden sin depender de analizar el campo observacion, puedes añadir una columna simple:
+Tabla	Campo	Tipo de Dato	Observaciones
+table_alm_despacho	origen_despacho	VARCHAR(20)	'Almacen' (Default para órdenes existentes) o 'Requisicion' (para nuevas órdenes del flujo Mantenimiento).
+table_alm_despacho	id_requisicion_origen	INT(11)	FK opcional. Enlaza directamente con table_mto_requisicion.id_requisicion. Será NULL para despachos que no provienen de una requisición.
+SQL de Modificación (ALTER TABLE):
+SQL
+ALTER TABLE `table_alm_despacho`
+ADD COLUMN `origen_despacho` VARCHAR(20) NOT NULL DEFAULT 'Almacen',
+ADD COLUMN `id_requisicion_origen` INT(11) NULL DEFAULT NULL;
+
+-- Opcionalmente, agrega el Foreign Key si table_mto_requisicion ya existe
+ALTER TABLE `table_alm_despacho`
+ADD CONSTRAINT `fk_despacho_req` FOREIGN KEY (`id_requisicion_origen`)
+REFERENCES `table_mto_requisicion` (`id_requisicion`);
+________________________________________
+🔄 Flujo de Datos con la Tabla Existente
+El nuevo flujo garantizaría que todo el proceso de Mantenimiento/Flota quede registrado en las nuevas tablas, pero la acción final de inventario siempre se centralice en las tablas de Almacén.
+1. Generación de la Requisición
+•	El Jefe de Patio crea la Requisición (table_mto_requisicion).
+•	Los artículos se detallan en table_mto_detalle_req.
+•	La requisición tiene status_requisicion = 1 (Pendiente).
+2. Conversión a Orden de Despacho (Compras)
+•	Cuando Compras aprueba y confirma el stock (o la adquisición), se ejecuta un INSERT en la tabla table_alm_despacho.
+•	Campos clave para el INSERT:
+o	id_flota, operador, mecanico, etc., se toman de la Requisición.
+o	origen_despacho se establece como 'Requisicion'.
+o	id_requisicion_origen se establece al ID de la requisición.
+•	Artículos: Se insertan los detalles de los productos en table_alm_relacion_despacho, enlazados al nuevo id_despacho generado.
+•	Enlace de Historial: (Opcional, si no se usa id_requisicion_origen): Se usa la tabla de enlace table_mto_req_despacho para relacionar id_requisicion con el nuevo id_despacho.
+3. Cierre del Despacho (Almacén)
+•	Almacén encuentra la orden en table_alm_despacho.
+•	Si el origen_despacho es 'Requisicion', sabe que debe verificar el id_requisicion_origen para ver el detalle de la solicitud inicial.
+•	Al despachar el material, se actualiza el status_despacho y se resta el inventario de table_alm_relacion_producto, usando el mismo proceso que ya tienes en producción.
+✅ Ventajas de esta Opción
+•	Integración: Reutilizas la lógica de despacho y el proceso de descuento de inventario ya existentes, minimizando el cambio en el código actual.
+•	Historial Centralizado: Todos los despachos (sea por Mantenimiento/Requisición o por otro motivo) quedan en una sola tabla (table_alm_despacho).
+•	Diferenciación Clara: Los nuevos campos (origen_despacho y id_requisicion_origen) permiten filtrar reportes y distinguir la fuente de cada orden de forma rápida.
+
+Tabla	Campo a Usar	Observaciones
+table_alm_despacho	observacion	Usar para registrar el ID de la Requisición y el Origen (Mantenimiento).
+Nueva Tabla de Enlace	table_mto_req_despacho	Para enlazar la id_requisicion con el id_despacho de table_alm_despacho.
+Nueva Tabla de Enlace:
+Nombre de la Tabla	Campo	Tipo de Dato	Observaciones	Relación con Tablas Existentes
+table_mto_req_despacho	id_enlace	INT(11) PK, AI	ID único del enlace.	
+	id_requisicion	INT(11) FK	ID de la requisición.	table_mto_requisicion
+	id_despacho	INT(11) FK	ID de la orden de despacho generada.	table_alm_despacho
+4. Actualización del Estatus de Requisición
+Para rastrear cuándo la requisición generó una acción de compra o despacho (similar a tu table_alm_historial_cambio).
+Nombre de la Tabla	Campo	Tipo de Dato	Observaciones	Relación con Tablas Existentes
+table_mto_status_req	id_status_req	INT(11) PK, AI	ID único del cambio de estado.	
+	id_requisicion	INT(11) FK	Requisición afectada.	table_mto_requisicion
+	status_anterior	INT(11)	Estado de la requisición antes del cambio.	
+	status_nuevo	INT(11)	Nuevo estado.	
+	observacion	MEDIUMTEXT	Razón del cambio de estado (ej: "Convertida a Despacho #X").	
+	user_id	INT(11) FK	Usuario que realiza el cambio (ej: Compras).	table_usuarios
+	fecha_cambio	TIMESTAMP	Fecha y hora del cambio.	
+________________________________________
+🛠️ SQL para la Creación de las Nuevas Tablas
+SQL
+-- TABLA: table_mto_requisicion (Orden de Requisición generada por Jefe de Patio)
+DROP TABLE IF EXISTS `table_mto_requisicion`;
+CREATE TABLE `table_mto_requisicion` (
+  `id_requisicion` INT(11) NOT NULL,
+  `fecha_requisicion` VARCHAR(12) DEFAULT NULL,
+  `id_flota` INT(11) NOT NULL,
+  `operador_cedula` VARCHAR(15) DEFAULT NULL,
+  `chequeador_cedula` VARCHAR(15) DEFAULT NULL,
+  `mecanico_cedula` VARCHAR(15) DEFAULT NULL,
+  `jefe_patio_id` INT(11) NOT NULL,
+  `tipo_orden` ENUM('Servicio', 'Compra', 'Reparacion') NOT NULL,
+  `diagnostico` MEDIUMTEXT DEFAULT NULL,
+  `status_requisicion` INT(11) NOT NULL COMMENT '1: Pendiente, 2: Aprobada/En Proceso, 3: Rechazada, 4: Convertida a Despacho/Compra'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+-- TABLA: table_mto_detalle_req (Artículos solicitados en la Requisición)
+DROP TABLE IF EXISTS `table_mto_detalle_req`;
+CREATE TABLE `table_mto_detalle_req` (
+  `id_detalle_req` INT(11) NOT NULL,
+  `id_requisicion` INT(11) NOT NULL,
+  `id_producto` INT(11) NOT NULL,
+  `cant_solicitada` FLOAT DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+-- TABLA: table_mto_req_despacho (Enlace entre Requisición y Despacho)
+DROP TABLE IF EXISTS `table_mto_req_despacho`;
+CREATE TABLE `table_mto_req_despacho` (
+  `id_enlace` INT(11) NOT NULL,
+  `id_requisicion` INT(11) NOT NULL,
+  `id_despacho` INT(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+-- TABLA: table_mto_status_req (Historial de Estatus de la Requisición)
+DROP TABLE IF EXISTS `table_mto_status_req`;
+CREATE TABLE `table_mto_status_req` (
+  `id_status_req` INT(11) NOT NULL,
+  `id_requisicion` INT(11) NOT NULL,
+  `status_anterior` INT(11) DEFAULT NULL,
+  `status_nuevo` INT(11) DEFAULT NULL,
+  `observacion` MEDIUMTEXT DEFAULT NULL,
+  `user_id` INT(11) NOT NULL,
+  `fecha_cambio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+-- --------------------------------------------------------
+-- Índices para las nuevas tablas
+-- --------------------------------------------------------
+
+ALTER TABLE `table_mto_requisicion`
+  ADD PRIMARY KEY (`id_requisicion`),
+  ADD KEY `id_flota` (`id_flota`),
+  ADD KEY `jefe_patio_id` (`jefe_patio_id`);
+
+ALTER TABLE `table_mto_detalle_req`
+  ADD PRIMARY KEY (`id_detalle_req`),
+  ADD KEY `id_requisicion` (`id_requisicion`),
+  ADD KEY `id_producto` (`id_producto`);
+
+ALTER TABLE `table_mto_req_despacho`
+  ADD PRIMARY KEY (`id_enlace`),
+  ADD UNIQUE KEY `uk_requisicion_despacho` (`id_requisicion`, `id_despacho`),
+  ADD KEY `id_despacho` (`id_despacho`);
+
+ALTER TABLE `table_mto_status_req`
+  ADD PRIMARY KEY (`id_status_req`),
+  ADD KEY `id_requisicion` (`id_requisicion`),
+  ADD KEY `user_id` (`user_id`);
+
+-- --------------------------------------------------------
+-- AUTO_INCREMENT para las nuevas tablas
+-- --------------------------------------------------------
+
+ALTER TABLE `table_mto_requisicion`
+  MODIFY `id_requisicion` INT(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `table_mto_detalle_req`
+  MODIFY `id_detalle_req` INT(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `table_mto_req_despacho`
+  MODIFY `id_enlace` INT(11) NOT NULL AUTO_INCREMENT;
+
+ALTER TABLE `table_mto_status_req`
+  MODIFY `id_status_req` INT(11) NOT NULL AUTO_INCREMENT;
+
+-- --------------------------------------------------------
+-- Restricciones (Claves Foráneas) para las nuevas tablas
+-- --------------------------------------------------------
+
+ALTER TABLE `table_mto_requisicion`
+  ADD CONSTRAINT `fk_req_flota` FOREIGN KEY (`id_flota`) REFERENCES `table_flota` (`id_flota`),
+  ADD CONSTRAINT `fk_req_jefepatio` FOREIGN KEY (`jefe_patio_id`) REFERENCES `table_usuarios` (`usuario_id`);
+
+ALTER TABLE `table_mto_detalle_req`
+  ADD CONSTRAINT `fk_detreq_requisicion` FOREIGN KEY (`id_requisicion`) REFERENCES `table_mto_requisicion` (`id_requisicion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_detreq_producto` FOREIGN KEY (`id_producto`) REFERENCES `table_alm_producto` (`id_producto`);
+
+ALTER TABLE `table_mto_req_despacho`
+  ADD CONSTRAINT `fk_enlace_requisicion` FOREIGN KEY (`id_requisicion`) REFERENCES `table_mto_requisicion` (`id_requisicion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_enlace_despacho` FOREIGN KEY (`id_despacho`) REFERENCES `table_alm_despacho` (`id_despacho`) ON DELETE CASCADE;
+
+ALTER TABLE `table_mto_status_req`
+  ADD CONSTRAINT `fk_statusreq_requisicion` FOREIGN KEY (`id_requisicion`) REFERENCES `table_mto_requisicion` (`id_requisicion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_statusreq_user` FOREIGN KEY (`user_id`) REFERENCES `table_usuarios
+
