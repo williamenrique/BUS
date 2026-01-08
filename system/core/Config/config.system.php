@@ -1,6 +1,6 @@
 <?php
-const BASE_URL = "https://busyaracuy.ct.ws/";
-// const BASE_URL = "http://sistema.test/";
+// const BASE_URL = "https://busyaracuy.ct.ws/";
+const BASE_URL = "http://sistema.test/";
 const HEAD = "src/include/head.php";
 const FOOTER = "src/include/footer.php";
 // const BACK_URL = $_SERVER['REQUEST_URI'];
@@ -24,15 +24,15 @@ const CONTROLLER = BASE_URL."system/core/Libraries/Controllers.php";
 const LOAD = BASE_URL."system/core/Libraries/Load.php";
 
 //constantes de base de datos local
-// const DB_HOST = "localhost";
-// const DB_USER = "root";
-// const DB_PASS = "";
-// const DB_NAME = "busyracuydata";
+const DB_HOST = "localhost";
+const DB_USER = "root";
+const DB_PASS = "";
+const DB_NAME = "busyracuydata";
 // base de datos en la nube
-const DB_HOST = "sql213.infinityfree.com";
-const DB_USER = "if0_39596573";
-const DB_PASS = "25Nole25";
-const DB_NAME = "if0_39596573_busyaracuy_data";
+// const DB_HOST = "sql213.infinityfree.com";
+// const DB_USER = "if0_39596573";
+// const DB_PASS = "25Nole25";
+// const DB_NAME = "if0_39596573_busyaracuy_data";
 const DB_CHARSET = "charset=utf8";
 //delimitador decimal y millar Ej. 24,1999.00
 const SPD = ',';
