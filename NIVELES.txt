@@ -1,0 +1,52 @@
+Nivel 0 (Sin dependencias - Insertar primero)
+
+table_alm_enlace_producto
+table_alm_ubicacion
+table_bienes_departamentos
+table_bienes_grupo
+table_bienes_seccion
+table_bienes_subgrupo
+table_departamentos
+table_es_estacion
+table_es_tasa_dia
+table_es_tipos_pago
+table_es_tipos_vehiculo
+table_flota_marca
+table_flota_modelo
+table_men_menu
+table_per_cambio_status_personal
+table_per_cargo
+table_per_roles
+table_proveedor
+
+Nivel 1 (Dependen de Nivel 0) 
+19. table_alm_producto 
+20. table_bienes_inventario 
+21. table_bienes_qr_departamento 
+22. table_es_cierre 
+23. table_flota 
+24. table_men_departamento_menu 
+25. table_men_submenu 
+26. table_personal 
+27. table_usuarios
+
+Nivel 2 (Dependen de Nivel 1) 
+28. table_alm_despacho 
+29. table_alm_historial_cambio 
+30. table_alm_relacion_producto 
+31. table_es_venta 
+32. table_flota_aceite_historial 
+33. table_flota_kilometraje 
+34. table_flota_mantenimiento 
+35. table_flota_status 
+36. table_men_usuario_menu 
+37. table_men_usuario_submenu 
+38. table_recovery_requests 
+39. table_usuario_sessions
+
+Nivel 3 (Dependen de Nivel 2) 
+40. table_alm_relacion_despacho 
+41. table_compras_pendientes
+
+Nivel 4 (Dependen de Nivel 3) 
+42. table_compras_costos
