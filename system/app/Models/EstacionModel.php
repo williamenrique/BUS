@@ -404,6 +404,50 @@ class EstacionModel extends Mysql {
                 AND tVenta.id_cierre_diario = ?";
         return  $this->select_all($sql, [$fechaCierre,$idUser]);
     }
+    // obtener ventas abiertas (en curso) de un usuario y fecha
+    public function getVentasAbiertas(string $srtDate, int $intIdUser, int $idEstacion){
+        $sql = "SELECT 
+            tVenta.id_venta AS numero_venta,
+            tVenta.fecha_venta,
+            tVenta.hora_venta,
+            tvehiculo.nombre AS tipo_vehiculo,
+            tVenta.litros AS cantidad_litros,
+            tVenta.monto,
+            tVenta.id_cierre_diario,
+            tVenta.id_user,
+            tVenta.tasa_dia,
+            tpago.nombre AS tipo_pago,
+            CASE 
+                WHEN tpago.id_tipo_pago = 1 THEN tVenta.monto * tVenta.tasa_dia
+                WHEN tpago.id_tipo_pago = 2 THEN tVenta.monto
+                ELSE 0
+            END AS efectivob,
+            CASE 
+                WHEN tpago.id_tipo_pago = 3 THEN tVenta.monto 
+                ELSE 0
+            END AS tarjeta_debito,
+            CONCAT(p.personal_nombre, ' ', p.personal_apellido) AS empleado
+        FROM 
+            table_es_venta tVenta
+        JOIN 
+            table_es_tipos_vehiculo tvehiculo ON tVenta.id_tipo_vehiculo = tvehiculo.id_tipo_vehiculo
+        JOIN 
+            table_es_tipos_pago tpago ON tVenta.id_tipo_pago = tpago.id_tipo_pago
+        JOIN 
+            table_usuarios u ON tVenta.id_user = u.usuario_id
+        JOIN
+            table_personal p ON u.usuario_id_personal = p.id_personal
+        WHERE
+            tVenta.fecha_venta = ? 
+            AND tVenta.id_user = ? 
+            AND u.usuario_estacion_id = ?
+            AND tVenta.status_ticket = 1
+        ORDER BY tVenta.id_venta ASC";
+
+        $params = [$srtDate, $intIdUser, $idEstacion];
+        $request = $this->select_all($sql, $params);
+        return $request;
+    }
     // obtener datos para reporte detallado de cierre sin cerrar
      public function getDatosParaReporte($idCierre) {
         // Consulta unificada que calcula los totales directamente desde las ventas asociadas al cierre.

@@ -450,6 +450,30 @@ class Estacion extends Controllers{
         }
         die();
     }
+    // Trae las ventas abiertas (en curso) de un usuario específico.
+    public function getVentasAbiertas() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            try {
+                $postData = json_decode(file_get_contents('php://input'), true);
+                if (!isset($postData['idUser']) || !isset($postData['fecha'])) {
+                    throw new Exception("Datos incompletos.");
+                }
+                $idUser = intval($postData['idUser']);
+                $fecha = strClean($postData['fecha']);
+
+                $userInfo = $this->model->getUsuario($idUser);
+                $idEstacion = $userInfo['usuario_estacion_id'] ?? 0;
+
+                $arrData = $this->model->getVentasAbiertas($fecha, $idUser, $idEstacion);
+
+                $arrResponse = ['success' => true, 'data' => empty($arrData) ? [] : $arrData];
+            } catch (Exception $e) {
+                $arrResponse = ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
+            }
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        }
+        die();
+    }
     //Elimina una venta específica.
     public function deleteVenta() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
