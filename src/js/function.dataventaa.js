@@ -79,9 +79,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                     <td>${sale.fecha_venta}</td>
                     <td>${parseFloat(sale.total_litros).toFixed(2)} L</td>
                     <td class="text-center">
-                        <button class="btn btn-warning btn-sm view-open-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Ver Tickets">
-                            <i class="fas fa-eye"></i>
-                        </button>
                         <button class="btn btn-success btn-sm close-sale-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}">
                             Cerrar Venta
                         </button>
@@ -156,34 +153,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             } catch (error) {
                 console.error('Error al generar PDF:', error);
                 notifi('Error al generar el PDF de ventas.', 'error');
-            }
-        }
-        // Listener para el botón de ver tickets de venta abierta
-        if (e.target.closest('.view-open-sales-btn')) {
-            const btn = e.target.closest('.view-open-sales-btn');
-            const fechaVenta = btn.dataset.fecha;
-            const userId = btn.dataset.iduser;
-
-            // Establecer un título especial para indicar que es una venta en curso
-            cierreIdTitle.textContent = "EN CURSO";
-
-            try {
-                const response = await fetch(base_url + 'Estacion/getVentasAbiertas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ idUser: userId, fecha: fechaVenta })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    renderVentasList(result.data);
-                    // Desplazarse a la sección de detalles
-                    ventasCierreSection.scrollIntoView({ behavior: 'smooth' });
-                } else {
-                    notifi(result.message, 'error');
-                }
-            } catch (error) {
-                console.error('Error al cargar tickets abiertos:', error);
-                notifi('Error al cargar los tickets.', 'error');
             }
         }
     })
@@ -417,40 +386,22 @@ document.addEventListener('DOMContentLoaded', async function () {
                             notifi('¡Eliminado!', 'success')
                             // Recargar la lista de ventas después de la eliminación
                             const idCierre = cierreIdTitle.textContent
+                            const responseRefresh = await fetch(base_url + 'Estacion/getVentasByCierre', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ iduser: idUser, idCierre: idCierre, fechaCierre: fechaTicket })
+                            })
+                            const resultRefresh = await responseRefresh.json()
 
-                            // Verificar si estamos en una venta abierta (EN CURSO) o un cierre
-                            if (idCierre === "EN CURSO") {
-                                // Recargar usando el endpoint de ventas abiertas
-                                const responseRefresh = await fetch(base_url + 'Estacion/getVentasAbiertas', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ idUser: idUser, fecha: fechaTicket })
-                                })
-                                const resultRefresh = await responseRefresh.json()
-                                if (resultRefresh.success) {
-                                    if (resultRefresh.data.length === 0) {
-                                        ventasCierreSection.style.display = 'none';
-                                    } else {
-                                        renderVentasList(resultRefresh.data);
-                                    }
+                            if (resultRefresh.success) {
+                                // Si no quedan ventas, ocultar la sección de detalles
+                                if (resultRefresh.data.length === 0) {
+                                    ventasCierreSection.style.display = 'none';
+                                } else {
+                                    renderVentasList(resultRefresh.data);
                                 }
                             } else {
-                                // Recargar usando el endpoint de cierres (lógica original)
-                                const responseRefresh = await fetch(base_url + 'Estacion/getVentasByCierre', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ iduser: idUser, idCierre: idCierre, fechaCierre: fechaTicket })
-                                })
-                                const resultRefresh = await responseRefresh.json()
-                                if (resultRefresh.success) {
-                                    if (resultRefresh.data.length === 0) {
-                                        ventasCierreSection.style.display = 'none';
-                                    } else {
-                                        renderVentasList(resultRefresh.data);
-                                    }
-                                } else {
-                                    notifi(resultRefresh.message || 'Error al refrescar las ventas.', 'error');
-                                }
+                                notifi(resultRefresh.message || 'Error al refrescar las ventas.', 'error');
                             }
                         } else {
                             notifi(result.message, 'error')
