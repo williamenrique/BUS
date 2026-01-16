@@ -1,0 +1,63 @@
+🟢 Nivel 0: Catálogos Base (Tablas Independientes)
+Estas tablas no dependen de nadie. Puedes llenarlas en cualquier orden entre ellas, pero deben ser las primeras.
+table_alm_enlace_producto
+table_alm_ubicacion
+table_bienes_departamentos
+table_bienes_grupo
+table_bienes_seccion
+table_bienes_subgrupo
+table_departamentos (Crucial para crear usuarios)
+table_es_estacion
+table_es_tasa_dia
+table_es_tipos_pago
+table_es_tipos_vehiculo
+table_flota_marca
+table_flota_modelo
+table_men_menu
+table_per_cargo
+table_per_roles (Crucial para crear usuarios)
+table_proveedor
+table_notificaciones
+
+🟡 Nivel 1: Entidades Principales
+Estas tablas requieren que el Nivel 0 esté cargado.
+table_usuarios (Requiere: Roles, Departamentos)
+table_personal (Requiere: Cargos)
+table_flota (Requiere: Marcas, Modelos)
+table_alm_producto (Requiere: Enlace producto, Ubicación)
+table_men_submenu (Requiere: Menú)
+
+🟠 Nivel 2: Configuraciones y Registros Simples
+Estas tablas conectan entidades del Nivel 1 con configuraciones del Nivel 0.
+table_alm_relacion_producto (Requiere: Producto, Proveedor)
+table_bienes_inventario (Requiere: Depto Bienes)
+table_bienes_qr_departamento (Requiere: Depto Bienes)
+table_es_venta (Requiere: Usuario, Tipo Pago, Vehículo)
+table_es_cierre (Lógicamente requiere Usuarios)
+table_flota_aceite_historial (Requiere: Flota)
+table_flota_kilometraje (Requiere: Flota)
+table_men_departamento_menu (Requiere: Depto, Menú)
+table_men_rol_menu (Requiere: Rol, Menú)
+table_men_usuario_menu (Requiere: Usuario, Menú)
+table_men_usuario_submenu (Requiere: Usuario, Submenú)
+table_usuario_sessions (Requiere: Usuario)
+table_recovery_requests (Requiere: Usuario)
+table_per_cambio_status_personal (Lógicamente requiere Personal/Usuario)
+table_alm_historial_cambio (Requiere: Usuario)
+
+🔴 Nivel 3: Transacciones "Cabecera"
+Aquí empiezan los movimientos operativos. Requieren usuarios y flotas ya creados.
+table_alm_despacho (El núcleo del sistema. Requiere: Flota, Usuario Creador, Usuario Aprobador)
+table_flota_mantenimiento (Requiere: Flota, Usuario)
+table_flota_status (Requiere: Flota, Usuario)
+
+🟣 Nivel 4: Documentos Derivados
+Documentos que nacen a partir de un Despacho.
+table_alm_requisicion (Requiere: Despacho, Flota, Usuario)
+table_compras_pendientes (Requiere: Despacho, Flota, Producto)
+table_alm_relacion_despacho (Tabla pivote. Requiere: Despacho, Producto)
+
+⚫ Nivel 5: Detalles Finales
+El último nivel de detalle.
+table_alm_requisicion_detalle (Requiere: Requisición, Producto)
+table_compras_costos (Requiere: Compra Pendiente, Usuario)
