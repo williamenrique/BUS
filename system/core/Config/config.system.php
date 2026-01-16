@@ -27,7 +27,7 @@ const LOAD = BASE_URL."system/core/Libraries/Load.php";
 const DB_HOST = "localhost";
 const DB_USER = "root";
 const DB_PASS = "";
-const DB_NAME = "prueba";
+const DB_NAME = "busyracuydata";
 const DB_CHARSET = "charset=utf8";
 // base de datos en la nube
 // const DB_HOST = "sql101.infinityfree.com";
