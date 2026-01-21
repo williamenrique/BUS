@@ -301,6 +301,33 @@ class Orden extends Controllers{
     echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
     die();
 }
+
+    public function getOrdenesPrint() {
+        try {
+            $json = file_get_contents('php://input');
+            $data = json_decode($json, true);
+            $ids = $data['ids'] ?? [];
+            
+            if (count($ids) !== 2) {
+                throw new Exception("Debe seleccionar exactamente 2 órdenes.");
+            }
+
+            $ordenes = [];
+            foreach ($ids as $id) {
+                $orden = $this->ordenModel->selectDepacho($id);
+                if ($orden) {
+                    $orden['articulos'] = $this->ordenModel->getListArtDesp($id);
+                    $ordenes[] = $orden;
+                }
+            }
+
+            echo json_encode(['success' => true, 'data' => $ordenes]);
+        } catch (Exception $e) {
+            echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+        }
+        die();
+    }
+
     public function getBuscarOrden(){
         try {
             $strCod = !empty($_POST['txtCod']) ? $_POST['txtCod'] : '';

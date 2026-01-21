@@ -380,11 +380,33 @@ class Flota extends Controllers{
                 'success' => true,
                 'data' => [
                     'items' => $historialData['items'],
-                    'total_items' => $historialData['total_items']
+                    'total_items' => $historialData['total_items'],
+                    'counts' => $historialData['counts'] // Enviamos los contadores al JS
                 ],
                 'pagination' => [
                     'current_page' => $page,
                     'total_pages' => $totalPages
+                ]
+            ];
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            $this->handleDatabaseError($e->getMessage());
+        }
+        die();
+    }
+
+    // Método para obtener TODO el historial filtrado para impresión (sin paginación real)
+    public function getHistorialUnidadPrint(int $idFlota) {
+        try {
+            $postData = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $perPage = 10000; // Límite alto para traer todos los registros
+            $historialData = $this->model->selectHistorialUnidad($idFlota, $postData, $perPage);
+
+            $response = [
+                'success' => true,
+                'data' => [
+                    'items' => $historialData['items'],
+                    'counts' => $historialData['counts']
                 ]
             ];
             echo json_encode($response, JSON_UNESCAPED_UNICODE);

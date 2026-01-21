@@ -37,48 +37,18 @@ $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
 
 $unidad = !empty($reporteData) ? htmlspecialchars($reporteData[0]['unidad']) : 'N/A';
-require_once '../system/core/Config/config.system.php';
-$logoUrl = BASE_URL . 'src/img/logo.png';
-$logoHtml = '';
-$logoHtml = '<img src="' . $logoUrl . '" class="logo">';
+
+// Importar encabezado estandarizado
+require_once '../encabezado.php';
+
 $html = '
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>Reporte de Compras por Unidad</title>
+    ' . $cssCommon . '
     <style>
-        @page {
-            margin: 20px 50px;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10px;
-        }
-        .header {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 35px;
-            position: relative;
-        }
-        .header img {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 80px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 18px;
-        }
-        .header h2 {
-            margin: 0;
-            font-size: 16px;
-        }
-        .header p {
-            margin: 2px 0;
-            font-size: 10px;
-        }
         .report-title {
             text-align: center;
             font-size: 16px;
@@ -113,12 +83,8 @@ $html = '
     </style>
 </head>
 <body>
-    <div class="header">
-        ' . $logoHtml . '
-        <h1>SERVICIO SOCIALISTA DE LOGISTICA,</h1>
-        <h2>MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY</h2>
-        <p>Fecha de Creacion: ' . date('d/m/Y') . '</p>
-    </div>
+    ' . $headerHtml . '
+    ' . $footerHtml . '
         
     <div class="report-title">REPORTE DE COMPRAS POR UNIDAD: ' . $unidad . '</div>
 

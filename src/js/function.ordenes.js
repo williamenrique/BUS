@@ -100,6 +100,29 @@ function configurarEventListeners() {
 
     // Evento para búsqueda
     document.getElementById('formBuscarDesp').addEventListener('submit', buscarOrdenes);
+
+    // Evento para el botón de imprimir lote
+    document.getElementById('btnImprimirLote').addEventListener('click', fntImprimirLote);
+
+    // Delegación de eventos para los checkboxes de la tabla
+    $('#tblOrdenes tbody').on('change', '.select-orden', function () {
+        const checkboxes = document.querySelectorAll('.select-orden:checked');
+        const btn = document.getElementById('btnImprimirLote');
+
+        // Actualizar texto del botón
+        btn.innerHTML = `<i class="fas fa-print"></i> Imprimir Seleccionados (${checkboxes.length}/2)`;
+
+        // Habilitar solo si hay exactamente 2 seleccionados
+        if (checkboxes.length === 2) {
+            btn.disabled = false;
+            // Deshabilitar el resto de checkboxes no seleccionados
+            document.querySelectorAll('.select-orden:not(:checked)').forEach(cb => cb.disabled = true);
+        } else {
+            btn.disabled = true;
+            // Habilitar todos los checkboxes si hay menos de 2
+            document.querySelectorAll('.select-orden').forEach(cb => cb.disabled = false);
+        }
+    });
 }
 
 // Formatear fecha
@@ -441,6 +464,14 @@ function inicializarDataTable() {
             "dataSrc": "data" // Indicamos que los datos están en el array 'data'
         },
         "columns": [
+            {
+                "data": "id_despacho",
+                "orderable": false,
+                "className": "text-center",
+                "render": function (data, type, row) {
+                    return `<input type="checkbox" class="select-orden" value="${data}">`;
+                }
+            },
             { "data": "id_despacho" },
             { "data": "fecha_despacho" },
             {
@@ -694,6 +725,50 @@ async function fntdelDesp(idDesp) {
             console.error('Error eliminando orden:', error);
             notifi('Error al eliminar la orden', 'error');
         }
+    }
+}
+
+// Función para imprimir 2 órdenes en una hoja
+async function fntImprimirLote() {
+    const checkboxes = document.querySelectorAll('.select-orden:checked');
+    if (checkboxes.length !== 2) {
+        notifi("Debe seleccionar exactamente 2 órdenes.", "warning");
+        return;
+    }
+
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+
+    try {
+        const response = await fetch(base_url + 'Orden/getOrdenesPrint', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: ids })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            // Crear formulario para enviar al nuevo reporte
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = base_url + "data/almacen/reporte.php";
+            form.target = '_blank';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'reporteData';
+            input.value = JSON.stringify(result.data);
+            form.appendChild(input);
+
+            document.body.appendChild(form);
+            form.submit();
+            document.body.removeChild(form);
+        } else {
+            notifi(result.message, 'error');
+        }
+    } catch (error) {
+        console.error(error);
+        notifi("Error al procesar la solicitud.", "error");
     }
 }
 

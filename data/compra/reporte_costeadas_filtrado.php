@@ -39,9 +39,8 @@ foreach ($reporteData as $unidad) {
 
 $dompdf = new Dompdf($options);
 
-require_once '../../system/core/Config/config.system.php';
-$logoUrl = BASE_URL . 'src/img/logo.png';
-$logoHtml = '<img src="' . $logoUrl . '" class="logo">';
+// Importar encabezado estandarizado
+require_once '../encabezado.php';
 
 // Construir la leyenda de filtros
 $leyendaFiltros = '<ul>';
@@ -64,14 +63,8 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <title>Reporte Detallado de Compras Costeadas</title>
+    ' . $cssCommon . '
     <style>
-        @page { margin: 20px 50px; }
-        body { font-family: Arial, sans-serif; font-size: 10px; }
-        .header { width: 100%; text-align: center; margin-bottom: 35px; position: relative; }
-        .header img { position: absolute; top: 0; left: 0; width: 80px; }
-        .header h1 { margin: 0; font-size: 18px; }
-        .header h2 { margin: 0; font-size: 16px; }
-        .header p { margin: 2px 0; font-size: 10px; }
         .report-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 40px; }
         .filter-legend { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; font-size: 9px; }
         .filter-legend h4 { margin: 0 0 8px 0; font-size: 11px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
@@ -90,21 +83,11 @@ $html = '
         .despacho-header { background-color: #e9f5ff; font-weight: bold; }
         .unidad-footer { background-color: #cce5ff; font-weight: bold; font-size: 11px; }
         .total-general-row { background-color: #a7d9ff; font-weight: bold; font-size: 12px; }
-        .footer { position: fixed; bottom: 0px; left: 0px; right: 0px; height: 30px; text-align: center; font-size: 8px; }
-        .page-number:before { content: "Página " counter(page); }
     </style>
 </head>
 <body>
-    <div class="footer">
-        <span class="page-number"></span>
-    </div>
-
-    <div class="header">
-        ' . $logoHtml . '
-        <h1>SERVICIO SOCIALISTA DE LOGISTICA,</h1>
-        <h2>MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY</h2>
-        <p>Fecha de Creacion: ' . date('d/m/Y') . '</p>
-    </div>
+    ' . $headerHtml . '
+    ' . $footerHtml . '
 
     <div class="report-title">REPORTE DETALLADO DE COMPRAS</div>
 

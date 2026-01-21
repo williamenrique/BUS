@@ -25,18 +25,17 @@ $options->set('isRemoteEnabled', true);
 
 $dompdf = new Dompdf($options);
 
+// Importar encabezado estandarizado
+require_once '../encabezado.php';
+
 $html = '
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>' . $tituloReporte . '</title>
+    ' . $cssCommon . '
     <style>
-        @page { margin: 25px 50px; }
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #333; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .header h1 { margin: 0; font-size: 18px; }
-        .header h2 { margin: 5px 0; font-size: 14px; font-weight: normal; }
         .department-title { font-size: 14px; font-weight: bold; background-color: #4a5568; color: #fff; padding: 8px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; }
         .summary-container { margin-bottom: 25px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 0; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
         .summary-container h3 { margin: 0; padding: 15px; font-size: 16px; text-align: center; background-color: #4a5568; color: #fff; }
@@ -51,17 +50,12 @@ $html = '
         .table th { background-color: #f1f3f9; font-weight: bold; }
         .table .center { text-align: center; }
         .table .right { text-align: right; }
-        .footer { position: fixed; bottom: -10px; left: 0px; right: 0px; height: 40px; text-align: center; font-size: 9px; color: #777; }
-        .page-number:before { content: "Página " counter(page); }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>SERVICIO SOCIALISTA DE LOGISTICA,</h1>
-        <h2>MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY</h2>
-        <h2>' . $tituloReporte . '</h2>
-        <span>Fecha de Generación: ' . date('d/m/Y') . '</span>
-    </div>';
+    ' . $headerHtml . '
+    ' . $footerHtml . '
+    <h2 style="text-align: center; margin-top: 0;">' . $tituloReporte . '</h2>';
 
 if (empty($bienesAgrupados)) {
     $html .= '<p style="text-align:center;">No se encontraron bienes para mostrar.</p>';
@@ -125,11 +119,7 @@ if (empty($bienesAgrupados)) {
     }
 }
 
-$html .= '
-    <div class="footer">
-        <p class="page-number"></p>
-    </div>
-</body>
+$html .= '</body>
 </html>';
 
 $dompdf->loadHtml($html);

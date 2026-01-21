@@ -159,12 +159,14 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas</h3>
+                            <button id="btnImprimirLote" class="btn btn-warning btn-sm float-right" disabled><i class="fas fa-print"></i> Imprimir Seleccionados (0/2)</button>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table id="tblOrdenes" class="table table-bordered table-striped">
                                     <thead>
                                         <tr>
+                                            <th style="width: 20px;">#</th>
                                             <th>ID</th>
                                             <th>Fecha</th>
                                             <th>Unidad</th>

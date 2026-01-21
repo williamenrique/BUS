@@ -17,10 +17,10 @@ if (json_last_error() !== JSON_ERROR_NONE || empty($data) || !isset($data['info'
 
 $info = $data['info'] ?? [];
 $articulos = $data['articulos'] ?? [];
-require_once '../../system/core/Config/config.system.php';
-$logoUrl = BASE_URL . 'src/img/logo.png';
-$logoHtml = '';
-$logoHtml = '<img src="' . $logoUrl . '" class="logo">';
+
+// Importar encabezado estandarizado
+require_once '../encabezado.php';
+
 // Construir el HTML para el PDF usando el método de concatenación
 $html = '
 <!DOCTYPE html>
@@ -28,14 +28,8 @@ $html = '
 <head>
     <meta charset="utf-8">
     <title>Orden de Compra Costeada #' . htmlspecialchars($info['id_despacho']) . '</title>
+    ' . $cssCommon . '
     <style>
-        @page { margin: 20px 50px; }
-        body { font-family: Arial, sans-serif; font-size: 10px; }
-        .header { width: 100%; text-align: center; margin-bottom: 20px; position: relative; }
-        .header img { position: absolute; top: 0; left: 0; width: 80px; }
-        .header h1 { margin: 0; font-size: 18px; }
-        .header h2 { margin: 0; font-size: 16px; }
-        .header p { margin: 2px 0; font-size: 10px; }
         .report-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 40px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 25px; page-break-inside: avoid; }
         th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
@@ -47,12 +41,8 @@ $html = '
     </style>
 </head>
 <body>
-    <div class="header">
-        ' . $logoHtml . '
-        <h1>SERVICIO SOCIALISTA DE LOGISTICA,</h1>
-        <h2>MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY</h2>
-        <p>Fecha de Creacion: ' . date('d/m/Y') . '</p>
-    </div>
+    ' . $headerHtml . '
+    ' . $footerHtml . '
     <div class="report-title">ORDEN DE COMPRA COSTEADA</div>
     <table>
         <thead>
