@@ -54,6 +54,41 @@
                 </div>
             </div>
 
+            <!-- Panel de Reportes -->
+            <div class="card mb-3">
+                <div class="card-header bg-navy">
+                    <h3 class="card-title"><i class="fas fa-file-pdf"></i> Reportes de Estado</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-end">
+                        <div class="col-md-8">
+                            <label>Incluir en Reporte:</label>
+                            <div class="form-group d-flex flex-wrap">
+                                <div class="custom-control custom-checkbox mr-4">
+                                    <input class="custom-control-input" type="checkbox" id="checkRequerido" value="Requerido" checked>
+                                    <label for="checkRequerido" class="custom-control-label text-danger font-weight-bold">Requerido</label>
+                                </div>
+                                <div class="custom-control custom-checkbox mr-4">
+                                    <input class="custom-control-input" type="checkbox" id="checkProximo" value="Próximo" checked>
+                                    <label for="checkProximo" class="custom-control-label text-warning font-weight-bold">Próximo</label>
+                                </div>
+                                <div class="custom-control custom-checkbox mr-4">
+                                    <input class="custom-control-input" type="checkbox" id="checkBien" value="Bien" checked>
+                                    <label for="checkBien" class="custom-control-label text-success font-weight-bold">Bien</label>
+                                </div>
+                                <div class="custom-control custom-checkbox">
+                                    <input class="custom-control-input" type="checkbox" id="checkSinRegistro" value="Sin Registro" checked>
+                                    <label for="checkSinRegistro" class="custom-control-label text-secondary font-weight-bold">Sin Registro</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-danger btn-block" onclick="fntGenerarReporteAceite()"><i class="fas fa-print"></i> Generar Reporte PDF</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tabla de Unidades -->
             <div class="card">
                 <div class="card-header">
@@ -175,4 +210,3 @@
 </div>
 
 <?= footer($data)?>
-

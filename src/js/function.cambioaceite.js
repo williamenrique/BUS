@@ -270,3 +270,77 @@ function notifi(message, type) {
         }
     });
 }
+
+/**
+ * Función para generar el reporte de estado de aceite en PDF.
+ * Recopila los filtros seleccionados, solicita los datos procesados al servidor
+ * y envía la información al script PHP encargado de generar el PDF.
+ */
+function fntGenerarReporteAceite() {
+    // 1. Obtener los valores de los checkboxes seleccionados
+    const filtros = [];
+    if (document.getElementById('checkRequerido').checked) filtros.push('Requerido');
+    if (document.getElementById('checkProximo').checked) filtros.push('Próximo');
+    if (document.getElementById('checkBien').checked) filtros.push('Bien');
+    if (document.getElementById('checkSinRegistro').checked) filtros.push('Sin Registro');
+
+    if (filtros.length === 0) {
+        notifi('Debe seleccionar al menos un estado para generar el reporte.', 'warning');
+        return;
+    }
+
+    const filtroString = filtros.join(',');
+
+    // 2. Mostrar alerta de carga (loading) para indicar al usuario que el proceso ha iniciado
+    Swal.fire({
+        title: 'Generando Reporte...',
+        text: 'Por favor espere mientras se procesan los datos.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading() }
+    });
+
+    // 3. Realizar petición asíncrona (AJAX) al controlador para obtener los datos del reporte
+    fetch(base_url + 'Flota/getReporteAceiteData', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'filtro=' + filtroString
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 4. Si la petición es exitosa, crear un formulario dinámico temporal
+                // Esto es necesario para enviar los datos JSON grandes vía POST al abrir una nueva pestaña
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = base_url + 'data/flota/reporteaceite.php';
+                form.target = '_blank'; // Importante: Abrir en una nueva pestaña
+
+                // Crear input oculto que contendrá los datos JSON
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'reporteData';
+                input.value = JSON.stringify(data);
+
+                // Agregar el input al formulario y el formulario al cuerpo del documento
+                form.appendChild(input);
+                document.body.appendChild(form);
+
+                // Enviar el formulario
+                form.submit();
+
+                // Limpiar el DOM eliminando el formulario temporal
+                document.body.removeChild(form);
+
+                // Cerrar la alerta de carga
+                Swal.close();
+            } else {
+                // Mostrar mensaje de error si el servidor responde con fallo lógico
+                Swal.fire('Error', data.message, 'error');
+            }
+        })
+        .catch(error => {
+            // 5. Manejo de errores de red o ejecución
+            console.error("Error en fntGenerarReporteAceite:", error);
+            Swal.fire('Error', 'Ocurrió un error inesperado al generar el reporte.', 'error');
+        });
+}

@@ -171,7 +171,7 @@ foreach ($ordenes as $index => $dataInfo) {
         <div class="footer-section">
             <div class="firma-box" style="float: left;">
                 <div class="firma-line">' . htmlspecialchars($dataInfo['usuario_registro']) . '</div>
-                <div>Entregado Por (Almacén)</div>
+                <div>Elaborado Por (Almacén)</div>
             </div>
             
             <div class="observacion-box" style="float: left;">
