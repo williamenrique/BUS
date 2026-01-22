@@ -345,6 +345,7 @@ async function enviarFormulario(e) {
     const mecanico = document.getElementById('listMecanico').value;
     const despachador = document.getElementById('listDespachador').value;
     const fecha = document.getElementById('txtdate').value;
+    const idDespacho = document.getElementById('idDespacho').value;
 
     if (unidad == "0" || operador == "0" || mecanico == "0" || despachador == "0" || !fecha) {
         notifi("Debe completar todos los campos obligatorios", 'error');
@@ -359,7 +360,7 @@ async function enviarFormulario(e) {
     // Mostrar loading
     const btnGenerar = document.getElementById('btnGenerar');
     const originalText = btnGenerar.innerHTML;
-    btnGenerar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Procesando...';
+    btnGenerar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (idDespacho ? 'Actualizando...' : 'Procesando...');
     btnGenerar.disabled = true;
 
     try {
@@ -375,6 +376,8 @@ async function enviarFormulario(e) {
             notifi(objData.message, 'success');
             // Resetear formulario
             document.getElementById('formDespacho').reset();
+            document.getElementById('idDespacho').value = ''; // Limpiar ID
+            document.getElementById('btnGenerar').innerHTML = '<i class="fas fa-paper-plane"></i> Generar Orden'; // Restaurar texto
             document.getElementById('lista').innerHTML = '';
             articulosAgregados = [];
 
@@ -490,6 +493,7 @@ function inicializarDataTable() {
                     return `
                     <div class="btn-group">
                         <button onclick="fntViewOrden(${row.id_despacho})" class="btn btn-info btn-sm" title="Ver detalles"><i class="fas fa-eye"></i></button>
+                        <button onclick="fntEditOrden(${row.id_despacho})" class="btn btn-warning btn-sm" title="Editar"><i class="fas fa-pencil-alt"></i></button>
                         <button onclick="fntImpDespacho(${row.id_despacho})" class="btn btn-primary btn-sm" title="Imprimir PDF"><i class="fas fa-print"></i></button>
                         <button onclick="fntdelDesp(${row.id_despacho})" class="btn btn-danger btn-sm" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
                     </div>
@@ -582,6 +586,84 @@ async function fntViewOrden(idDespacho) {
     } catch (error) {
         console.error('Error obteniendo detalles de la orden:', error);
         notifi('Error al obtener detalles de la orden', 'error');
+    }
+}
+
+// Editar orden
+async function fntEditOrden(idDespacho) {
+    try {
+        const response = await fetch(base_url + 'Orden/getOrden/' + idDespacho);
+        if (!response.ok) throw new Error('Error en la respuesta del servidor');
+
+        const objData = await response.json();
+        if (objData.success) {
+            const { orden, articulos } = objData.data;
+
+            // 1. Llenar datos del formulario
+            document.getElementById('idDespacho').value = orden.id_despacho;
+            document.getElementById('txtdate').value = orden.fecha_despacho;
+            document.getElementById('strDate').value = orden.fecha_despacho;
+            document.getElementById('fechaDespacho').textContent = formatFecha(orden.fecha_despacho);
+            document.getElementById('txtObs').value = orden.observacion;
+
+            // 2. Establecer valores en Select2
+            $('#listUnidad').val(orden.id_flota).trigger('change');
+            // Esperar un poco para que se carguen los datos de la unidad
+            setTimeout(() => fntGetUnidad(orden.id_flota), 100);
+
+            $('#listOperador').val(orden.operador_id).trigger('change');
+            $('#listMecanico').val(orden.mecanico_id).trigger('change');
+            $('#listDespachador').val(orden.despachador_id).trigger('change');
+
+            // 3. Llenar tabla de artículos
+            articulosAgregados = [];
+            document.getElementById('lista').innerHTML = '';
+
+            articulos.forEach(art => {
+                articulosAgregados.push({
+                    id: art.id_producto,
+                    nombre: art.producto,
+                    cantidad: parseFloat(art.cant_despacho)
+                });
+
+                const item = `
+                    <tr class="articulo-item">
+                        <td>
+                            <input type="hidden" name="cod[]" value="${art.id_producto}"/>
+                            <span>COD ${art.id_producto.toString().padStart(4, '0')}</span>
+                        </td>
+                        <td>
+                            <input type="hidden" name="articulo[]" value="${art.producto}"/>
+                            <span>${art.producto}</span>
+                        </td>
+                        <td>
+                            <input type="hidden" name="cantidad[]" value="${art.cant_despacho}"/>
+                            <span>${art.cant_despacho}</span>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-danger btn-sm eliminarRow">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById("lista").insertAdjacentHTML('beforeend', item);
+            });
+
+            actualizarEstadoBotonGenerar();
+            actualizarResumenOrden();
+
+            // 4. Cambiar texto del botón y hacer scroll
+            document.getElementById('btnGenerar').innerHTML = '<i class="fas fa-sync"></i> Actualizar Orden';
+            document.querySelector('.content-wrapper').scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+        } else {
+            notifi(objData.message, 'error');
+        }
+    } catch (error) {
+        console.error('Error obteniendo orden para editar:', error);
+        notifi('Error al cargar la orden para edición', 'error');
     }
 }
 

@@ -88,6 +88,47 @@ class OrdenModel extends Mysql {
 		$requestInsert = $this->insert($queryInsert,[$intUnidad, $srtOper, $srtMec, $srtDesp, $strDate, $intIdUser, $srtObs, 1]);
 		return $requestInsert;
 	}
+
+    /**** actualizar despacho ****/
+    public function updateDespacho(int $idDespacho, int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, string $srtObs, string $strDate){
+        $sql = "UPDATE table_alm_despacho SET id_flota = ?, operador = ?, mecanico = ?, despachador = ?, fecha_despacho = ?, observacion = ? WHERE id_despacho = ?";
+        $arrData = [$intUnidad, $srtOper, $srtMec, $srtDesp, $strDate, $srtObs, $idDespacho];
+        return $this->update($sql, $arrData);
+    }
+
+    /**** seleccionar orden para editar (con IDs de personal si es posible mapearlos o nombres) ****/
+    public function selectOrdenForEdit(int $idDespacho){
+        // Intentamos recuperar los IDs de personal basándonos en los nombres guardados
+        $sql = "SELECT d.*, 
+                    (SELECT id_personal FROM table_personal WHERE CONCAT(personal_nombre, ' ', personal_apellido) = d.operador LIMIT 1) as operador_id,
+                    (SELECT id_personal FROM table_personal WHERE CONCAT(personal_nombre, ' ', personal_apellido) = d.mecanico LIMIT 1) as mecanico_id,
+                    (SELECT id_personal FROM table_personal WHERE CONCAT(personal_nombre, ' ', personal_apellido) = d.despachador LIMIT 1) as despachador_id
+                FROM table_alm_despacho d 
+                WHERE d.id_despacho = ?";
+        return $this->select($sql, [$idDespacho]);
+    }
+
+    /**** revertir stock y limpiar detalles para actualización ****/
+    public function revertirYLimpiar(int $idDespacho){
+        // 1. Obtener artículos actuales
+        $articulos = $this->artDespacho($idDespacho);
+        
+        // 2. Revertir stock
+        foreach ($articulos as $art) {
+            $this->updateCantN($art['id_producto'], $art['cant_producto'] + $art['cant_despacho']);
+        }
+
+        // 3. Eliminar relaciones
+        $sqlDelRel = "DELETE FROM table_alm_relacion_despacho WHERE id_despacho = ?";
+        $this->delete($sqlDelRel, [$idDespacho]);
+
+        // 4. Eliminar de pendientes (si existe) para regenerar
+        $sqlDelPend = "DELETE FROM table_compras_pendientes WHERE id_despacho = ?";
+        $this->delete($sqlDelPend, [$idDespacho]);
+        
+        return true;
+    }
+
 	/**** insertar relacion despacho ****/
 	public function insertRDespacho(int $idDespacho, int $idArticulo, float $cantidad, int $idFlota, string $fechaDespacho){
 		// 1. Insertar en la tabla de relación de despacho (funcionalidad existente)
@@ -215,11 +256,12 @@ class OrdenModel extends Mysql {
 	// obtener la lista de articulos por cada despacho y mostralos en el tmeline de ordenes
 	public function getListArtDesp(int $intDesp){
 		$this->intDesp = $intDesp;
-		$sql = "SELECT producto.*, relacionP.cant_despacho, enlaceP.* , u.ubicacion
+		$sql = "SELECT producto.*, relacionP.cant_despacho, enlaceP.* , u.ubicacion, rp.cant_producto
             FROM table_alm_producto producto 
             JOIN table_alm_relacion_despacho relacionP ON producto.id_producto = relacionP.id_producto 
             JOIN table_alm_enlace_producto enlaceP ON enlaceP.id_enlace_producto = producto.id_enlace_producto
             JOIN table_alm_ubicacion u ON u.id_ubicacion = producto.id_ubicacion
+            LEFT JOIN table_alm_relacion_producto rp ON producto.id_producto = rp.id_producto
             WHERE relacionP.id_despacho = ? ";
 		$request = $this->select_all($sql, [$this->intDesp]);
 		return $request;

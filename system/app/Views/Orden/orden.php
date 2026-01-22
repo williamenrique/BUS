@@ -48,6 +48,7 @@
                         </div>
                         <div class="card-body">
                             <form id="formDespacho">
+                                <input type="hidden" id="idDespacho" name="idDespacho" value="">
                                 <!-- Basic Information Section -->
                                 <h5><i class="fas fa-info-circle text-primary"></i> Información Básica</h5>
                                 <hr>

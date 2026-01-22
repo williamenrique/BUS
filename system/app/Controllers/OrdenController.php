@@ -210,6 +210,26 @@ class Orden extends Controllers{
         die();
     }
 
+    public function getOrden($idDespacho){
+        $arrResponse = ['success' => false, 'message' => 'Error al obtener datos de la orden'];
+        try {
+            $idDespacho = intval($idDespacho);
+            if ($idDespacho > 0) {
+                $orden = $this->ordenModel->selectOrdenForEdit($idDespacho);
+                if (!empty($orden)) {
+                    $articulos = $this->ordenModel->getListArtDesp($idDespacho);
+                    $arrResponse = ['success' => true, 'data' => ['orden' => $orden, 'articulos' => $articulos]];
+                } else {
+                    $arrResponse['message'] = 'Orden no encontrada.';
+                }
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
     public function setOrdenD(){
         $arrResponse = ['success' => false, 'message' => 'Error al registrar la orden'];
         try {
@@ -217,6 +237,7 @@ class Orden extends Controllers{
                 throw new Exception('Método no permitido');
             }
 
+            $idDespacho = intval($_POST['idDespacho'] ?? 0);
             $intUnidad = intval($_POST['listUnidad']);
             $intIdUser = $_SESSION['idUser'];
             $srtObs = !empty($_POST['txtObs']) ? strtoupper(strClean($_POST['txtObs'])) : '';
@@ -241,17 +262,31 @@ class Orden extends Controllers{
             $strMec = !empty($mecanicoData) ? strtoupper($mecanicoData['personal_nombre'] . ' ' . $mecanicoData['personal_apellido']) : 'N/A';
             $strDesp = !empty($despachadorData) ? strtoupper($despachadorData['personal_nombre'] . ' ' . $despachadorData['personal_apellido']) : 'N/A';
 
-            $idDespacho = $this->ordenModel->insertDespacho($intUnidad, $strOper, $strMec, $strDesp, $intIdUser, $srtObs, $strDate);
+            if ($idDespacho > 0) {
+                // Actualizar Orden
+                // 1. Actualizar cabecera
+                $this->ordenModel->updateDespacho($idDespacho, $intUnidad, $strOper, $strMec, $strDesp, $srtObs, $strDate);
+                
+                // 2. Revertir stock de artículos anteriores y limpiar detalles
+                $this->ordenModel->revertirYLimpiar($idDespacho);
+                
+                $msg = 'Orden actualizada correctamente';
+            } else {
+                // Crear Orden
+                $idDespacho = $this->ordenModel->insertDespacho($intUnidad, $strOper, $strMec, $strDesp, $intIdUser, $srtObs, $strDate);
+                $msg = 'Orden registrada correctamente con ID: ' . $idDespacho;
+            }
 
             if ($idDespacho > 0) {
                 if (!empty($_POST['cod']) && is_array($_POST['cod'])) {
                     foreach ($_POST['cod'] as $index => $idArticulo) {
                         $intCant = floatval($_POST['cantidad'][$index]);
+                        // Insertar relación y descontar stock (funciona igual para create y update tras limpiar)
                         $this->ordenModel->insertRDespacho($idDespacho, $idArticulo, $intCant, $intUnidad, $strDate);
                         $this->ordenModel->updateCant($idArticulo, $intCant);
                     }
                 }
-                $arrResponse = ['success' => true, 'message' => 'Orden registrada correctamente con ID: ' . $idDespacho];
+                $arrResponse = ['success' => true, 'message' => $msg];
             }
         } catch (Exception $e) {
             $arrResponse['message'] = $e->getMessage();

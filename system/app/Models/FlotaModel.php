@@ -376,7 +376,7 @@ class FlotaModel extends Mysql {
                      LEFT JOIN table_usuarios u ON h.usuario_id = u.usuario_id
                      LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
                      LEFT JOIN table_departamentos d ON u.usuario_departamento_id = d.departamento_id
-                     $whereSql ORDER BY h.fecha ASC, h.id_evento ASC LIMIT $perPage OFFSET $offset";
+                     $whereSql ORDER BY h.fecha DESC, h.id_evento DESC LIMIT $perPage OFFSET $offset";
         $items = $this->select_all($itemsSql, $params);
     
         // --- ENRIQUECER LOS DETALLES DE DESPACHO CON SUS ARTÍCULOS ---
