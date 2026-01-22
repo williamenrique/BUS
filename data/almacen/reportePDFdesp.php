@@ -25,13 +25,8 @@ $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true); // Necesario para cargar imágenes externas si las hubiera
 $dompdf = new Dompdf($options);
 
-// Usamos la URL completa (BASE_URL) que ha demostrado ser el método más fiable para que Dompdf visualice la imagen.
-require_once '../../system/core/Config/config.system.php';
-$logoUrl = BASE_URL . 'src/img/logo.png';
-
-$logoHtml = '';
-// No se necesita file_exists() porque es una URL. Dompdf manejará si la imagen no se encuentra.
-$logoHtml = '<img src="' . $logoUrl . '" class="logo">';
+// Importar encabezado estandarizado
+require_once '../encabezado.php';
 
 $html = '
 <!DOCTYPE html>
@@ -39,28 +34,10 @@ $html = '
 <head>
     <meta charset="UTF-8">
     <title>Orden de Despacho</title>
+    ' . $cssCommon . '
     <style>
-        @page { margin: 20mm 15mm; }
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #333; }
-        .header {
-            width: 100%;
-            text-align: center;
-            margin-bottom: 50px;
-            position: relative;
-        }
-        .header .logo {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 80px;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 18px;
-        }
-        .header h2 { margin: 0; font-size: 16px; font-weight: normal; }
-        .info-orden-table { width: 100%; margin-bottom: 20px; }
-        .info-orden-table td { border: none; padding: 0; vertical-align: middle; }
+        .info-orden-table { width: 100%; margin-bottom: 20px; margin-top: 40px; }
+        .info-orden-table td { border: none; padding: 5px 0; vertical-align: bottom; }
         .info-orden-table .numero-orden { text-align: right; font-weight: bold; font-size: 14px; }
         .section { margin-bottom: 20px; }
         .section-title { font-size: 13px; font-weight: bold; background-color: #e8eaf6; padding: 8px; border-radius: 4px; margin-bottom: 10px; color: #1a237e; }
@@ -73,17 +50,11 @@ $html = '
         .footer-section .observacion { width: 60%; float: left; }
         .footer-section .responsable { width: 35%; float: right; text-align: center; }
         .footer-section::after { content: ""; display: table; clear: both; }
-        .footer { position: fixed; bottom: -20px; left: 0px; right: 0px; height: 50px; text-align: center; font-size: 9px; color: #777; }
-        .page-number:before { content: "Página " counter(page); }
     </style>
 </head>
 <body>
-    <div class="header">
-        ' . $logoHtml . '
-        <h1>SERVICIO SOCIALISTA DE LOGISTICA,</h1>
-        <h2>MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY</h2>
-        <p>Fecha de Creacion: ' . date('d/m/Y') . '</p>
-    </div>
+    ' . $headerHtml . '
+    ' . $footerHtml . '
 
     <table class="info-orden-table">
         <tr>
@@ -170,10 +141,6 @@ $html .= '
             <p style="margin-top: 40px; border-top: 1px solid #333; padding-top: 5px;">' . htmlspecialchars($dataInfo['usuario_registro']) . '</p>
             <p>Firma y Sello</p>
         </div>
-    </div>
-
-    <div class="footer">
-        <p class="page-number"></p>
     </div>
 </body>
 </html>';

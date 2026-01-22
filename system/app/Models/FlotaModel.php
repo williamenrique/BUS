@@ -265,7 +265,8 @@ class FlotaModel extends Mysql {
     // aqui consultas historial unidad
     public function selectHistorialUnidad(int $idFlota, array $postData, int $perPage) {
         // --- PARÁMETROS DE FILTRADO Y PAGINACIÓN ---
-        $filtroFecha = !empty($postData['filtroFecha']) ? $postData['filtroFecha'] : null;
+        $fechaInicio = !empty($postData['fechaInicio']) ? $postData['fechaInicio'] : null;
+        $fechaFin = !empty($postData['fechaFin']) ? $postData['fechaFin'] : null;
         $filtroTipo = !empty($postData['filtroTipo']) ? $postData['filtroTipo'] : null;
         $filtroTermino = !empty($postData['filtroTermino']) ? strClean($postData['filtroTermino']) : null;
         
@@ -275,9 +276,16 @@ class FlotaModel extends Mysql {
         $whereClauses = ["h.id_flota = ?"];
         $params = [$idFlota];
     
-        if ($filtroFecha) {
-            $whereClauses[] = "DATE(h.fecha) = ?";
-            $params[] = $filtroFecha;
+        if ($fechaInicio && $fechaFin) {
+            $whereClauses[] = "DATE(h.fecha) BETWEEN ? AND ?";
+            $params[] = $fechaInicio;
+            $params[] = $fechaFin;
+        } elseif ($fechaInicio) {
+            $whereClauses[] = "DATE(h.fecha) >= ?";
+            $params[] = $fechaInicio;
+        } elseif ($fechaFin) {
+            $whereClauses[] = "DATE(h.fecha) <= ?";
+            $params[] = $fechaFin;
         }
         if ($filtroTipo) {
             $whereClauses[] = "h.tipo = ?";
@@ -321,7 +329,7 @@ class FlotaModel extends Mysql {
                 'mantenimiento' as tipo,
                 m.id_unidad_mantenimiento as id_evento,
                 m.id_flota,
-                DATE(m.fecha_entrada) as fecha,
+                m.fecha_entrada as fecha,
                 JSON_OBJECT('tipo_mantenimiento', m.tipo_mantenimiento, 'diagnostico', m.diagnostico) as detalles,
                 m.usuario_id
             FROM table_flota_mantenimiento m)
@@ -350,6 +358,14 @@ class FlotaModel extends Mysql {
         // --- CONSULTA PARA CONTAR EL TOTAL DE ITEMS FILTRADOS ---
         $countSql = "SELECT COUNT(*) as total FROM ($unionQuery) as h $whereSql";
         $totalItems = $this->select($countSql, $params)['total'];
+
+        // --- NUEVO: CONSULTA PARA CONTAR POR TIPO (DESGLOSE) ---
+        $countTypeSql = "SELECT tipo, COUNT(*) as total FROM ($unionQuery) as h $whereSql GROUP BY tipo";
+        $typeCounts = $this->select_all($countTypeSql, $params);
+        $counts = ['despacho' => 0, 'mantenimiento' => 0, 'aceite' => 0, 'status' => 0];
+        foreach ($typeCounts as $row) {
+            $counts[$row['tipo']] = $row['total'];
+        }
     
         // --- CONSULTA PARA OBTENER LOS ITEMS DE LA PÁGINA ACTUAL ---
         $itemsSql = "SELECT h.*, 
@@ -360,21 +376,40 @@ class FlotaModel extends Mysql {
                      LEFT JOIN table_usuarios u ON h.usuario_id = u.usuario_id
                      LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
                      LEFT JOIN table_departamentos d ON u.usuario_departamento_id = d.departamento_id
-                     $whereSql ORDER BY h.fecha DESC LIMIT $perPage OFFSET $offset";
+                     $whereSql ORDER BY h.fecha ASC, h.id_evento ASC LIMIT $perPage OFFSET $offset";
         $items = $this->select_all($itemsSql, $params);
     
         // --- ENRIQUECER LOS DETALLES DE DESPACHO CON SUS ARTÍCULOS ---
+        // 1. Extraer los IDs de los eventos de tipo 'despacho'
+        $despacho_ids = [];
+        foreach ($items as $item) {
+            if ($item['tipo'] === 'despacho') {
+                $despacho_ids[] = $item['id_evento'];
+            }
+        }
+
+        // 2. Si hay despachos, obtener todos sus artículos en una sola consulta eficiente
+        $articulos_por_despacho = [];
+        if (!empty($despacho_ids)) {
+            $placeholders = implode(',', array_fill(0, count($despacho_ids), '?'));
+            $sqlArticulos = "SELECT rd.id_despacho, rd.cant_despacho, p.producto 
+                             FROM table_alm_relacion_despacho rd
+                             JOIN table_alm_producto p ON rd.id_producto = p.id_producto
+                             WHERE rd.id_despacho IN ($placeholders)";
+            
+            $todos_los_articulos = $this->select_all($sqlArticulos, $despacho_ids);
+
+            // 3. Agrupar los artículos por su id_despacho
+            foreach ($todos_los_articulos as $articulo) {
+                $articulos_por_despacho[$articulo['id_despacho']][] = $articulo;
+            }
+        }
+
         foreach ($items as &$item) {
             if ($item['tipo'] === 'despacho') {
-                $sqlArticulos = "SELECT rd.cant_despacho, p.producto 
-                                 FROM table_alm_relacion_despacho rd
-                                 JOIN table_alm_producto p ON rd.id_producto = p.id_producto
-                                 WHERE rd.id_despacho = ?";
-                $articulos = $this->select_all($sqlArticulos, [$item['id_evento']]);
-                
                 // Decodificar JSON, agregar artículos y volver a codificar
                 $detalles = json_decode($item['detalles'], true);
-                $detalles['articulos'] = $articulos;
+                $detalles['articulos'] = $articulos_por_despacho[$item['id_evento']] ?? [];
                 $item['detalles'] = json_encode($detalles);
             }
 
@@ -387,7 +422,8 @@ class FlotaModel extends Mysql {
     
         return [
             'total_items' => $totalItems,
-            'items' => $items
+            'items' => $items,
+            'counts' => $counts // Retornamos el desglose
         ];
     }
 

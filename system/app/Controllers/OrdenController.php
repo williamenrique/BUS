@@ -1,5 +1,6 @@
 <?php
 header('Access-Control-Allow-Origin: *');
+require_once 'system/app/Models/RequisicionModel.php';
 class Orden extends Controllers{
     private $db; //para inicializar la base de datos
     public function __construct(){
@@ -44,7 +45,7 @@ class Orden extends Controllers{
         // 2. Mostrar un mensaje JSON (para APIs)
         // 3. Guardar en variable para mostrar en vista
         // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',
@@ -172,6 +173,36 @@ class Orden extends Controllers{
         } catch (Exception $e) {
             $this->handleDatabaseError($e->getMessage());
         }
+        die();
+    }
+
+    public function aprobarOrden(){
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            $arrResponse = ['success' => false, 'message' => 'Método no permitido'];
+            header('Content-Type: application/json');
+            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            die();
+        }
+        try {
+            $idDespacho = intval($_POST['id_despacho']);
+            $idUsuario = $_SESSION['idUser'];
+            
+            if($idDespacho > 0){
+                $reqModel = new RequisicionModel();
+                $request = $reqModel->aprobarRequisicion($idDespacho, $idUsuario);
+                if($request){
+                    $arrResponse = ['success' => true, 'message' => 'Orden aprobada correctamente.'];
+                }else{
+                    $arrResponse = ['success' => false, 'message' => 'No se pudo aprobar la orden.'];
+                }
+            }else{
+                $arrResponse = ['success' => false, 'message' => 'ID inválido.'];
+            }
+        } catch (Exception $e) {
+            $arrResponse = ['success' => false, 'message' => $e->getMessage()];
+        }
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
 
@@ -365,6 +396,11 @@ class Orden extends Controllers{
 
             // Añadir badges de estado y botones de acción dinámicos
             for ($i = 0; $i < count($ordenesData); $i++) {
+                // --- INICIO DE LA CORRECCIÓN ---
+                // Calcular el total de artículos para cada orden.
+                $articulos = $this->ordenModel->getListArtDesp($ordenesData[$i]['id_despacho']);
+                $ordenesData[$i]['total_articulos'] = count($articulos);
+                // --- FIN DE LA CORRECCIÓN ---
                 $estadoBadge = '';
                 $btnView = '<button class="btn btn-info btn-sm" onClick="fntViewOrden('.$ordenesData[$i]['id_despacho'].')" title="Ver Detalles"><i class="far fa-eye"></i></button>';
                 $btnPrint = '<button class="btn btn-secondary btn-sm" onClick="fntImprimirRequisicion('.$ordenesData[$i]['id_despacho'].')" title="Imprimir Orden"><i class="fas fa-print"></i></button>';

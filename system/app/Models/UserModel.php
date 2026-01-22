@@ -89,7 +89,6 @@ class UserModel extends Mysql {
     }
     
     public function createUserWithPersonalUpdate(array $personalData, array $userData) {
-        $this->beginTransaction();
         try {
             // 1. Actualizar los datos en la tabla 'table_personal'
             $sql_update_personal = "UPDATE table_personal SET 
@@ -114,7 +113,6 @@ class UserModel extends Mysql {
             $request_check = $this->select($sql_check_user, [$personalData['id_personal']]);
 
             if (!empty($request_check)) {
-                $this->rollBack(); // Revertir si el usuario ya existe
                 return "exist";
             }
 
@@ -123,10 +121,8 @@ class UserModel extends Mysql {
             $arr_user = [$userData['password'], $userData['rol_id'], $userData['dep_id'], $personalData['id_personal']];
             $userId = $this->insert($sql_insert_user, $arr_user);
 
-            $this->commit();
             return $userId;
         } catch (Exception $e) {
-            $this->rollBack();
             error_log("Error en createUserWithPersonalUpdate: " . $e->getMessage());
             return 0;
         }
@@ -174,7 +170,6 @@ class UserModel extends Mysql {
     /***** Actualizar usuario ******/
     public function updateUsuario($data) {
         // Iniciar transacción para asegurar la integridad de los datos
-        $this->beginTransaction();
         try {
             // 1. Actualizar datos en table_usuarios (rol, departamento, estado)
             $sql_user = "UPDATE table_usuarios SET 
@@ -203,11 +198,9 @@ class UserModel extends Mysql {
             $this->update($sql_personal, $arr_personal);
 
             // Si todo fue bien, confirmar los cambios
-            $this->commit();
             return true;
         } catch (Exception $e) {
             // Si algo falla, revertir todos los cambios
-            $this->rollBack();
             error_log("Error en updateUsuario: " . $e->getMessage());
             return false;
         }

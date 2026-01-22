@@ -311,6 +311,74 @@ class Flota extends Controllers{
     }
 
     /**
+     * Obtiene los datos procesados para el reporte de aceite.
+     */
+    public function getReporteAceiteData() {
+        if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+            try {
+                $filtroRaw = $_POST['filtro'] ?? '';
+                $filtrosSeleccionados = !empty($filtroRaw) ? explode(',', $filtroRaw) : [];
+                $arrData = $this->model->selectAceiteStatus();
+                
+                $reporteData = [];
+                $counts = ['Requerido' => 0, 'Próximo' => 0, 'Bien' => 0, 'Sin Registro' => 0, 'Total' => 0];
+                
+                // Umbrales (deben coincidir con getAceiteStatus)
+                $umbral_proximo = 1000;
+                $intervalo_cambio = 5000;
+
+                foreach ($arrData as $unidad) {
+                    $kmActual = $unidad['kilometraje_actual'] ?? 0;
+                    $kmUltimoCambio = $unidad['ultimo_cambio_km'] ?? 0;
+                    $kmProximoCambio = ($kmUltimoCambio > 0) ? $kmUltimoCambio + $intervalo_cambio : 0;
+                    $kmRestantes = $kmProximoCambio > 0 ? $kmProximoCambio - $kmActual : 0;
+                    
+                    $estado = 'Bien';
+                    if ($kmProximoCambio == 0) {
+                        $estado = 'Sin Registro';
+                    } else if ($kmRestantes <= 0) {
+                        $estado = 'Requerido';
+                    } else if ($kmRestantes <= $umbral_proximo) {
+                        $estado = 'Próximo';
+                    }
+
+                    // Contar para la leyenda (solo si tiene registro válido)
+                    if(isset($counts[$estado])) {
+                        $counts[$estado]++;
+                    }
+
+                    // Filtrar: Si el estado está en los seleccionados
+                    if (in_array($estado, $filtrosSeleccionados)) {
+                        $unidad['estado'] = $estado;
+                        $unidad['km_restantes'] = $kmRestantes;
+                        $unidad['proximo_cambio_km'] = $kmProximoCambio;
+                        $reporteData[] = $unidad;
+                    }
+                }
+                
+                // Ordenar por prioridad de estado: Requerido (1) > Próximo (2) > Bien (3)
+                usort($reporteData, function($a, $b) {
+                    $prioridad = ['Requerido' => 1, 'Próximo' => 2, 'Bien' => 3, 'Sin Registro' => 4];
+                    $valA = $prioridad[$a['estado']] ?? 99;
+                    $valB = $prioridad[$b['estado']] ?? 99;
+                    
+                    if ($valA == $valB) return 0;
+                    return ($valA < $valB) ? -1 : 1;
+                });
+
+                $counts['Total'] = count($reporteData);
+                // Enviamos los filtros seleccionados para mostrarlos en el PDF
+                $textoFiltros = empty($filtrosSeleccionados) ? 'Todos' : implode(', ', $filtrosSeleccionados);
+
+                echo json_encode(['success' => true, 'items' => $reporteData, 'counts' => $counts, 'filtro' => $textoFiltros]);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+            }
+        }
+        die();
+    }
+
+    /**
      * Actualiza el kilometraje de una unidad.
      */
     public function setKilometraje() {
@@ -380,11 +448,33 @@ class Flota extends Controllers{
                 'success' => true,
                 'data' => [
                     'items' => $historialData['items'],
-                    'total_items' => $historialData['total_items']
+                    'total_items' => $historialData['total_items'],
+                    'counts' => $historialData['counts'] // Enviamos los contadores al JS
                 ],
                 'pagination' => [
                     'current_page' => $page,
                     'total_pages' => $totalPages
+                ]
+            ];
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
+        } catch (Exception $e) {
+            $this->handleDatabaseError($e->getMessage());
+        }
+        die();
+    }
+
+    // Método para obtener TODO el historial filtrado para impresión (sin paginación real)
+    public function getHistorialUnidadPrint(int $idFlota) {
+        try {
+            $postData = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+            $perPage = 10000; // Límite alto para traer todos los registros
+            $historialData = $this->model->selectHistorialUnidad($idFlota, $postData, $perPage);
+
+            $response = [
+                'success' => true,
+                'data' => [
+                    'items' => $historialData['items'],
+                    'counts' => $historialData['counts']
                 ]
             ];
             echo json_encode($response, JSON_UNESCAPED_UNICODE);

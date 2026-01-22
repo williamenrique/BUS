@@ -39,39 +39,45 @@ class RequisicionModel extends Mysql {
         // El $idRequisicion que recibimos es en realidad el id_despacho que actúa como ID de flujo.
         $sql = "SELECT 
                     r.id_requisicion as id_requisicion_interna,
-                    r.id_despacho_fk as id_despacho_flujo,
-                    r.fecha_creacion as fecha_requisicion,
-                    r.observacion as diagnostico,
+                    d.id_despacho as id_despacho_flujo,
+                    d.fecha_despacho as fecha_requisicion,
+                    COALESCE(r.observacion, d.observacion) as diagnostico,
                     -- CORRECCIÓN: Usar el estado de la tabla de despacho, que es el estado maestro del flujo.
                     d.estado_orden as status_requisicion,
-                    r.id_flota,
-                    r.mecanico_cedula,
-                    r.tipo_orden,
-                    r.user_id_creador,
+                    d.id_flota,
+                    COALESCE(r.mecanico_cedula, d.mecanico) as mecanico_cedula,
+                    COALESCE(r.tipo_orden, 'Despacho Directo') as tipo_orden,
+                    d.user_id as user_id_creador,
                     -- CORRECCIÓN: Obtener el operador y despachador final. Usar COALESCE para mostrar el nombre guardado si no hay coincidencia en la tabla de personal.
                     COALESCE(CONCAT(p_operador.personal_nombre, ' ', p_operador.personal_apellido), d.operador) as operador_final,
                     COALESCE(CONCAT(p_despachador.personal_nombre, ' ', p_despachador.personal_apellido), d.despachador) as despachador_final,
                     CONCAT(p_creador.personal_nombre, ' ', p_creador.personal_apellido) as jefe_patio_nombre,
-                    CONCAT(p_mec.personal_nombre, ' ', p_mec.personal_apellido) as mecanico_nombre,
+                    COALESCE(CONCAT(p_mec.personal_nombre, ' ', p_mec.personal_apellido), d.mecanico) as mecanico_nombre,
                     f.id_unidad,
                     fm.modelo_unidad
-                FROM table_alm_requisicion r
-                INNER JOIN table_usuarios u ON r.user_id_creador = u.usuario_id
-                INNER JOIN table_alm_despacho d ON r.id_despacho_fk = d.id_despacho -- Unir con despacho para obtener los datos finales
+                FROM table_alm_despacho d
+                LEFT JOIN table_alm_requisicion r ON d.id_despacho = r.id_despacho_fk
+                INNER JOIN table_usuarios u ON d.user_id = u.usuario_id
                 INNER JOIN table_personal p_creador ON u.usuario_id_personal = p_creador.id_personal
                 LEFT JOIN table_personal p_operador ON d.operador = p_operador.id_personal
                 LEFT JOIN table_personal p_despachador ON d.despachador = p_despachador.id_personal
                 LEFT JOIN table_personal p_mec ON r.mecanico_cedula = p_mec.personal_cedula
-                INNER JOIN table_flota f ON r.id_flota = f.id_flota
+                INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_flota_modelo fm ON f.id_modelo = fm.id_modelo
-                WHERE r.id_despacho_fk = ?";
+                WHERE d.id_despacho = ?";
         
         $requisicion = $this->select($sql, [$idRequisicion]);
 
         if($requisicion){
             // Obtenemos los artículos de la tabla de detalle de requisición usando el ID interno
-            $sql_articulos = "SELECT rd.cantidad_solicitada as cant_despacho, p.id_producto, p.producto, p.present_producto FROM table_alm_requisicion_detalle rd JOIN table_alm_producto p ON rd.id_producto = p.id_producto WHERE rd.id_requisicion_fk = ?";
-            $requisicion['articulos'] = $this->select_all($sql_articulos, [$requisicion['id_requisicion_interna']]);
+            if (!empty($requisicion['id_requisicion_interna'])) {
+                $sql_articulos = "SELECT rd.cantidad_solicitada as cant_despacho, p.id_producto, p.producto, p.present_producto FROM table_alm_requisicion_detalle rd JOIN table_alm_producto p ON rd.id_producto = p.id_producto WHERE rd.id_requisicion_fk = ?";
+                $requisicion['articulos'] = $this->select_all($sql_articulos, [$requisicion['id_requisicion_interna']]);
+            } else {
+                // Si no hay requisición interna, buscamos en la relación de despacho (para despachos directos)
+                $sql_articulos = "SELECT rd.cant_despacho, p.id_producto, p.producto, p.present_producto FROM table_alm_relacion_despacho rd JOIN table_alm_producto p ON rd.id_producto = p.id_producto WHERE rd.id_despacho = ?";
+                $requisicion['articulos'] = $this->select_all($sql_articulos, [$idRequisicion]);
+            }
         }
         return $requisicion;
     }
@@ -81,7 +87,6 @@ class RequisicionModel extends Mysql {
      * Todo dentro de una transacción para garantizar la integridad de los datos.
      */
     public function aprobarRequisicionYGenerarDespacho(int $idRequisicion, int $idUsuarioAprobador) {
-        $this->beginTransaction();
         try {
             // 1. Obtener datos del despacho (que funciona como requisición) y sus artículos
             $requisicion = $this->selectRequisicionById($idRequisicion);
@@ -117,13 +122,9 @@ class RequisicionModel extends Mysql {
             $mensaje_almacen = "Despacho #${idRequisicion} pendiente de preparación en Almacén.";
             $this->insert($sql_notificacion_almacen, ['despacho_pendiente', $idRequisicion, $mensaje_almacen]);
 
-            // Si todo fue exitoso, confirmar la transacción
-            $this->commit();
             return $idRequisicion; // Devolvemos el mismo ID
 
         } catch (Exception $e) {
-            // Si algo falla, revertir todos los cambios
-            $this->rollBack();
             // Loguear el error y lanzarlo para que el controlador lo capture
             error_log("Error en aprobarRequisicionYGenerarDespacho: " . $e->getMessage());
             throw $e;
@@ -139,7 +140,6 @@ class RequisicionModel extends Mysql {
 	 * Todo esto se hace dentro de una transacción.
 	 */
 	public function insertRequisicionCompleta(int $intUnidad, string $srtMec, string $tipoOrden, string $srtObs, int $intIdUser, string $strDate, array $articulos) {
-		$this->beginTransaction();
 		try {
 			// Paso 1: Crear la entrada en `table_alm_despacho` para generar la notificación y mantener el flujo.
 			// Usamos placeholders para operador y despachador, ya que se llenarán después.
@@ -182,12 +182,9 @@ class RequisicionModel extends Mysql {
             $mensaje = "Nueva Requisición #{$idDespacho} creada por {$creator_name}.";
             $this->insert($sql_notificacion, ['nueva_requisicion', $idDespacho, $mensaje]);
 
-			// Si todo fue exitoso, confirmar la transacción
-			$this->commit();
 			return $idDespacho; // Devolvemos el ID del despacho que es el que controla el flujo
 
 		} catch (Exception $e) {
-			$this->rollBack();
 			error_log("Error en insertRequisicionCompleta: " . $e->getMessage());
 			return 0; // Retornar 0 en caso de error
 		}
@@ -223,7 +220,6 @@ class RequisicionModel extends Mysql {
      * @return bool
      */
     public function aprobarRequisicion(int $idDespacho, int $idUsuarioAprobador) {
-        $this->beginTransaction();
         try {
             // 1. Verificar que la orden exista y esté pendiente
             $orden = $this->select("SELECT estado_orden FROM table_alm_despacho WHERE id_despacho = ?", [$idDespacho]);
@@ -248,10 +244,8 @@ class RequisicionModel extends Mysql {
             $mensaje_almacen = "Requisición #${idDespacho} aprobada. Pendiente de despacho en Almacén.";
             $this->insert($sql_notificacion_almacen, ['despacho_pendiente', $idDespacho, $mensaje_almacen]);
 
-            $this->commit();
             return true;
         } catch (Exception $e) {
-            $this->rollBack();
             throw $e; // Re-lanzar la excepción para que el controlador la capture
         }
     }

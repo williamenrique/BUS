@@ -455,14 +455,12 @@ class ComprasModel extends Mysql {
     public function anularCostoPorDespacho(int $idDespacho): bool
     {
         // Iniciar una transacción para asegurar la integridad de los datos
-        $this->beginTransaction();
         try {
             // 1. Obtener los IDs de los registros pendientes asociados al despacho
             $sql_select_pendientes = "SELECT id_compra_pendiente FROM table_compras_pendientes WHERE id_despacho = ?";
             $pendientes = $this->select_all($sql_select_pendientes, [$idDespacho]);
 
             if (empty($pendientes)) {
-                $this->rollBack();
                 return false; // No hay nada que anular
             }
 
@@ -478,11 +476,9 @@ class ComprasModel extends Mysql {
             $this->update($sql_update_pendientes, [$idDespacho]);
 
             // Si todo fue bien, confirmar los cambios
-            $this->commit();
             return true;
         } catch (Exception $e) {
             // Si algo falla, revertir todos los cambios
-            $this->rollBack();
             error_log("Error en anularCostoPorDespacho: " . $e->getMessage());
             return false;
         }

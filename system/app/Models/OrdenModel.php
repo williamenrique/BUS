@@ -84,7 +84,7 @@ class OrdenModel extends Mysql {
 
 	/**** insertar despacho ****/
 	public function insertDespacho(int $intUnidad, string $srtOper, string $srtMec,string $srtDesp, int $intIdUser, string $srtObs, string $strDate){
-		$queryInsert = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden, origen_despacho) VALUES(?,?,?,?,?,?,?,?,?, 'Requisicion')";
+		$queryInsert = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden) VALUES(?,?,?,?,?,?,?,?,?)";
 		$idDespacho = $this->insert($queryInsert,[$intUnidad, $srtOper, $srtMec, $srtDesp, $strDate, $intIdUser, $srtObs, 1, 1]); // estado_orden = 1 para "Requisicion"
 
 		if ($idDespacho > 0) {
@@ -110,19 +110,6 @@ class OrdenModel extends Mysql {
 		$sqlRelacion = "INSERT INTO table_alm_relacion_despacho(id_despacho, id_producto, cant_despacho) VALUES(?,?,?)";
 		$requestRelacion = $this->insert($sqlRelacion, [$idDespacho, $idArticulo, $cantidad]);
 
-		// 2. Insertar en la tabla de compras pendientes
-		$sqlPendiente = "INSERT INTO table_compras_pendientes 
-							(id_despacho, id_producto, id_flota, cant_despacho, fecha_despacho, status_costeo)
-						 VALUES (?, ?, ?, ?, ?, 'Pendiente')";
-		
-		$paramsPendiente = [
-			$idDespacho,
-			$idArticulo,
-			$idFlota,
-			$cantidad,
-			$fechaDespacho // Se pasa directamente la fecha en formato Y-m-d
-		];
-		$requestPendiente = $this->insert($sqlPendiente, $paramsPendiente);
 		return $requestRelacion;
 	}
 	/**** insertar relacion despacho ****/
@@ -146,64 +133,68 @@ class OrdenModel extends Mysql {
      * Todo se ejecuta en una transacción.
      */
     public function procesarDespachoFinal(int $idDespacho, string $nombreOperador, string $nombreDespachador) {
-        $this->beginTransaction();
         try {
             // 1. Verificar que la orden exista y esté aprobada (estado 2)
-            $orden = $this->select("SELECT estado_orden FROM table_alm_despacho WHERE id_despacho = ?", [$idDespacho]);
+            $orden = $this->select("SELECT estado_orden, id_flota, fecha_despacho FROM table_alm_despacho WHERE id_despacho = ?", [$idDespacho]);
             if (empty($orden) || $orden['estado_orden'] != 2) {
                 throw new Exception("La orden no existe o no está aprobada para despacho.");
             }
 
-            // 2. Obtener los artículos de la requisición original
-            $sql_articulos = "SELECT rd.cantidad_solicitada, rd.id_producto, p.producto
-                              FROM table_alm_requisicion r
-                              JOIN table_alm_requisicion_detalle rd ON r.id_requisicion = rd.id_requisicion_fk
-                              JOIN table_alm_producto p ON rd.id_producto = p.id_producto
-                              WHERE r.id_despacho_fk = ?";
-            $articulos = $this->select_all($sql_articulos, [$idDespacho]);
+            // 2. Determinar si es una Requisición (tiene registro en table_alm_requisicion) o un Despacho Directo
+            $requisicion = $this->select("SELECT id_requisicion FROM table_alm_requisicion WHERE id_despacho_fk = ?", [$idDespacho]);
+            $esRequisicion = !empty($requisicion);
+            $articulos = [];
 
-            // 3. Descontar cada artículo del inventario
-            foreach ($articulos as $item) {
-                $this->updateCant($item['id_producto'], $item['cantidad_solicitada']);
+            if ($esRequisicion) {
+                // Es Requisición: Obtener artículos de la tabla de detalles de requisición
+                $sql_articulos = "SELECT rd.cantidad_solicitada as cant_despacho, rd.id_producto 
+                                  FROM table_alm_requisicion_detalle rd 
+                                  WHERE rd.id_requisicion_fk = ?";
+                $articulos = $this->select_all($sql_articulos, [$requisicion['id_requisicion']]);
+            } else {
+                // Es Despacho Directo: Obtener artículos de la tabla de relación de despacho (ya existen)
+                $sql_articulos = "SELECT cant_despacho, id_producto 
+                                  FROM table_alm_relacion_despacho 
+                                  WHERE id_despacho = ?";
+                $articulos = $this->select_all($sql_articulos, [$idDespacho]);
             }
 
-            // --- INICIO DE LA CORRECCIÓN ---
-            // 3. Insertar cada artículo en la tabla de compras pendientes para su posterior costeo.
-            $despachoInfo = $this->select("SELECT id_flota, fecha_despacho FROM table_alm_despacho WHERE id_despacho = ?", [$idDespacho]);
+            // 3. Procesar artículos
             foreach ($articulos as $item) {
+                // A. Si es Requisición, debemos descontar inventario y registrar en relación despacho
+                // (En Despacho Directo esto ya se hizo al crear la orden, así que lo saltamos)
+                if ($esRequisicion) {
+                    $this->updateCant($item['id_producto'], $item['cant_despacho']);
+                    
+                    $sql_relacion = "INSERT INTO table_alm_relacion_despacho (id_despacho, id_producto, cant_despacho) VALUES (?, ?, ?)";
+                    $this->insert($sql_relacion, [$idDespacho, $item['id_producto'], $item['cant_despacho']]);
+                }
+
+                // B. Generar registro en Compras Pendientes (Costos) para AMBOS casos
                 $sql_pendiente = "INSERT INTO table_compras_pendientes 
                                     (id_despacho, id_producto, id_flota, cant_despacho, fecha_despacho, status_costeo)
                                   VALUES (?, ?, ?, ?, ?, 'Pendiente')";
-                $params_pendiente = [$idDespacho, $item['id_producto'], $despachoInfo['id_flota'], $item['cantidad_solicitada'], $despachoInfo['fecha_despacho']];
+                $params_pendiente = [$idDespacho, $item['id_producto'], $orden['id_flota'], $item['cant_despacho'], $orden['fecha_despacho']];
                 $this->insert($sql_pendiente, $params_pendiente);
             }
-            // --- FIN DE LA CORRECCIÓN ---
-
-            // --- INICIO DE LA CORRECCIÓN ---
-            // 3.5. Insertar los artículos en la tabla de relación de despacho para el historial
-            foreach ($articulos as $item) {
-                $sql_relacion = "INSERT INTO table_alm_relacion_despacho (id_despacho, id_producto, cant_despacho) VALUES (?, ?, ?)";
-                $this->insert($sql_relacion, [$idDespacho, $item['id_producto'], $item['cantidad_solicitada']]);
-            }
-            // --- FIN DE LA CORRECCIÓN ---
 
             // 4. Actualizar la orden de despacho a 'Despachada' (estado 3) y completar los datos
             $sql_update_despacho = "UPDATE table_alm_despacho SET operador = ?, despachador = ?, estado_orden = 3 WHERE id_despacho = ?";
             $this->update($sql_update_despacho, [$nombreOperador, $nombreDespachador, $idDespacho]);
 
-            // 4.5. Actualizar el estado en la tabla de requisición específica a 'Despachada' (3)
-            $sql_update_req = "UPDATE table_alm_requisicion SET status_requisicion = 3 WHERE id_despacho_fk = ?";
-            $this->update($sql_update_req, [$idDespacho]);
+            // 5. Si es Requisición, actualizar también su tabla específica
+            if ($esRequisicion) {
+                $sql_update_req = "UPDATE table_alm_requisicion SET status_requisicion = 3 WHERE id_despacho_fk = ?";
+                $this->update($sql_update_req, [$idDespacho]);
+            }
 
-            // 5. Marcar la notificación de 'despacho_pendiente' como leída
+            // 6. Marcar la notificación de 'despacho_pendiente' como leída
             $sql_update_notif = "UPDATE table_notificaciones SET leido = 1 WHERE tipo_notificacion = 'despacho_pendiente' AND id_referencia = ?";
             $this->update($sql_update_notif, [$idDespacho]);
 
-            $this->commit();
             return true;
 
         } catch (Exception $e) {
-            $this->rollBack();
             error_log("Error en procesarDespachoFinal: " . $e->getMessage());
             throw $e;
         }

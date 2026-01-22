@@ -17,13 +17,10 @@ if (json_last_error() !== JSON_ERROR_NONE || empty($data) || !isset($data['info'
 
 $info = $data['info'] ?? [];
 $articulos = $data['articulos'] ?? [];
-$tasaDia = !empty($articulos) ? $articulos[0]['tasa_dia'] : 0;
 
+// Importar encabezado estandarizado
+require_once '../encabezado.php';
 
-require_once '../../system/core/Config/config.system.php';
-$logoUrl = BASE_URL . 'src/img/logo.png';
-$logoHtml = '';
-$logoHtml = '<img src="' . $logoUrl . '" class="logo">';
 // Construir el HTML para el PDF usando el método de concatenación
 $html = '
 <!DOCTYPE html>
@@ -31,14 +28,8 @@ $html = '
 <head>
     <meta charset="utf-8">
     <title>Orden de Compra Costeada #' . htmlspecialchars($info['id_despacho']) . '</title>
+    ' . $cssCommon . '
     <style>
-        @page { margin: 20px 50px; }
-        body { font-family: Arial, sans-serif; font-size: 10px; }
-        .header { width: 100%; text-align: center; margin-bottom: 20px; position: relative; }
-        .header img { position: absolute; top: 0; left: 0; width: 80px; }
-        .header h1 { margin: 0; font-size: 18px; }
-        .header h2 { margin: 0; font-size: 16px; }
-        .header p { margin: 2px 0; font-size: 10px; }
         .report-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 40px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 25px; page-break-inside: avoid; }
         th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
@@ -50,23 +41,20 @@ $html = '
     </style>
 </head>
 <body>
-    <div class="header">
-        ' . $logoHtml . '
-        <h1>SERVICIO SOCIALISTA DE LOGISTICA,</h1>
-        <h2>MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY</h2>
-        <p>Fecha de Creacion: ' . date('d/m/Y') . '</p>
-    </div>
+    ' . $headerHtml . '
+    ' . $footerHtml . '
     <div class="report-title">ORDEN DE COMPRA COSTEADA</div>
     <table>
         <thead>
             <tr class="despacho-header">
-                <th colspan="2">Despacho: #' . htmlspecialchars($info['id_despacho']) . '</th>
+                <th>Despacho: #' . htmlspecialchars($info['id_despacho']) . '</th>
                 <th class="text-center">Fecha: ' . htmlspecialchars($info['fecha_despacho']) . '</th>
-                <th class="text-right">Unidad: ' . htmlspecialchars($info['id_unidad'] . ' - ' . $info['modelo_unidad']) . '</th>
+                <th colspan="3" class="text-right">Unidad: ' . htmlspecialchars($info['id_unidad'] . ' - ' . $info['modelo_unidad']) . '</th>
             </tr>
             <tr>
                 <th>Artículo</th>
                 <th class="text-center">Cantidad</th>
+                <th class="text-right">Tasa (Bs.)</th>
                 <th class="text-right">Monto (\$)</th>
                 <th class="text-right">Monto (Bs.)</th>
             </tr>
@@ -82,6 +70,7 @@ foreach ($articulos as $row) {
         <tr>
             <td>' . htmlspecialchars($row['producto']) . '</td>
             <td class="text-center">' . htmlspecialchars($row['cant_despacho']) . '</td>
+            <td class="text-right">' . number_format($row['tasa_dia'], 2, ',', '.') . '</td>
             <td class="text-right">' . number_format($row['monto_divisa'], 2, ',', '.') . '</td>
             <td class="text-right">' . number_format($row['monto_bs'], 2, ',', '.') . '</td>
         </tr>';
@@ -91,11 +80,8 @@ $html .= '
         </tbody>
         <tfoot>
             <tr class="despacho-footer">
-                <td colspan="4"><strong>Tasa del Día (Bs.): ' . number_format($tasaDia, 2, ',', '.') . '</strong></td>
-            </tr>
-            <tr class="despacho-footer">
-                <td colspan="1">Total Artículos: ' . count($articulos) . '</td>
-                <td class="text-right"><strong>Totales:</strong></td>
+                <td>Total Artículos: ' . count($articulos) . '</td>
+                <td colspan="2" class="text-right"><strong>Totales:</strong></td>
                 <td class="text-right"><strong>$. ' . number_format($totalDivisa, 2, ',', '.') . '</strong></td>
                 <td class="text-right"><strong>Bs. ' . number_format($totalBs, 2, ',', '.') . '</strong></td>
             </tr>

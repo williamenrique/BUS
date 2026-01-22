@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function setTitleByRole() {
     const titleElement = document.getElementById('form-title');
-    if (currentUserRole === 'JEFE DE TALLER' || currentUserRole === 'JEFE DE PATIO') {
+    if (userRole === 'JEFE DE TALLER' || userRole === 'JEFE DE PATIO') {
         titleElement.innerHTML = '<i class="fas fa-clipboard-list mr-2"></i> Nueva Requisición';
     } else {
         titleElement.innerHTML = '<i class="fas fa-truck-loading mr-2"></i> Nuevo Despacho';
@@ -453,26 +453,26 @@ function inicializarDataTable() {
             "dataSrc": "data" // Indicamos que los datos están en el array 'data'
         },
         "columns": [
-            { "data": "id_despacho" },
-            { "data": "fecha_despacho" },
+            { "data": "id_despacho", "title": "ID Orden" },
+            { "data": "fecha_aprobacion", "title": "Fecha" }, // CORRECCIÓN: La consulta devuelve 'fecha_aprobacion'
             {
-                "data": null, "render": function (data, type, row) {
+                "data": null, "title": "Unidad", "render": function (data, type, row) {
                     return `${row.id_unidad} - ${row.modelo_unidad}`;
-                }
+                },
             },
+            { "data": "creador_nombre", "title": "Elaborado por" }, // CORRECCIÓN: La consulta devuelve 'creador_nombre'
             {
-                "data": "estado_orden", "className": "text-center", "render": function (data, type, row) {
+                "data": "estado_orden", "title": "Estado", "className": "text-center", "render": function (data) {
                     return formatEstadoOrden(data);
                 }
             },
-            { "data": "operador_nombre" },
             {
-                "data": "total_articulos", "className": "text-center", "render": function (data, type, row) {
+                "data": "total_articulos", "title": "Artículos", "className": "text-center", "render": function (data, type, row) {
                     return `<span class="badge badge-info">${data} artículos</span>`;
                 }
             },
             {
-                "data": null, "orderable": false, "className": "text-center", "render": function (data, type, row) {
+                "data": null, "title": "Acciones", "orderable": false, "className": "text-center", "render": function (data, type, row) {
                     return getOrdenActionButtons(row);
                 }
             }
@@ -482,7 +482,9 @@ function inicializarDataTable() {
         order: [[0, 'desc']],
         "responsive": true,
         "bDestroy": true,
-        dom: 'lBfrtip', // Estructura DOM para AdminLTE
+        // Estructura DOM mejorada para Bootstrap 4, que es la base de AdminLTE.
+        // Esto organiza los controles (longitud, botones, filtro) en filas y columnas para una mejor responsividad.
+        dom: "<'row'<'col-sm-12 col-md-6'lB><'col-sm-12 col-md-6'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
         buttons: [
             { extend: 'excelHtml5', text: '<i class="fas fa-file-excel"></i> Excel', className: 'btn btn-success' },
             { extend: 'pdfHtml5', text: '<i class="fas fa-file-pdf"></i> PDF', className: 'btn btn-danger' },
@@ -493,14 +495,14 @@ function inicializarDataTable() {
     // Aplicar filtro por defecto según el rol del usuario
     tblOrdenes.on('init.dt', function () {
         let defaultFilter = '';
-        if (currentUserRole === 'COMPRAS') {
+        if (userRole === 'COMPRAS') {
             defaultFilter = 'Requisición';
-        } else if (currentUserRole === 'ALMACEN') {
+        } else if (userRole === 'ALMACEN') {
             defaultFilter = 'Aprobada';
         }
 
         if (defaultFilter) {
-            tblOrdenes.column(3).search(defaultFilter, true, false).draw(); // Columna 3 es "ESTADO"
+            tblOrdenes.column(4).search(defaultFilter, true, false).draw(); // Columna 4 es "ESTADO"
         }
     });
 }
@@ -533,11 +535,11 @@ function formatEstadoOrden(estado) {
 function getOrdenActionButtons(row) {
     let buttons = `<button onclick="fntViewOrden(${row.id_despacho})" class="btn btn-info btn-sm" title="Ver detalles"><i class="fas fa-eye"></i></button>`;
 
-    if (parseInt(row.estado_orden) === 1 && (currentUserRole === 'COMPRAS' || currentUserRole === 'ADMINISTRADOR')) {
+    if (parseInt(row.estado_orden) === 1 && (userRole === 'COMPRAS' || userRole === 'ADMINISTRADOR')) {
         buttons += ` <button onclick="fntAprobarOrden(${row.id_despacho})" class="btn btn-primary btn-sm" title="Aprobar Requisición"><i class="fas fa-check-double"></i></button>`;
     }
 
-    if (parseInt(row.estado_orden) === 2 && (currentUserRole === 'ALMACEN' || currentUserRole === 'ADMINISTRADOR')) {
+    if (parseInt(row.estado_orden) === 2 && (userRole === 'ALMACEN' || userRole === 'ADMINISTRADOR')) {
         buttons += ` <button onclick="fntDespacharOrden(${row.id_despacho})" class="btn btn-success btn-sm" title="Despachar Orden"><i class="fas fa-truck"></i></button>`;
     }
 
