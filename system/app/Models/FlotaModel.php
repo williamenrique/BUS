@@ -136,17 +136,17 @@ class FlotaModel extends Mysql {
                     (SELECT km.kilometraje_actual 
                      FROM table_flota_kilometraje km 
                      WHERE km.id_flota = f.id_flota 
-                     ORDER BY km.fecha_actualizacion DESC 
+                     ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC 
                      LIMIT 1) as kilometraje_actual,
                     (SELECT ah.kilometraje_cambio 
                      FROM table_flota_aceite_historial ah 
                      WHERE ah.id_flota = f.id_flota 
-                     ORDER BY ah.fecha_cambio DESC 
+                     ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC 
                      LIMIT 1) as ultimo_cambio_km,
                     (SELECT ah.fecha_cambio 
                      FROM table_flota_aceite_historial ah 
                      WHERE ah.id_flota = f.id_flota 
-                     ORDER BY ah.fecha_cambio DESC 
+                     ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC 
                      LIMIT 1) as fecha_ultimo_cambio
                 FROM table_flota f
                 LEFT JOIN table_flota_marca m ON f.id_marca = m.id_marca

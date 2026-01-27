@@ -211,6 +211,23 @@ function loadOperacionesData() {
                 }
                 // Tabla de resumen
                 const tablaBody = document.querySelector('#tabla-resumen-flota');
+
+                // Inyectar botón para ir a Flota en el header de la tarjeta
+                if (tablaBody) {
+                    const card = tablaBody.closest('.card');
+                    if (card) {
+                        const cardHeader = card.querySelector('.card-header');
+                        if (cardHeader && !cardHeader.querySelector('#btnLinkFlota')) {
+                            const linkHtml = `<div class="card-tools">
+                                                <a href="${base_url}flota" class="btn btn-primary btn-xs" id="btnLinkFlota" title="Ir a Gestión de Flota">
+                                                    <i class="fas fa-bus"></i> Ir a Flota
+                                                </a>
+                                              </div>`;
+                            cardHeader.insertAdjacentHTML('beforeend', linkHtml);
+                        }
+                    }
+                }
+
                 let html = '';
                 if (operaciones.grouped.length > 0) {
                     operaciones.grouped.forEach(item => {

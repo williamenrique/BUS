@@ -18,8 +18,7 @@ class HomeModel extends Mysql {
 					DATE_FORMAT(v.fecha_venta, '%Y-%m') AS mes_venta,
 					COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
 				FROM table_es_venta v
-				WHERE
-					STR_TO_DATE(v.fecha_venta, '%d-%m-%y') BETWEEN STR_TO_DATE(?, '%d-%m-%y') AND STR_TO_DATE(?, '%d-%m-%y')
+				WHERE v.fecha_venta BETWEEN ? AND ?
 				GROUP BY
 					mes_venta
 				ORDER BY
@@ -99,13 +98,13 @@ class HomeModel extends Mysql {
                 COALESCE((SELECT km.kilometraje_actual 
                           FROM table_flota_kilometraje km 
                           WHERE km.id_flota = tf.id_flota 
-                          ORDER BY km.fecha_actualizacion DESC 
+                          ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC 
                           LIMIT 1), 0) as kilometraje_actual,
                 -- Se calcula el próximo cambio sumando 5000 al último cambio registrado
-                COALESCE((SELECT ah.kilometraje_cambio + 5000
+                COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END
                           FROM table_flota_aceite_historial ah 
                           WHERE ah.id_flota = tf.id_flota 
-                          ORDER BY ah.fecha_cambio DESC 
+                          ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC 
                           LIMIT 1), 0) as proximo_cambio_km
             FROM table_flota tf
             WHERE tf.status_unidad = 1 -- Solo unidades activas
