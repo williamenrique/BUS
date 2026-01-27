@@ -356,13 +356,76 @@ class EstacionModel extends Mysql {
         return $request['total_litros'] ?? 0;
     }
     // En EstacionModel.php, mejorar la función existente:
-    public function getLitrosPorFecha(string $srtDate) {
-        $sql = "SELECT COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) AS total_litros 
-                FROM table_es_venta 
-                WHERE fecha_venta = ?";
-        $request = $this->select($sql, [$srtDate]);
+    public function getLitrosPorFecha(string $srtDate, string $type = 'day', string $endDate = null) {
+        if ($type === 'month') {
+            if (!empty($endDate)) {
+                $sql = "SELECT COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) AS total_litros 
+                        FROM table_es_venta 
+                        WHERE DATE_FORMAT(fecha_venta, '%Y-%m') BETWEEN ? AND ?";
+                $request = $this->select($sql, [$srtDate, $endDate]);
+            } else {
+                $sql = "SELECT COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) AS total_litros 
+                        FROM table_es_venta 
+                        WHERE DATE_FORMAT(fecha_venta, '%Y-%m') = ?";
+                $request = $this->select($sql, [$srtDate]);
+            }
+        } else {
+            if (!empty($endDate) && $endDate != $srtDate) {
+                $sql = "SELECT COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) AS total_litros 
+                        FROM table_es_venta 
+                        WHERE fecha_venta BETWEEN ? AND ?";
+                $request = $this->select($sql, [$srtDate, $endDate]);
+            } else {
+                $sql = "SELECT COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) AS total_litros 
+                        FROM table_es_venta 
+                        WHERE fecha_venta = ?";
+                $request = $this->select($sql, [$srtDate]);
+            }
+        }
         return $request['total_litros'] ?? 0;
     }
+
+    public function selectReporteLitros(string $fecha, string $type, string $fechaFin = null) {
+        if ($type === 'month') {
+            if (!empty($fechaFin)) {
+                // Reporte por rango de meses: Agrupar por mes
+                $sql = "SELECT DATE_FORMAT(fecha_venta, '%Y-%m') as mes, COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) as total_litros 
+                        FROM table_es_venta 
+                        WHERE DATE_FORMAT(fecha_venta, '%Y-%m') BETWEEN ? AND ?
+                        GROUP BY mes
+                        ORDER BY mes ASC";
+                $request = $this->select_all($sql, [$fecha, $fechaFin]);
+            } else {
+                // Reporte de un solo mes: Detalle diario
+                $sql = "SELECT fecha_venta, COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) as total_litros 
+                        FROM table_es_venta 
+                        WHERE DATE_FORMAT(fecha_venta, '%Y-%m') = ?
+                        GROUP BY fecha_venta
+                        ORDER BY fecha_venta ASC";
+                $request = $this->select_all($sql, [$fecha]);
+            }
+        } else {
+            if (!empty($fechaFin) && $fechaFin != $fecha) {
+                // Reporte por rango de días: Agrupar por tipo de vehículo (resumen del periodo)
+                $sql = "SELECT tv.nombre as tipo_vehiculo, COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) as total_litros, COUNT(*) as cantidad_ventas
+                        FROM table_es_venta v
+                        JOIN table_es_tipos_vehiculo tv ON v.id_tipo_vehiculo = tv.id_tipo_vehiculo
+                        WHERE v.fecha_venta BETWEEN ? AND ?
+                        GROUP BY tv.nombre";
+                $request = $this->select_all($sql, [$fecha, $fechaFin]);
+            } else {
+                // Reporte de un solo día
+                $sql = "SELECT tv.nombre as tipo_vehiculo, COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) as total_litros, COUNT(*) as cantidad_ventas
+                        FROM table_es_venta v
+                        JOIN table_es_tipos_vehiculo tv ON v.id_tipo_vehiculo = tv.id_tipo_vehiculo
+                        WHERE v.fecha_venta = ?
+                        GROUP BY tv.nombre";
+                $request = $this->select_all($sql, [$fecha]);
+            }
+        }
+        return $request;
+    }
+
     // mostrar historia de cierres para mantenimiento
     public function getHistorialCierres() {
         $sql = "SELECT 

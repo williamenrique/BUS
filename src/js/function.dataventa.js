@@ -497,88 +497,176 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     });
     /**
-     * Función para cargar dinámicamente las fechas disponibles con ventas
-     * y mostrar el total de litros vendidos al seleccionar una fecha
+     * Configura los controles de búsqueda por fecha (Día o Mes)
+     * Reemplaza al antiguo selector de fechas.
      */
-    async function loadFechasConVentas() {
-        try {
-            const response = await fetch(base_url + 'Estacion/getFechasConVentas')
-            const result = await response.json()
-            if (result.success && result.fechas.length > 0) {
-                const selectFecha = document.getElementById('selectFechaCierre')
-                selectFecha.innerHTML = '' // Limpiar opciones existentes
-                // Agregar opción por defecto
-                const defaultOption = document.createElement('option')
-                defaultOption.value = ''
-                defaultOption.textContent = 'Selecciona una fecha'
-                defaultOption.disabled = true
-                defaultOption.selected = true
-                selectFecha.appendChild(defaultOption)
-                // Agregar todas las fechas disponibles
-                result.fechas.forEach(fecha => {
-                    const option = document.createElement('option')
-                    option.value = fecha.fecha_venta
-                    // Formatear la fecha para mostrarla en formato más legible
-                    const [day, month, year] = fecha.fecha_venta.split('-')
-                    const dateObj = new Date(`20${year}`, month - 1, day)
-                    const formattedDate = dateObj.toLocaleDateString('es-ES', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    })
-                    option.textContent = formattedDate
-                    option.dataset.originalDate = fecha.fecha_venta // Guardar fecha original
-                    selectFecha.appendChild(option)
-                })
-                // Agregar event listener para cuando se seleccione una fecha
-                selectFecha.addEventListener('change', async function () {
-                    const fechaSeleccionada = this.options[this.selectedIndex].dataset.originalDate
-                    if (fechaSeleccionada) {
-                        await loadLitrosPorFecha(fechaSeleccionada)
-                    } else {
-                        document.getElementById('totalLitrosFecha').textContent = '0 L'
-                    }
-                })
+    function setupDateSearch() {
+        const selectFechaCierre = document.getElementById('selectFechaCierre');
+        if (!selectFechaCierre) return;
+
+        const parent = selectFechaCierre.parentNode;
+
+        // Crear contenedor para los nuevos controles
+        const controlsContainer = document.createElement('div');
+        controlsContainer.className = 'row g-2 align-items-center';
+
+        controlsContainer.innerHTML = `
+            <div class="col-auto">
+                <select id="searchType" class="form-control form-control-sm" style="min-width: 100px;">
+                    <option value="day">Por Día</option>
+                    <option value="month">Por Mes</option>
+                </select>
+            </div>
+            <div class="col">
+                <input type="date" id="searchDateDay" class="form-control form-control-sm">
+                <div id="monthRangeContainer" style="display:none;">
+                    <input type="month" id="searchDateMonthStart" class="form-control form-control-sm mr-1" placeholder="Desde">
+                    <input type="month" id="searchDateMonthEnd" class="form-control form-control-sm" placeholder="Hasta">
+                </div>
+            </div>
+            <div class="col-auto">
+                <button id="btnPrintReport" class="btn btn-danger btn-sm" title="Imprimir Reporte" style="display:none;"><i class="fas fa-file-pdf"></i></button>
+            </div>
+        `;
+
+        parent.insertBefore(controlsContainer, selectFechaCierre);
+
+        // Remover el select original que está vacío/obsoleto
+        selectFechaCierre.remove();
+
+        const searchType = document.getElementById('searchType');
+        const searchDateDay = document.getElementById('searchDateDay');
+        const searchDateMonthStart = document.getElementById('searchDateMonthStart');
+        const searchDateMonthEnd = document.getElementById('searchDateMonthEnd');
+        const monthRangeContainer = document.getElementById('monthRangeContainer');
+        const btnPrintReport = document.getElementById('btnPrintReport');
+
+        // Establecer fecha actual por defecto
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+
+        searchDateDay.value = `${yyyy}-${mm}-${dd}`;
+        searchDateMonthStart.value = `${yyyy}-${mm}`;
+        searchDateMonthEnd.value = `${yyyy}-${mm}`;
+
+        // Carga inicial
+        loadLitrosPorFecha(searchDateDay.value, 'day');
+
+        // Eventos
+        searchType.addEventListener('change', function () {
+            if (this.value === 'day') {
+                searchDateDay.style.display = 'block';
+                monthRangeContainer.style.display = 'none';
+                btnPrintReport.style.display = 'none'; // Ocultar reporte para día
+                loadLitrosPorFecha(searchDateDay.value, 'day');
             } else {
-                notifi('No se encontraron fechas con ventas registradas.', 'info')
+                searchDateDay.style.display = 'none';
+                monthRangeContainer.style.display = 'flex';
+                btnPrintReport.style.display = 'block'; // Mostrar reporte para mes
+                // Cargar con el rango actual
+                loadLitrosPorFecha(searchDateMonthStart.value, 'month', searchDateMonthEnd.value);
+            }
+        });
+
+        searchDateDay.addEventListener('change', function () {
+            if (this.value) loadLitrosPorFecha(this.value, 'day');
+        });
+
+        searchDateMonthStart.addEventListener('change', function () {
+            if (this.value) {
+                // Si la fecha fin es menor a la inicio, igualarla
+                if (searchDateMonthEnd.value < this.value) {
+                    searchDateMonthEnd.value = this.value;
+                }
+                loadLitrosPorFecha(this.value, 'month', searchDateMonthEnd.value);
+            }
+        });
+
+        searchDateMonthEnd.addEventListener('change', function () {
+            if (this.value) loadLitrosPorFecha(searchDateMonthStart.value, 'month', this.value);
+        });
+
+        // Evento para imprimir reporte
+        btnPrintReport.addEventListener('click', function () {
+            const type = searchType.value;
+            // Solo permitir reporte si es por mes
+            if (type === 'day') return;
+
+            const fecha = searchDateMonthStart.value;
+            const fechaFin = searchDateMonthEnd.value;
+
+            if (fecha) {
+                fntGenerarReporteLitros(fecha, type, fechaFin);
+            } else {
+                notifi("Seleccione una fecha válida.", "warning");
+            }
+        });
+    }
+
+    async function fntGenerarReporteLitros(fecha, type, fechaFin = null) {
+        try {
+            const response = await fetch(base_url + 'Estacion/generarReporteLitros', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha: fecha, type: type, fechaFin: fechaFin })
+            });
+            const result = await response.json();
+            if (result.success) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = base_url + "data/estacion/reporte_venta.php";
+                form.target = '_blank';
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'reporteData';
+                input.value = JSON.stringify(result);
+                form.appendChild(input);
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            } else {
+                notifi(result.message, 'error');
             }
         } catch (error) {
-            console.error('Error al cargar las fechas:', error)
-            notifi('Error al cargar las fechas disponibles.', 'error')
+            console.error(error);
+            notifi("Error al generar el reporte.", "error");
         }
-        // Cargar ventas abiertas
-        await loadOpenSales()
     }
+
     /**
      * Función para cargar los litros vendidos en una fecha específica
-     * @param {string} fecha - Fecha en formato dd-mm-yy
+     * @param {string} fecha - Fecha en formato YYYY-MM-DD o YYYY-MM
+     * @param {string} type - 'day' o 'month'
+     * @param {string} fechaFin - Fecha fin para rango de meses (opcional)
      */
-    async function loadLitrosPorFecha(fecha) {
+    async function loadLitrosPorFecha(fecha, type = 'day', fechaFin = null) {
         try {
             const response = await fetch(base_url + 'Estacion/getLitrosPorFecha', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fecha: fecha })
+                body: JSON.stringify({ fecha: fecha, type: type, fechaFin: fechaFin })
             })
             const result = await response.json()
             if (result.success) {
                 const totalLitros = parseFloat(result.totalLitros) || 0
-                document.getElementById('totalLitrosFecha').textContent = `${totalLitros.toFixed(2)} L`
-                // Mostrar notificación de éxito
-                notifi(`Total de litros vendidos: ${totalLitros.toFixed(2)} L`, 'success')
+                // Formato entendible (ej: 1.234,56 L)
+                const formattedLitros = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalLitros);
+                document.getElementById('totalLitrosFecha').textContent = `${formattedLitros} L`
             } else {
-                document.getElementById('totalLitrosFecha').textContent = '0 L'
+                document.getElementById('totalLitrosFecha').textContent = '0,00 L'
                 notifi(result.message || 'No hay datos para esta fecha.', 'info')
             }
         } catch (error) {
             console.error('Error al cargar litros por fecha:', error)
-            document.getElementById('totalLitrosFecha').textContent = '0 L'
+            document.getElementById('totalLitrosFecha').textContent = '0,00 L'
             notifi('Error al cargar los litros vendidos.', 'error')
         }
     }
     // Llamar a la función para cargar las fechas cuando el DOM esté listo
     // Cargar datos al iniciar
-    loadFechasConVentas()
+    setupDateSearch()
+    loadOpenSales()
     loadInitialData()
 })

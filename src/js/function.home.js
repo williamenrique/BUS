@@ -211,6 +211,23 @@ function loadOperacionesData() {
                 }
                 // Tabla de resumen
                 const tablaBody = document.querySelector('#tabla-resumen-flota');
+
+                // Inyectar botón para ir a Flota en el header de la tarjeta
+                if (tablaBody) {
+                    const card = tablaBody.closest('.card');
+                    if (card) {
+                        const cardHeader = card.querySelector('.card-header');
+                        if (cardHeader && !cardHeader.querySelector('#btnLinkFlota')) {
+                            const linkHtml = `<div class="card-tools">
+                                                <a href="${base_url}flota" class="btn btn-primary btn-xs" id="btnLinkFlota" title="Ir a Gestión de Flota">
+                                                    <i class="fas fa-bus"></i> Ir a Flota
+                                                </a>
+                                              </div>`;
+                            cardHeader.insertAdjacentHTML('beforeend', linkHtml);
+                        }
+                    }
+                }
+
                 let html = '';
                 if (operaciones.grouped.length > 0) {
                     operaciones.grouped.forEach(item => {
@@ -717,10 +734,16 @@ function renderDoughnutChart(data) {
     const chartCanvas = document.getElementById('monthlyLitersChart');
     if (!chartCanvas) return;
 
+    // Formateador para números (es-ES usa puntos para miles y comas para decimales)
+    const numberFormatter = new Intl.NumberFormat('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+
     const labels = data.map(item => {
         const [year, month] = item.mes_venta.split('-');
         const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-        return `${monthNames[parseInt(month) - 1]} ${year}`;
+        return `${monthNames[parseInt(month) - 1]} ${year} - ${numberFormatter.format(parseFloat(item.total_litros))} Lts`;
     });
     const liters = data.map(item => parseFloat(item.total_litros));
     const totalLiters = liters.reduce((sum, current) => sum + current, 0);
@@ -749,11 +772,11 @@ function renderDoughnutChart(data) {
                         label: function (tooltipItem) {
                             const currentValue = tooltipItem.raw;
                             const percentage = ((currentValue / totalLiters) * 100).toFixed(1);
-                            return `${tooltipItem.label}: ${currentValue.toFixed(2)} Lts (${percentage}%)`;
+                            return `${tooltipItem.label} (${percentage}%)`;
                         }
                     }
                 },
-                title: { display: true, text: `Total: ${totalLiters.toFixed(2)} Litros` }
+                title: { display: true, text: `Total: ${numberFormatter.format(totalLiters)} Litros` }
             }
         }
     });
