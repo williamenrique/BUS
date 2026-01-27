@@ -569,7 +569,9 @@ class Estacion extends Controllers{
             if (!isset($data['fecha'])) {
                 throw new Exception("Error: Dato 'fecha' no proporcionado.");
             }
-            $totalLitros = $this->model->getLitrosPorFecha($data['fecha']);
+            $type = $data['type'] ?? 'day'; // 'day' o 'month'
+            $fechaFin = $data['fechaFin'] ?? null;
+            $totalLitros = $this->model->getLitrosPorFecha($data['fecha'], $type, $fechaFin);
             $arrResponse = ['success' => true, 'totalLitros' => $totalLitros];    
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -577,6 +579,39 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
+    public function generarReporteLitros() {
+        $arrResponse = array('success' => false, 'message' => '');
+        try {
+            $json = file_get_contents('php://input');
+            $data = json_decode($json, true);
+            
+            if (!isset($data['fecha']) || !isset($data['type'])) {
+                throw new Exception("Datos incompletos.");
+            }
+            
+            $fecha = $data['fecha'];
+            $type = $data['type'];
+            $fechaFin = $data['fechaFin'] ?? null;
+            
+            $reportData = $this->model->selectReporteLitros($fecha, $type, $fechaFin);
+            $totalLitros = $this->model->getLitrosPorFecha($fecha, $type, $fechaFin);
+            
+            $arrResponse = [
+                'success' => true,
+                'data' => $reportData,
+                'total' => $totalLitros,
+                'fecha' => $fecha,
+                'type' => $type,
+                'fechaFin' => $fechaFin
+            ];
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
     /**
      * Maneja la solicitud para eliminar un cierre diario y resetear las ventas
      */
