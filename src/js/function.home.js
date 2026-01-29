@@ -172,10 +172,29 @@ function loadAlmacenData() {
         .then(data => {
             if (data.success) {
                 const almacen = data.data;
-                document.querySelector('#lubricantes-actual').textContent = `${parseFloat(almacen.consumibles.mes_actual || 0).toFixed(2)} Lts.`;
-                // Selectores para las nuevas tarjetas de órdenes
-                document.querySelector('#ordenes-aprobadas').textContent = almacen.orders_aprobadas.total_aprobadas || 0;
-                document.querySelector('#ordenes-despachadas').textContent = `${almacen.orders_despachadas.total_despachadas || 0} Ord.`;
+
+                // 1. Litros Mes Actual
+                const lubActual = document.querySelector('#lubricantes-actual');
+                if (lubActual) lubActual.textContent = `${parseFloat(almacen.consumibles.mes_actual || 0).toFixed(2)} Lts.`;
+
+                // 2. Litros Mes Anterior
+                const lubAnterior = document.querySelector('#lubricantes-anterior');
+                if (lubAnterior) lubAnterior.textContent = `${parseFloat(almacen.consumibles.mes_anterior || 0).toFixed(2)} Lts.`;
+
+                // 3. Órdenes Aprobadas
+                const ordAprobadas = document.querySelector('#ordenes-aprobadas');
+                if (ordAprobadas) {
+                    const totalAprobadas = almacen.orders_aprobadas ? almacen.orders_aprobadas.total_aprobadas : 0;
+                    ordAprobadas.textContent = totalAprobadas;
+                }
+
+                // 4. Órdenes Despachadas
+                // Selector corregido: en la vista el id es "ordenes-despacho"
+                const ordDespachadas = document.querySelector('#ordenes-despacho');
+                if (ordDespachadas) {
+                    const totalDespachadas = almacen.orders_despachadas ? almacen.orders_despachadas.total_despachadas : 0;
+                    ordDespachadas.textContent = `${totalDespachadas} Ord.`;
+                }
 
                 const topProductElem = document.querySelector('#top-producto-mes');
                 if (topProductElem && almacen.top_product) {

@@ -61,7 +61,7 @@ class HomeModel extends Mysql {
                             GROUP BY p.id_producto, p.producto ORDER BY total_despachado DESC LIMIT 1";
 
         // CORRECCIÓN: Contar órdenes despachadas (estado 3) en el mes actual
-        $sql_orders_despachadas = "SELECT COUNT(id_despacho) as total_despachadas FROM table_alm_despacho WHERE estado_orden = 3 AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?";
+        $sql_orders_despachadas = "SELECT COUNT(id_despacho) as total_despachadas FROM table_alm_despacho WHERE estado_orden = 3 AND status_despacho = 1 AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?";
         // NUEVO: Contar órdenes aprobadas pendientes de despacho (estado 2)
         $sql_orders_aprobadas = "SELECT COUNT(id_despacho) as total_aprobadas FROM table_alm_despacho WHERE estado_orden = 2 AND status_despacho = 1";
         
