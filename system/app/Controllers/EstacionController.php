@@ -123,7 +123,11 @@ class Estacion extends Controllers{
             if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
                 $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
             }
-            $request = $this->model->updateTasa($tasa, $idEstacion);
+
+            // Verificar si el usuario es Administrador (Rol ID 1)
+            $isAdmin = (isset($_SESSION['userData']['usuario_rol_id']) && $_SESSION['userData']['usuario_rol_id'] == 1);
+
+            $request = $this->model->updateTasa($tasa, $idEstacion, $isAdmin);
             if ($request === 'already_updated') {
                 $arrResponse = ['success' => false, 'message' => 'No se puede actualizar, la tasa ya fue modificada hoy.'];
             } else if ($request) {

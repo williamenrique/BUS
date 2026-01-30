@@ -10,30 +10,33 @@ class EstacionModel extends Mysql {
         $request = $this->select_all($sql);
         return $request;
     }
-    public function updateTasa(float $tasa, int $idEstacion) {
+    public function updateTasa(float $tasa, int $idEstacion, bool $isAdmin = false) {
         // --- INICIO DE LA CORRECCIÓN ---
         // La tabla de tasa ahora es global, no por estación.
         // Se actualiza el primer registro (id=1) o se crea si no existe.
 
         // 1. Verificar la última fecha de actualización
-        $sql_check = "SELECT tasa_update FROM table_es_tasa_dia WHERE id_tasa_dia = 1";
-        $last_update_data = $this->select($sql_check);
-    
-        if ($last_update_data && !empty($last_update_data['tasa_update'])) {
-            try {
-                $last_update_date = new DateTime($last_update_data['tasa_update']);
-                $current_date = new DateTime();
-    
-                // Compara solo la parte de la fecha (Y-m-d)
-                if ($last_update_date->format('Y-m-d') === $current_date->format('Y-m-d')) {
-                    return 'already_updated'; // Indicador de que ya se actualizó hoy
+        // Si es administrador, saltamos la validación de fecha
+        if (!$isAdmin) {
+            $sql_check = "SELECT tasa_update FROM table_es_tasa_dia WHERE id_tasa_dia = 1";
+            $last_update_data = $this->select($sql_check);
+        
+            if ($last_update_data && !empty($last_update_data['tasa_update'])) {
+                try {
+                    $last_update_date = new DateTime($last_update_data['tasa_update']);
+                    $current_date = new DateTime();
+        
+                    // Compara solo la parte de la fecha (Y-m-d)
+                    if ($last_update_date->format('Y-m-d') === $current_date->format('Y-m-d')) {
+                        return 'already_updated'; // Indicador de que ya se actualizó hoy
+                    }
+                } catch (Exception $e) {
+                    // Manejar error de fecha inválida si es necesario, aunque no debería ocurrir con DATETIME
                 }
-            } catch (Exception $e) {
-                // Manejar error de fecha inválida si es necesario, aunque no debería ocurrir con DATETIME
             }
         }
     
-        // 2. Si no se ha actualizado hoy, proceder con la actualización
+        // 2. Si no se ha actualizado hoy O es admin, proceder con la actualización
         $sql = "UPDATE table_es_tasa_dia SET tasa_dia = ?, tasa_update = NOW() WHERE id_tasa_dia = 1";
         $arrData = array($tasa);
         return $this->update($sql, $arrData);
