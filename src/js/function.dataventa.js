@@ -19,6 +19,99 @@ document.addEventListener('DOMContentLoaded', async function () {
     const openSalesTableBody = document.getElementById('openSalesTableBody')
     const noOpenSalesMessage = document.getElementById('noOpenSalesMessage')
 
+    // --- INICIO: Sección de Tasa del Día ---
+    function setupTasaSection() {
+        const table = openSalesTableBody ? openSalesTableBody.closest('table') : null;
+        // Si no encontramos la tabla, intentamos insertar antes del mensaje de "no hay ventas"
+        const referenceElement = table || noOpenSalesMessage;
+
+        if (referenceElement) {
+            const container = document.createElement('div');
+            container.className = 'card mb-3 border-info';
+            container.innerHTML = `
+                <div class="card-header bg-info">
+                    <h3 class="card-title mb-0"><i class="fas fa-dollar-sign mr-2"></i>Tasa del Día</h3>
+                </div>
+                <div class="card-body py-2">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <div class="input-group">
+                                <div class="input-group-prepend">
+                                    <span class="input-group-text">Bs.</span>
+                                </div>
+                                <input type="number" id="txtTasaDataVenta" class="form-control font-weight-bold" step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-success btn-block" id="btnUpdateTasaDataVenta">
+                                <i class="fas fa-sync-alt mr-2"></i>Actualizar
+                            </button>
+                        </div>
+                        <div class="col-md-5 text-right">
+                             <small class="text-muted font-italic" id="tasaLastUpdateDataVenta"></small>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Insertar antes de la tabla o mensaje
+            referenceElement.parentNode.insertBefore(container, referenceElement);
+
+            // Cargar tasa inicial y asignar evento
+            loadTasa();
+            document.getElementById('btnUpdateTasaDataVenta').addEventListener('click', updateTasa);
+        }
+    }
+
+    async function loadTasa() {
+        try {
+            const response = await fetch(base_url + 'Estacion/getTasaCurrent');
+            const result = await response.json();
+            if (result.success && result.tasa) {
+                const tasaInput = document.getElementById('txtTasaDataVenta');
+                const lastUpdate = document.getElementById('tasaLastUpdateDataVenta');
+
+                if (tasaInput) tasaInput.value = parseFloat(result.tasa.tasa_dia).toFixed(2);
+                if (lastUpdate && result.tasa.tasa_update) {
+                    lastUpdate.textContent = 'Última actualización: ' + result.tasa.tasa_update;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading tasa:', error);
+        }
+    }
+
+    async function updateTasa() {
+        const tasaInput = document.getElementById('txtTasaDataVenta');
+        const nuevaTasa = parseFloat(tasaInput.value);
+
+        if (!nuevaTasa || nuevaTasa <= 0) {
+            notifi('Ingrese una tasa válida.', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch(base_url + 'Estacion/updateTasa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tasa: nuevaTasa })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                notifi(result.message, 'success');
+                loadTasa(); // Recargar para mostrar la nueva hora de actualización
+                loadInitialData(); // Recargar datos globales por si afectan cálculos
+            } else {
+                notifi(result.message, 'error');
+            }
+        } catch (error) {
+            console.error('Error updating tasa:', error);
+            notifi('Error al actualizar la tasa.', 'error');
+        }
+    }
+    // --- FIN: Sección de Tasa del Día ---
+
     // Función para cargar todos los datos iniciales
     async function loadInitialData() {
         // Cargar total de litros del sistema
@@ -87,6 +180,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                         </button>
                         <button class="btn btn-info btn-sm print-pdf-btn" data-id="${sale.id_cierre}" data-iduser="${sale.id_user}" data-fecha="${sale.fecha_venta}">
                             Imprimir PDF
+                        </button>
+                        <button class="btn btn-danger btn-sm delete-all-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Eliminar Registro Completo">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>
@@ -186,6 +282,50 @@ document.addEventListener('DOMContentLoaded', async function () {
                 notifi('Error al cargar los tickets.', 'error');
             }
         }
+
+        // Listener para el botón de eliminar todo el registro de ventas abiertas
+        if (e.target.closest('.delete-all-sales-btn')) {
+            const btn = e.target.closest('.delete-all-sales-btn');
+            const fechaVenta = btn.dataset.fecha;
+            const userId = btn.dataset.iduser;
+
+            Swal.fire({
+                title: '¿Eliminar registro completo?',
+                text: "Se eliminarán todas las ventas abiertas de este usuario para la fecha seleccionada. Esta acción es irreversible.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar todo',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const response = await fetch(base_url + 'Estacion/deleteAllOpenSales', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ idUser: userId, fecha: fechaVenta })
+                        });
+                        const res = await response.json();
+                        if (res.success) {
+                            notifi(res.message, 'success');
+                            loadOpenSales(); // Recargar la tabla de ventas abiertas
+                            loadInitialData(); // Actualizar contadores globales
+
+                            // Si se estaba visualizando el detalle de esa venta específica, ocultarlo
+                            if (cierreIdTitle.textContent === "EN CURSO" && document.getElementById('fechaCierre').textContent === fechaVenta) {
+                                ventasCierreSection.style.display = 'none';
+                            }
+                        } else {
+                            notifi(res.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        notifi('Error al eliminar los registros.', 'error');
+                    }
+                }
+            });
+        }
     })
 
     function renderCierresTable(data) {
@@ -238,7 +378,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                 {
                     "data": null,
                     "render": function (data, type, row) {
-                        return `<button class="btn btn-link btn-sm show-ventas-btn" data-id="${row.id_cierre}" data-iduser="${row.id_user}" data-fecha="${row.fecha_cierre}">Ver Ventas</button>`;
+                        return `
+                            <button class="btn btn-info btn-sm show-ventas-btn" data-id="${row.id_cierre}" data-iduser="${row.id_user}" data-fecha="${row.fecha_cierre}" title="Ver Ventas"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-danger btn-sm delete-cierre-total-btn" data-id="${row.id_cierre}" data-iduser="${row.id_user}" data-fecha="${row.fecha_cierre}" title="Eliminar Cierre y Ventas"><i class="fas fa-trash"></i></button>
+                        `;
                     }
                 }
             ],
@@ -361,6 +504,50 @@ document.addEventListener('DOMContentLoaded', async function () {
                 console.error('Error al obtener las ventas del cierre:', error)
                 notifi('Error al cargar las ventas. Intenta de nuevo.', 'error')
             }
+        }
+
+        // Listener para el botón de eliminar cierre TOTAL (Cierre + Ventas)
+        if (e.target.closest('.delete-cierre-total-btn')) {
+            const btn = e.target.closest('.delete-cierre-total-btn');
+            const idCierre = btn.dataset.id;
+            const idUser = btn.dataset.iduser;
+            const fechaCierre = btn.dataset.fecha;
+
+            Swal.fire({
+                title: '¿Eliminar Cierre y Ventas?',
+                text: `Se eliminará el cierre #${idCierre} del día ${fechaCierre} y TODAS sus ventas asociadas. Esta acción es irreversible.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, eliminar todo',
+                cancelButtonText: 'Cancelar'
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    try {
+                        const response = await fetch(base_url + 'Estacion/deleteCierreTotal', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ idCierre: idCierre, idUser: idUser, fecha: fechaCierre })
+                        });
+                        const res = await response.json();
+                        if (res.success) {
+                            notifi(res.message, 'success');
+                            loadInitialData(); // Recargar la tabla de cierres
+                            // Si se estaba mostrando el detalle de este cierre, limpiarlo
+                            if (cierreIdTitle.textContent == idCierre) {
+                                ventasCierreSection.style.display = 'none';
+                                ventasCierreList.innerHTML = '';
+                            }
+                        } else {
+                            notifi(res.message, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        notifi('Error al eliminar el cierre.', 'error');
+                    }
+                }
+            });
         }
     })
 
@@ -667,6 +854,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     // Llamar a la función para cargar las fechas cuando el DOM esté listo
     // Cargar datos al iniciar
     setupDateSearch()
+    setupTasaSection() // Inicializar la sección de tasa
     loadOpenSales()
     loadInitialData()
 })

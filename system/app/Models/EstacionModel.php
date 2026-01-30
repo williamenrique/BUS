@@ -654,4 +654,32 @@ class EstacionModel extends Mysql {
         $sql = "SELECT usuario_id, usuario_estacion_id FROM table_usuarios WHERE usuario_id = ?";
         return $this->select($sql, [$idUser]);
     }
+
+    /**
+     * Elimina todas las ventas abiertas (status_ticket = 1) de un usuario en una fecha específica.
+     * @param int $idUser
+     * @param string $fecha
+     * @return bool
+     */
+    public function deleteAllOpenSales(int $idUser, string $fecha) {
+        $sql = "DELETE FROM table_es_venta WHERE id_user = ? AND fecha_venta = ? AND status_ticket = 1";
+        return $this->delete($sql, [$idUser, $fecha]);
+    }
+
+    /**
+     * Elimina un cierre y TODAS las ventas asociadas a él.
+     * @param int $idCierre
+     * @param int $idUser
+     * @param string $fecha
+     * @return bool
+     */
+    public function deleteCierreTotal(int $idCierre, int $idUser, string $fecha) {
+        // 1. Eliminar ventas asociadas al cierre, verificando usuario y fecha
+        $sqlVentas = "DELETE FROM table_es_venta WHERE id_cierre_diario = ? AND id_user = ? AND fecha_venta = ?";
+        $this->delete($sqlVentas, [$idCierre, $idUser, $fecha]);
+
+        // 2. Eliminar el registro de cierre
+        $sqlCierre = "DELETE FROM table_es_cierre WHERE id_cierre = ? AND id_user = ? AND fecha_cierre = ?";
+        return $this->delete($sqlCierre, [$idCierre, $idUser, $fecha]);
+    }
 }

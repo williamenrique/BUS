@@ -693,4 +693,69 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
+    public function deleteAllOpenSales() {
+        $arrResponse = ['success' => false, 'message' => ''];
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (empty($data['idUser']) || empty($data['fecha'])) {
+                throw new Exception("Datos incompletos.");
+            }
+
+            $idUser = intval($data['idUser']);
+            $fecha = strClean($data['fecha']);
+
+            $deleted = $this->model->deleteAllOpenSales($idUser, $fecha);
+            if ($deleted) {
+                $arrResponse = ['success' => true, 'message' => 'Registro de ventas eliminado correctamente.'];
+            } else {
+                $arrResponse['message'] = 'No se pudieron eliminar las ventas o no se encontraron registros abiertos.';
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function getTasaCurrent() {
+        $arrResponse = array('success' => false, 'message' => '');
+        try {
+            $idEstacion = 0;
+            if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
+                $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
+            }
+            $tasa = $this->model->getTasa($idEstacion);
+            $arrResponse = ['success' => true, 'tasa' => $tasa];
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function deleteCierreTotal() {
+        $arrResponse = ['success' => false, 'message' => ''];
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (empty($data['idCierre']) || empty($data['idUser']) || empty($data['fecha'])) {
+                throw new Exception("Datos incompletos.");
+            }
+
+            $idCierre = intval($data['idCierre']);
+            $idUser = intval($data['idUser']);
+            $fecha = strClean($data['fecha']);
+
+            $deleted = $this->model->deleteCierreTotal($idCierre, $idUser, $fecha);
+            if ($deleted) {
+                $arrResponse = ['success' => true, 'message' => 'Cierre y ventas eliminados correctamente.'];
+            } else {
+                $arrResponse['message'] = 'No se pudo eliminar el cierre o no se encontraron registros coincidentes.';
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
 }
