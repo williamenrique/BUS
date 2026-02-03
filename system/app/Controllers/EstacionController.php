@@ -377,8 +377,8 @@ class Estacion extends Controllers{
         $data = [
             'page_tag' => 'E/S VENTA',
             'page_title' => "Pagina Principal",
-            'page_name' => "clean",
-            'page_link' => "dataventa",
+            'page_name' => "estacion/dataventa",
+            'page_link' => "estacion/dataventa",
             'page_functions' => "function.dataventa.js"
         ];
         $this->views->getViews($this, "dataventa", $data);
