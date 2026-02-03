@@ -90,8 +90,8 @@ class Home extends Controllers {
         $rol = strtoupper($_SESSION['userData']['rol_nombre'] ?? 'DEFAULT');
         $view_path = 'Modules/data/';
 
-        // El rol de Administrador o el departamento de Sistemas tienen la máxima prioridad.
-        if ($rol === 'ADMINISTRADOR' || $department === 'SISTEMAS' || $department === 'SISTEMA') {
+        // Solo el departamento de Sistemas carga la vista completa del sistema.
+        if ($department === 'SISTEMAS' || $department === 'SISTEMA') {
             $data['dashboard_view'] = $view_path . 'sistema.php';
             // --- INICIO DE LA CORRECCIÓN ---
             // Incluimos explícitamente la vista de almacén para el admin
