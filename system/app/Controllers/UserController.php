@@ -851,9 +851,11 @@ class User extends Controllers{
 
     public function getAdminNotifications() {
         // Asegurarse de que solo los usuarios autorizados puedan ver esto
-        // CORRECCIÓN: La validación solo debe comprobar si el usuario es Administrador (rol_id = 1),
-        // sin importar su departamento.
-        if (isset($_SESSION['userData']['usuario_rol_id']) && $_SESSION['userData']['usuario_rol_id'] == 1) {
+        // CORRECCIÓN: La validación ahora solo permite al departamento de Sistemas ver estas notificaciones.
+        $department = strtoupper($_SESSION['userData']['departamento_nombre'] ?? 'DEFAULT');
+        $isSistema = ($department === 'SISTEMAS' || $department === 'SISTEMA');
+
+        if ($isSistema) {
             $requests = $this->model->getPendingRecoveryRequests();
             $count = count($requests);
 

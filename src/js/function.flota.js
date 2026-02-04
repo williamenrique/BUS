@@ -390,7 +390,7 @@ function filtrarGrupos() {
         if (groupName.includes(searchTerm)) {
             group.style.display = 'block';
         } else {
-            label.style.display = 'none';
+            group.style.display = 'none';
         }
     });
 }

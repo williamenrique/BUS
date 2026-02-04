@@ -274,9 +274,10 @@ class HomeModel extends Mysql {
 		$totalCount = 0;
 		
 		// Determinar los permisos basados en el rol y departamento
-		$isSistemasAdmin = (strtoupper($userRole) === 'ADMINISTRADOR' && strtoupper($userDepartmentName) === 'SISTEMAS');
-		$isCompras = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartmentName) === 'COMPRAS');
-		$isAlmacen = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartmentName) === 'ALMACEN');
+		// Solo el departamento de Sistemas puede ver las notificaciones.
+		$isSistemasAdmin = (strtoupper($userDepartmentName) === 'SISTEMAS' || strtoupper($userDepartmentName) === 'SISTEMA');
+		$isCompras = false;
+		$isAlmacen = false;
 
 		// 1. Notificaciones de nuevas requisiciones (visibles para Compras y Sistemas/Admin)
 		if ($isSistemasAdmin || $isCompras) {

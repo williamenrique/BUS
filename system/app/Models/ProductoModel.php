@@ -206,6 +206,33 @@ class ProductoModel extends Mysql {
     }
 
     /**
+     * Obtiene el resumen del historial de productos filtrado por rango de fechas.
+     * Solo incluye productos que tienen despachos en el rango especificado.
+     * @param string $fechaInicio Fecha de inicio en formato YYYY-MM-DD.
+     * @param string $fechaFin Fecha de fin en formato YYYY-MM-DD.
+     * @return array
+     */
+    public function getHistorySummaryByDateRange($fechaInicio, $fechaFin) {
+        $sql = "SELECT 
+                    p.id_producto, 
+                    p.producto,
+                    p.present_producto,
+                    rp.cant_producto AS stock_actual, 
+                    COALESCE(SUM(rd.cant_despacho), 0) AS total_despachado,  
+                    MIN(d.fecha_despacho) AS primer_despacho, 
+                    MAX(d.fecha_despacho) AS ultimo_despacho
+                FROM table_alm_producto p
+                LEFT JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                INNER JOIN table_alm_relacion_despacho rd ON p.id_producto = rd.id_producto
+                INNER JOIN table_alm_despacho d ON rd.id_despacho = d.id_despacho AND d.status_despacho = 1
+                WHERE p.status_producto = 1
+                AND d.fecha_despacho BETWEEN ? AND ?
+                GROUP BY p.id_producto, p.producto, rp.cant_producto
+                ORDER BY MIN(d.fecha_despacho) ASC";
+        return $this->select_all($sql, [$fechaInicio, $fechaFin]);
+    }
+
+    /**
      * Obtiene el historial detallado de despachos para un producto específico.
      * @param int $idProducto ID del producto.
      * @return array

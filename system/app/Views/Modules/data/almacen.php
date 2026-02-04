@@ -19,4 +19,10 @@
             </div>
         </div>
     </div>
+    <div class="row">
+        <!-- Columna para dashboards informativos -->
+        <div class="col-12">
+            <?php include_once('operaciones.php'); ?>
+        </div>
+    </div>
 </div>

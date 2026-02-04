@@ -100,6 +100,8 @@ class Home extends Controllers {
             switch ($department) {
             case 'ALMACEN':
                 $data['dashboard_view'] = $view_path . 'almacen.php';
+                // Usamos esta variable auxiliar para forzar la carga de la vista de operaciones
+                // $data['dashboard_view'] = $view_path . 'operaciones.php';
                 break;
             case 'OPERACIONES':
                 $data['dashboard_view'] = $view_path . 'operaciones.php';

@@ -225,16 +225,22 @@ function inicializarDataTable() {
  * @param {string} reportScript - El nombre del script PHP que genera el PDF.
  * @param {string} reportTitle - El título del reporte.
  */
-function generarPDF(data, reportScript, reportTitle) {
+function generarPDF(data, reportScript, reportTitle, fechaInicio = null, fechaFin = null) {
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = `${base_url}data/${reportScript}`;
     form.target = '_blank';
 
+    const reportData = { title: reportTitle, data: data };
+    if (fechaInicio && fechaFin) {
+        reportData.fechaInicio = fechaInicio;
+        reportData.fechaFin = fechaFin;
+    }
+
     const dataInput = document.createElement('input');
     dataInput.type = 'hidden';
     dataInput.name = 'reportData';
-    dataInput.value = JSON.stringify({ title: reportTitle, data: data });
+    dataInput.value = JSON.stringify(reportData);
     form.appendChild(dataInput);
 
     document.body.appendChild(form);
@@ -392,7 +398,10 @@ function inicializarHistoryTable() {
         "responsive": true,
         "bDestroy": true,
         "iDisplayLength": 15,
-        "order": [[1, "asc"]]
+        "order": [[1, "asc"]],
+        "initComplete": function (settings, json) {
+            setupHistoryControls();
+        }
     });
 }
 
@@ -679,4 +688,81 @@ function notifi(msg, tipo) {
         timer: 3000,
         timerProgressBar: true
     });
+}
+
+/**
+ * Inyecta los controles de fecha y botón de reporte en la vista de historial.
+ */
+function setupHistoryControls() {
+    // Evitar duplicados si se recarga la tabla
+    if (document.getElementById('history-controls-row')) return;
+
+    // Buscar el wrapper de DataTables de forma más robusta
+    let wrapper = $('#tableHistory_wrapper');
+    if (wrapper.length === 0) {
+        wrapper = $('#tableHistory').closest('.dataTables_wrapper');
+    }
+
+    // HTML de los controles
+    const controlsHtml = `
+        <div id="history-controls-row" class="row mb-3 ml-1">
+            <div class="col-md-3">
+                <label>Desde:</label>
+                <input type="date" id="txtFechaInicioHist" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-3">
+                <label>Hasta:</label>
+                <input type="date" id="txtFechaFinHist" class="form-control form-control-sm">
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button class="btn btn-danger btn-sm btn-block" onclick="fntGenerarReporteHistorial()">
+                    <i class="fas fa-file-pdf"></i> Generar PDF
+                </button>
+            </div>
+        </div>
+    `;
+    // Insertar antes de la tabla (dentro del wrapper de DataTables)
+    wrapper.prepend(controlsHtml);
+}
+
+/**
+ * Recopila los datos filtrados de la tabla y genera el PDF.
+ */
+function fntGenerarReporteHistorial() {
+    const fechaInicio = document.getElementById('txtFechaInicioHist').value;
+    const fechaFin = document.getElementById('txtFechaFinHist').value;
+
+    if (!fechaInicio || !fechaFin) {
+        notifi("Debe seleccionar un rango de fechas para generar el reporte.", "warning");
+        return;
+    }
+
+    // Hacer petición AJAX para obtener datos filtrados por fechas
+    fetch(base_url + 'Producto/getHistorySummaryByDateRange', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin
+        })
+    })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                if (result.data.length === 0) {
+                    notifi("No hay datos para generar el reporte en el rango de fechas seleccionado.", "warning");
+                    return;
+                }
+                // Usar la función genérica existente para enviar los datos al PHP
+                generarPDF(result.data, 'almacen/historia_productos.php', 'Reporte de Historial de Productos', fechaInicio, fechaFin);
+            } else {
+                notifi(result.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error generando reporte:', error);
+            notifi('Error de conexión al generar el reporte.', 'error');
+        });
 }

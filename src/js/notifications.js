@@ -15,9 +15,11 @@ async function loadAdminNotifications() {
 
         if (result.success) {
             updateNotificationsUI(result.count, result.notifications);
+        } else {
+            // Si la respuesta es falsa (no autorizado), ocultamos el icono
+            const container = document.getElementById('notification-bell-container');
+            if (container) container.style.display = 'none';
         }
-        // No hacemos nada si success es false, ya que significa que el usuario no tiene permisos
-        // o hubo un error que ya se maneja en el backend.
 
     } catch (error) {
         console.error('Error al cargar notificaciones:', error);

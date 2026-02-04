@@ -284,6 +284,31 @@ class Producto extends Controllers{
     }
 
     /**
+     * Obtiene el resumen del historial de productos filtrado por rango de fechas.
+     * @return string JSON con el resumen del historial filtrado.
+     */
+    public function getHistorySummaryByDateRange() {
+        $arrResponse = ['success' => false, 'data' => [], 'message' => 'No se encontró historial en el rango especificado.'];
+        try {
+            $fechaInicio = $_POST['fechaInicio'] ?? null;
+            $fechaFin = $_POST['fechaFin'] ?? null;
+
+            if (!$fechaInicio || !$fechaFin) {
+                $arrResponse['message'] = 'Fechas de inicio y fin son requeridas.';
+            } else {
+                $arrData = $this->model->getHistorySummaryByDateRange($fechaInicio, $fechaFin);
+                if (!empty($arrData)) {
+                    $arrResponse = ['success' => true, 'data' => $arrData];
+                }
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error al cargar el historial: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    /**
      * Obtiene el historial detallado de un producto específico para el timeline.
      * @param int $idProducto El ID del producto.
      * @return string JSON con el historial detallado.
