@@ -482,11 +482,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     // Event listener para los botones de la tabla de cierres
     cierresTableBody.addEventListener('click', async function (e) {
-        if (e.target.classList.contains('show-ventas-btn')) {
-            const idCierre = e.target.dataset.id
-            const iduser = e.target.dataset.iduser
+        const showBtn = e.target.closest('.show-ventas-btn');
+        if (showBtn) {
+            const idCierre = showBtn.dataset.id;
+            const iduser = showBtn.dataset.iduser;
             cierreIdTitle.textContent = idCierre
-            const fechaCierre = e.target.dataset.fecha
+            const fechaCierre = showBtn.dataset.fecha;
             try {
                 const response = await fetch(base_url + 'Estacion/getVentasByCierre', {
                     method: 'POST',
