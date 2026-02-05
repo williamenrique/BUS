@@ -157,11 +157,12 @@ class Estacion extends Controllers{
             $tipoPago = intval($_POST['txtListTipoPago']);
             $monto = floatval($_POST['txtMonto']);
             $tasa = floatval($_POST['txtTasa']);
+            $tipoCombustible = intval($_POST['txtTipoCombustible'] ?? 1); // 1: Gasolina, 2: Diesel
             $idEstacion = 0;
             if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
                 $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
             }
-            $request = $this->model->setVenta($idUser, $idEstacion, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa);
+            $request = $this->model->setVenta($idUser, $idEstacion, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa, $tipoCombustible);
             if ($request > 0) {
 				$datTicket = $this->model->getTicketData($request, $idUser, date('Y-m-d'), $idEstacion);
 				// dep($datTicket);
@@ -439,8 +440,8 @@ class Estacion extends Controllers{
                     throw new Exception("No se pudo determinar la estación para el usuario del cierre.");
                 }
 
-                // --- CORRECCIÓN: Pasar el idCierre al método del modelo ---
-                $arrData = $this->model->getDataVenta($fechaCierre, $idUser, $idEstacion, $idCierre);
+                // --- CORRECCIÓN: Usar el método del modelo que devuelve las ventas por cierre
+                $arrData = $this->model->getVentasByCierre($idCierre, $idUser, $fechaCierre);
 
                 if (empty($arrData)) {
                     $arrResponse = ['success' => true, 'data' => []];

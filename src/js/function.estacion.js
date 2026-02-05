@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const ltsInput = document.querySelector('#txtLTS')
     const montoInput = document.querySelector('#txtMonto')
     const selectTipoVehiculo = document.getElementById('txtListTipoVehiculo')
+    const selectTipoCombustible = document.getElementById('txtTipoCombustible')
     const selectTipoPago = document.getElementById('txtListTipoPago')
     const ticketPreview = document.getElementById('ticketPreview')
     const btnUpdateTasa = document.getElementById('btnUpdateTasa')
@@ -118,10 +119,13 @@ document.addEventListener('DOMContentLoaded', function () {
     function updateVentasTable(tickets) {
         ventasDataTable.rows().remove().draw(); // Borrado más explícito de la tabla
         tickets.forEach(ticket => {
+            // Determinar el texto a mostrar según el valor (1 o 2)
+            const tipoCombustible = ticket.tipo_combustible == 2 ? 'Diesel' : 'Gasolina';
             const rowNode = ventasDataTable.row.add([
                 ticket.id_venta,
                 ticket.fecha_venta,
                 ticket.tipoVehiculo,
+                tipoCombustible,
                 ticket.litros,
                 `<button class="btn btn-info btn-sm print-ticket-btn" data-id="${ticket.id_venta}" data-fecha="${ticket.fecha_venta}" data-iduser="${ticket.id_user}"><i class="fas fa-print"></i></button>`
             ]).draw(false).node();
@@ -138,7 +142,27 @@ document.addEventListener('DOMContentLoaded', function () {
             const efectivoMasDivisaBs = (parseFloat(resumen.total_bs) || 0)
             // Calcular el Total General
             totalVehiculosSpan.textContent = resumen.total_ventas
-            totalLitrosSpan.textContent = parseFloat(resumen.total_litros).toFixed(2) + " L"
+
+            // --- Lógica para desglose de Litros (Gasolina vs Diesel) ---
+            const litrosGasolina = parseFloat(resumen.total_litros_gasolina || 0);
+            const litrosDiesel = parseFloat(resumen.total_litros_diesel || 0);
+            const totalLitros = parseFloat(resumen.total_litros || 0);
+
+            // Seleccionamos el contenedor H3 padre para modificar su contenido completo si es necesario
+            const h3Litros = document.querySelector('#totalLitros').parentElement;
+
+            if (litrosGasolina > 0 && litrosDiesel > 0) {
+                // Si hay ventas de ambos, mostramos el desglose
+                h3Litros.innerHTML = `
+                    <div style="font-size: 1.4rem; line-height: 1.1;">
+                        <span id="totalLitros">${litrosGasolina.toFixed(2)}</span><sup style="font-size: 14px"> L (Gas)</sup><br>
+                        <span>${litrosDiesel.toFixed(2)}</span><sup style="font-size: 14px"> L (Die)</sup>
+                    </div>`;
+            } else {
+                // Si solo hay uno o ninguno, mostramos el formato estándar
+                h3Litros.innerHTML = `<span id="totalLitros">${totalLitros.toFixed(2)}</span><sup style="font-size: 20px"> Lts</sup>`;
+            }
+
             totalBolivaresSpan.textContent = efectivoMasDivisaBs.toFixed(2) + " Bs"
             // Actualizar Tipos de Pago y mostrar solo si hay datos
             tiposPagosList.innerHTML = ''
@@ -262,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function () {
      */
     function updateTicketPreview() {
         const tipoVehiculo = selectTipoVehiculo.options[selectTipoVehiculo.selectedIndex]?.text || ''
+        const tipoCombustible = selectTipoCombustible.options[selectTipoCombustible.selectedIndex]?.text || ''
         const tipoPago = selectTipoPago.options[selectTipoPago.selectedIndex]?.text || ''
         const cantidad = ltsInput.value
         const precioTotal = montoInput.value
@@ -276,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ----------------------------------
         Tipo Pago: ${tipoPago}
         Tipo Vehículo: ${tipoVehiculo}
+        Combustible: ${tipoCombustible}
         Cantidad: ${cantidad} Litros
         Precio Total: ${precioTotal} ${simbolo}
         =============================
@@ -290,6 +316,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ltsInput.addEventListener('input', calcularMonto)
     tasaInput.addEventListener('input', calcularMonto)
     selectTipoVehiculo.addEventListener('change', updateTicketPreview)
+    selectTipoCombustible.addEventListener('change', updateTicketPreview)
 
     // Formatear la tasa a dos decimales cuando el usuario deja el campo
     tasaInput.addEventListener('blur', function () {
@@ -315,6 +342,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         const formData = new FormData(ventaForm)
         formData.append('txtListTipoVehiculo', selectTipoVehiculo.value)
+        formData.append('txtTipoCombustible', selectTipoCombustible.value)
         formData.append('txtListTipoPago', selectTipoPago.value)
         formData.append('txtLTS', ltsInput.value)
         formData.append('txtMonto', montoInput.value)

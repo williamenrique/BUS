@@ -164,31 +164,53 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     // Función para renderizar la tabla de ventas abiertas
     function renderOpenSalesTable(data) {
-        let html = ''
-        data.forEach(sale => {
-            html += `
-                <tr>
-                    <td>${sale.nombre} ${sale.apellido}</td>
-                    <td>${sale.fecha_venta}</td>
-                    <td>${parseFloat(sale.total_litros).toFixed(2)} L</td>
-                    <td class="text-center">
-                        <button class="btn btn-warning btn-sm view-open-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Ver Tickets">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                        <button class="btn btn-success btn-sm close-sale-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}">
-                            Cerrar Venta
-                        </button>
-                        <button class="btn btn-info btn-sm print-pdf-btn" data-id="${sale.id_cierre}" data-iduser="${sale.id_user}" data-fecha="${sale.fecha_venta}">
-                            Imprimir PDF
-                        </button>
-                        <button class="btn btn-danger btn-sm delete-all-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Eliminar Registro Completo">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `
-        })
-        openSalesTableBody.innerHTML = html
+        try {
+            // Ordenar por tipo de combustible y luego por nombre para presentación
+            data = Array.isArray(data) ? data : [];
+            data.sort((a, b) => {
+                const ta = (a.tipo_combustible || '').toString();
+                const tb = (b.tipo_combustible || '').toString();
+                const cmp = ta.localeCompare(tb);
+                if (cmp !== 0) return cmp;
+                return (a.nombre || '').toString().localeCompare((b.nombre || '').toString());
+            });
+
+            let html = ''
+            data.forEach(sale => {
+                // Mapear tipo_combustible (puede ser '1', '2' o '1,2') a texto legible
+                let tipoText = '-';
+                if (sale.tipo_combustible) {
+                    const parts = sale.tipo_combustible.toString().split(',').map(s => s.trim()).filter(Boolean);
+                    tipoText = parts.map(p => (p == '2' ? 'Diesel' : (p == '1' ? 'Gasolina' : p))).join(', ');
+                }
+                html += `
+                    <tr>
+                        <td>${sale.nombre} ${sale.apellido}</td>
+                        <td>${sale.fecha_venta}</td>
+                        <td>${tipoText}</td>
+                        <td>${parseFloat(sale.total_litros).toFixed(2)} L</td>
+                        <td class="text-center">
+                            <button class="btn btn-warning btn-sm view-open-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Ver Tickets">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-success btn-sm close-sale-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}">
+                                Cerrar Venta
+                            </button>
+                            <button class="btn btn-info btn-sm print-pdf-btn" data-id="${sale.id_cierre}" data-iduser="${sale.id_user}" data-fecha="${sale.fecha_venta}">
+                                Imprimir PDF
+                            </button>
+                            <button class="btn btn-danger btn-sm delete-all-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Eliminar Registro Completo">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `
+            })
+            openSalesTableBody.innerHTML = html
+        } catch (err) {
+            console.error('Error rendering open sales table:', err);
+            openSalesTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Error al mostrar ventas abiertas.</td></tr>';
+        }
     }
     // Event listener para los botones de ventas abiertas
     openSalesTableBody.addEventListener('click', async function (e) {
@@ -397,7 +419,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
     // Función para renderizar la lista de ventas de un cierre
     function renderVentasList(data) {
-        // Limpiar el contenedor principal
+        // Asegurar que `data` sea siempre un array y limpiar el contenedor principal
+        data = Array.isArray(data) ? data : [];
         ventasCierreList.innerHTML = '';
 
         // Actualizar títulos y manejar el caso sin datos
@@ -427,6 +450,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         <th># Venta</th>
                         <th>Hora</th>
                         <th>Tipo Vehículo</th>
+                        <th>Tipo Combustible</th>
                         <th>Litros</th>
                         <th>Tipo Pago</th>
                         <th>Monto</th>
@@ -444,39 +468,59 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         // Inicializar la DataTable en la tabla recién creada
-        tableVentasCierre = $('#ventasCierreTable').DataTable({
-            "data": data,
-            "columns": [
-                { "data": "numero_venta" },
-                { "data": "hora_venta" },
-                { "data": "tipo_vehiculo" },
-                { "data": "cantidad_litros", "render": function (d) { return `${parseFloat(d).toFixed(2)} L`; } },
-                { "data": "tipo_pago" },
-                {
-                    "data": "monto", "render": function (d, type, row) {
-                        const simbolo = row.tipo_pago === 'Efectivo Divisa' ? '$' : 'Bs';
-                        return `${parseFloat(d).toFixed(2)} ${simbolo}`;
+        try {
+            tableVentasCierre = $('#ventasCierreTable').DataTable({
+                "data": data,
+                "columns": [
+                    { "data": "numero_venta" },
+                    { "data": "hora_venta" },
+                    { "data": "tipo_vehiculo" },
+                    {
+                        "data": null, "render": function (d, type, row) {
+                            try {
+                                var v = row.tipo_combustible;
+                                if (v === undefined || v === null || v === '') return '-';
+                                // Si viene como código numérico (1,2) mapear a texto
+                                if (typeof v === 'number' || /^[0-9]+$/.test(v.toString())) {
+                                    return (v == 2) ? 'Diesel' : ((v == 1) ? 'Gasolina' : v.toString());
+                                }
+                                return v;
+                            } catch (err) {
+                                return '-';
+                            }
+                        }
+                    },
+                    { "data": "cantidad_litros", "render": function (d) { return `${parseFloat(d).toFixed(2)} L`; } },
+                    { "data": "tipo_pago" },
+                    {
+                        "data": "monto", "render": function (d, type, row) {
+                            const simbolo = row.tipo_pago === 'Efectivo Divisa' ? '$' : 'Bs';
+                            return `${parseFloat(d).toFixed(2)} ${simbolo}`;
+                        }
+                    },
+                    {
+                        "data": null,
+                        "orderable": false,
+                        "className": "text-center",
+                        "render": function (d, type, row) {
+                            return `<button class="btn btn-info btn-xs print-ticket-btn" data-id="${row.numero_venta}" data-iduser="${row.id_user}" data-fecha="${row.fecha_venta}" title="Imprimir Copia"><i class="fas fa-print"></i></button>
+                                    <button class="btn btn-danger btn-xs delete-venta-btn" data-id="${row.numero_venta}" data-iduser="${row.id_user}" data-fecha="${row.fecha_venta}" title="Eliminar Ticket"><i class="far fa-trash-alt"></i></button>
+                                    `;
+                        }
                     }
-                },
-                {
-                    "data": null,
-                    "orderable": false,
-                    "className": "text-center",
-                    "render": function (d, type, row) {
-                        // Se combinan ambos botones en un solo return
-                        return `<button class="btn btn-info btn-xs print-ticket-btn" data-id="${row.numero_venta}" data-iduser="${row.id_user}" data-fecha="${row.fecha_venta}" title="Imprimir Copia"><i class="fas fa-print"></i></button>
-                                <button class="btn btn-danger btn-xs delete-venta-btn" data-id="${row.numero_venta}" data-iduser="${row.id_user}" data-fecha="${row.fecha_venta}" title="Eliminar Ticket"><i class="far fa-trash-alt"></i></button>
-                                `;
-                    }
-                }
-            ],
-            "language": { "url": base_url + "src/plugins/js/es_es.json" },
-            "responsive": true,
-            "bDestroy": true,
-            "iDisplayLength": 5,
-            "lengthMenu": [5, 10, 25],
-            "order": [[0, "asc"]]
-        });
+                ],
+                "language": { "url": base_url + "src/plugins/js/es_es.json" },
+                "responsive": true,
+                "bDestroy": true,
+                "iDisplayLength": 5,
+                "lengthMenu": [5, 10, 25],
+                // Ordenar por tipo de combustible (columna 3) y luego por hora (columna 1)
+                "order": [[3, "asc"], [1, "asc"]]
+            });
+        } catch (err) {
+            console.error('Error initializing ventasCierre DataTable:', err);
+            ventasCierreList.innerHTML = '<p class="text-center text-muted">Error al inicializar la tabla de ventas.</p>';
+        }
 
         ventasCierreSection.style.display = 'block';
     }

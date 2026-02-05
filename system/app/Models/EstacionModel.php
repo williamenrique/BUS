@@ -74,6 +74,8 @@ class EstacionModel extends Mysql {
         $sql = "SELECT
                     COUNT(v.id_venta) AS total_ventas,
                     COALESCE(SUM(v.litros), 0) AS total_litros,
+                    COALESCE(SUM(CASE WHEN v.tipo_combustible = 1 THEN v.litros ELSE 0 END), 0) AS total_litros_gasolina,
+                    COALESCE(SUM(CASE WHEN v.tipo_combustible = 2 THEN v.litros ELSE 0 END), 0) AS total_litros_diesel,
                     COALESCE(SUM(CASE WHEN v.id_tipo_pago = 1 THEN v.monto ELSE 0 END), 0) AS total_divisa,
                     COALESCE(SUM(CASE WHEN v.id_tipo_pago = 2 THEN v.monto ELSE 0 END), 0) AS total_efectivo,
                     COALESCE(SUM(CASE WHEN v.id_tipo_pago = 3 THEN v.monto ELSE 0 END), 0) AS total_debito,
@@ -136,7 +138,7 @@ class EstacionModel extends Mysql {
     }
     /* * end initial data
     */
-    public function setVenta(int $useId, int $idEstacion, int $tipoVehiculo, float $litros, int $tipoPago, float $monto, float $tasa) {
+    public function setVenta(int $useId, int $idEstacion, int $tipoVehiculo, float $litros, int $tipoPago, float $monto, float $tasa, int $tipoCombustible) {
         if ($idEstacion == 0) {
             // Un admin no puede registrar una venta si no tiene una estación seleccionada.
             return 0;
@@ -152,22 +154,23 @@ class EstacionModel extends Mysql {
         $idCierreDiario = 0;
 
         // --- INICIO DE LA CORRECCIÓN ---
-        // Corregir la obtención del número de ticket, añadiendo el filtro por estación para evitar duplicados entre estaciones.
+        // Corregir la obtención del número de ticket, añadiendo filtro por estación y tipo de combustible para secuencias separadas.
         $sql_count = "SELECT COUNT(v.id_venta) as total_ventas FROM table_es_venta v
                       INNER JOIN table_usuarios u ON v.id_user = u.usuario_id
-                      WHERE v.fecha_venta = ? AND v.id_user = ? AND u.usuario_estacion_id = ?";
-        $request_count = $this->select($sql_count, [$fecha, $useId, $idEstacion]);
+                      WHERE v.fecha_venta = ? AND v.id_user = ? AND u.usuario_estacion_id = ? AND v.tipo_combustible = ?";
+        $request_count = $this->select($sql_count, [$fecha, $useId, $idEstacion, $tipoCombustible]);
         $numeroTicket = ($request_count['total_ventas'] ?? 0) + 1;
 
-        $sql_insert = "INSERT INTO table_es_venta(id_venta, id_user, id_tipo_pago, id_tipo_vehiculo, litros, monto, id_cierre_diario,fecha_venta, hora_venta, tasa_dia, id_rol, status_ticket) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
-        $arrData = [$numeroTicket, $useId, $tipoPago, $tipoVehiculo, $litros, $monto, $idCierreDiario, $fecha, $hora, $tasa, $idRol, $statusTicket];
+        $sql_insert = "INSERT INTO table_es_venta(id_venta, id_user, id_tipo_pago, id_tipo_vehiculo, litros, monto, id_cierre_diario,fecha_venta, hora_venta, tasa_dia, id_rol, status_ticket, tipo_combustible) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+        $arrData = [$numeroTicket, $useId, $tipoPago, $tipoVehiculo, $litros, $monto, $idCierreDiario, $fecha, $hora, $tasa, $idRol, $statusTicket, $tipoCombustible];
         // echo $this->debugQuery($sql_insert, $arrData);
         $request_insert = $this->insert($sql_insert, $arrData);
         
-        if ($request_insert == 0) {
-            return $numeroTicket; // Devolver el número de ticket solo si la inserción fue exitosa
+        // Si la inserción es exitosa devuelve el ID o 0 si no hay autoincrement. Solo falla si retorna false.
+        if ($request_insert !== false) {
+            return $numeroTicket; // Devolver el número de ticket si la inserción fue exitosa
         }
-        return $numeroTicket; // Devolver 0 si la inserción falló
+        return 0; // Devolver 0 si la inserción falló
     }
     // obtener la data despues de registrar venta o imprimir un ticket
     public function getTicketData(int $intIdVenta,int $intUser,string $srtFecha, int $idEstacion){
@@ -222,6 +225,7 @@ class EstacionModel extends Mysql {
         $sql = "SELECT 
                     v.id_venta AS numero_venta,
                     v.fecha_venta,
+                    v.tipo_combustible,
                     tv.nombre AS tipo_vehiculo,
                     v.litros AS cantidad_litros,
                     v.monto,
@@ -458,17 +462,30 @@ class EstacionModel extends Mysql {
     }
     // obtener ventas del dia seleccionado por usuario y cierre
     public function getVentasByCierre($idCierre,$idUser,$fechaCierre) {
+        // Selección con alias para mantener consistencia con el frontend (numero_venta, cantidad_litros, empleado)
         $sql = "SELECT 
-                tVenta.*,
-                tv.nombre as tipo_vehiculo,
-                tp.nombre as tipo_pago
-                FROM table_es_venta tVenta
-                JOIN table_es_tipos_vehiculo tv ON tVenta.id_tipo_vehiculo = tv.id_tipo_vehiculo
-                JOIN table_es_tipos_pago tp ON tVenta.id_tipo_pago = tp.id_tipo_pago
-                WHERE tVenta.fecha_venta = ?
-                AND tVenta.id_user =  ?
-                AND tVenta.id_cierre_diario = ?";
-        return  $this->select_all($sql, [$fechaCierre,$idUser]);
+            tVenta.id_venta AS numero_venta,
+            tVenta.fecha_venta,
+            tVenta.hora_venta,
+            tVenta.litros AS cantidad_litros,
+            tVenta.monto,
+            tVenta.id_cierre_diario,
+            tVenta.id_user,
+            tVenta.tasa_dia,
+            tVenta.tipo_combustible,
+            tv.nombre as tipo_vehiculo,
+            tp.nombre as tipo_pago,
+            CONCAT(p.personal_nombre, ' ', p.personal_apellido) AS empleado
+            FROM table_es_venta tVenta
+            JOIN table_es_tipos_vehiculo tv ON tVenta.id_tipo_vehiculo = tv.id_tipo_vehiculo
+            JOIN table_es_tipos_pago tp ON tVenta.id_tipo_pago = tp.id_tipo_pago
+            JOIN table_usuarios u ON tVenta.id_user = u.usuario_id
+            JOIN table_personal p ON u.usuario_id_personal = p.id_personal
+            WHERE tVenta.fecha_venta = ?
+            AND tVenta.id_user =  ?
+            AND tVenta.id_cierre_diario = ?";
+        // Pasar los 3 parámetros en el mismo orden que los placeholders
+        return  $this->select_all($sql, [$fechaCierre, $idUser, $idCierre]);
     }
     // obtener ventas abiertas (en curso) de un usuario y fecha
     public function getVentasAbiertas(string $srtDate, int $intIdUser, int $idEstacion){
@@ -477,6 +494,7 @@ class EstacionModel extends Mysql {
             tVenta.fecha_venta,
             tVenta.hora_venta,
             tvehiculo.nombre AS tipo_vehiculo,
+            tVenta.tipo_combustible,
             tVenta.litros AS cantidad_litros,
             tVenta.monto,
             tVenta.id_cierre_diario,
@@ -527,6 +545,8 @@ class EstacionModel extends Mysql {
                     MAX(v.tasa_dia) AS tasa_dia,
                     COUNT(v.id_venta) AS total_ventas,
                     SUM(v.litros) AS total_litros,
+                    SUM(CASE WHEN v.tipo_combustible = 1 THEN v.litros ELSE 0 END) AS total_litros_gasolina,
+                    SUM(CASE WHEN v.tipo_combustible = 2 THEN v.litros ELSE 0 END) AS total_litros_diesel,
                     
                     -- Cálculos de montos por tipo de pago
                     SUM(CASE WHEN v.id_tipo_pago = 1 THEN v.monto ELSE 0 END) AS total_divisa,
@@ -609,6 +629,8 @@ class EstacionModel extends Mysql {
         $sql = "SELECT 
             v.id_user, 
             v.fecha_venta,
+            -- Agrupamos tipos de combustible encontrados en el grupo (puede ser '1,2' si hay mixtos)
+            GROUP_CONCAT(DISTINCT v.tipo_combustible ORDER BY v.tipo_combustible SEPARATOR ',') AS tipo_combustible,
             SUM(CAST(v.litros AS DECIMAL(10,2))) AS total_litros,
             p.personal_nombre AS nombre,
             p.personal_apellido AS apellido
