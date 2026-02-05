@@ -38,6 +38,22 @@ if ($isDivisaReport) {
     $totalGeneralBs = ($dataTotal['total_efectivo_bs'] ?? 0) + ($dataTotal['total_debito'] ?? 0);
 }
 
+// --- Separar ventas por tipo de combustible ---
+$ventasGasolina = [];
+$ventasDiesel = [];
+$litrosGasolina = 0;
+$litrosDiesel = 0;
+
+foreach ($dataDetallado as $venta) {
+    if (isset($venta['tipo_combustible']) && $venta['tipo_combustible'] == 2) {
+        $ventasDiesel[] = $venta;
+        $litrosDiesel += $venta['cantidad_litros'];
+    } else {
+        $ventasGasolina[] = $venta;
+        $litrosGasolina += $venta['cantidad_litros'];
+    }
+}
+
 $dompdf = new Dompdf($options);
 
 $html = '
@@ -86,7 +102,10 @@ $html = '
                 <th width="25%">Vehículos Atendidos:</th>
                 <td width="25%">' . htmlspecialchars($dataTotal['total_ventas']) . '</td>
                 <th width="25%">Litros Vendidos:</th>
-                <td width="25%">' . htmlspecialchars($dataTotal['total_litros']) . ' L</td>
+                <td width="25%">' . htmlspecialchars($dataTotal['total_litros']) . ' L' . 
+                // Mostrar desglose si hay ambos tipos
+                (($litrosGasolina > 0 && $litrosDiesel > 0) ? '<br><span style="font-size:9px;">(Gas: ' . number_format($litrosGasolina, 2) . ' | Die: ' . number_format($litrosDiesel, 2) . ')</span>' : '') . 
+                '</td>
             </tr>
             ' .
             ($isDivisaReport ? '
@@ -109,26 +128,28 @@ $html = '
             </tr>
         </table>
     </div>
+';
 
-    <div class="section">
-        <div class="section-title">Ventas Diarias Detalladas</div>
-        <table class="table">
-            <thead>
-                <tr>
-                    <th class="center" width="10%">Ticket</th>
-                    <th width="30%">Vehículo</th>
-                    <th class="center" width="15%">Litros</th>' .
-                    ($isDivisaReport ? '<th class="right" width="15%">Divisa ($)</th>' : '') .
-                    '<th class="right" width="15%">Efectivo (Bs)</th>
-                    <th class="right" width="15%">Débito (Bs)</th>
-                </tr>
-            </thead>
-            <tbody>';
-
-if (empty($dataDetallado)) {
-    $html .= '<tr><td colspan="5" class="center">No hay ventas detalladas para mostrar.</td></tr>';
-} else {
-    foreach ($dataDetallado as $venta) {
+// Función auxiliar para generar tabla de ventas
+function generarTablaVentas($titulo, $ventas, $isDivisaReport) {
+    if (empty($ventas)) return '';
+    
+    $html = '<div class="section">
+            <div class="section-title">' . $titulo . '</div>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th class="center" width="10%">Ticket</th>
+                        <th width="30%">Vehículo</th>
+                        <th class="center" width="15%">Litros</th>' .
+                        ($isDivisaReport ? '<th class="right" width="15%">Divisa ($)</th>' : '') .
+                        '<th class="right" width="15%">Efectivo (Bs)</th>
+                        <th class="right" width="15%">Débito (Bs)</th>
+                    </tr>
+                </thead>
+                <tbody>';
+    
+    foreach ($ventas as $venta) {
         $html .= '
             <tr>
                 <td class="center">' . htmlspecialchars($venta['numero_venta']) . '</td>
@@ -139,13 +160,20 @@ if (empty($dataDetallado)) {
                 <td class="right">' . number_format($venta['tarjeta_debito'] ?? 0, 2) . '</td>
             </tr>';
     }
+    
+    $html .= '</tbody></table></div>';
+    return $html;
+}
+
+// Generar tablas según existan datos
+if (empty($ventasGasolina) && empty($ventasDiesel)) {
+    $html .= '<div class="section"><div class="section-title">Ventas Diarias Detalladas</div><p style="text-align:center; padding:10px;">No hay ventas detalladas para mostrar.</p></div>';
+} else {
+    $html .= generarTablaVentas('Ventas Gasolina', $ventasGasolina, $isDivisaReport);
+    $html .= generarTablaVentas('Ventas Diesel', $ventasDiesel, $isDivisaReport);
 }
 
 $html .= '
-            </tbody>
-        </table>
-    </div>
-
     <div class="footer">
         <p class="page-number"></p>
     </div>

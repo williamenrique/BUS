@@ -48,6 +48,7 @@
                                     <tr>
                                         <th>Empleado</th>
                                         <th>Fecha</th>
+                                        <th>Combustible</th>
                                         <th>Litros Vendidos</th>
                                         <th class="text-center">Acciones</th>
                                     </tr>

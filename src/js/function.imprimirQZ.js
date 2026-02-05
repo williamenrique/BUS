@@ -25,37 +25,87 @@ async function fntImprimirDetallado(dataVentas) {
         '--------------------------------\n',
     ];
 
+    // 1. Calcular totales y separar ventas por tipo de combustible
     let totalLitros = 0;
+    let totalLitrosGas = 0;
+    let totalLitrosDie = 0;
     let totalMontoBs = 0;
+    const ventasGasolina = [];
+    const ventasDiesel = [];
 
     for (const venta of dataVentas) {
+        // Separar
+        if (venta.tipo_combustible == 2) {
+            ventasDiesel.push(venta);
+            totalLitrosDie += parseFloat(venta.cantidad_litros);
+        } else {
+            ventasGasolina.push(venta);
+            totalLitrosGas += parseFloat(venta.cantidad_litros);
+        }
+
+        // Calcular totales
+        totalLitros += parseFloat(venta.cantidad_litros);
         let montoVentaBs = 0;
         if (venta.tipo_pago === "Efectivo Divisa") {
             montoVentaBs = parseFloat(venta.monto) * parseFloat(venta.tasa_dia);
         } else {
             montoVentaBs = parseFloat(venta.monto);
         }
-
-        const linea = [
-            venta.numero_venta.toString().padEnd(3),
-            '|',
-            venta.tipo_vehiculo.substring(0, 9).padEnd(10),
-            '|',
-            montoVentaBs.toFixed(2).padStart(9),
-            '|',
-            parseFloat(venta.cantidad_litros).toFixed(2).padStart(5) + 'L'
-        ].join(' ');
-        data.push(linea + '\n');
-
-        totalLitros += parseFloat(venta.cantidad_litros);
         totalMontoBs += montoVentaBs;
+    }
+
+    // 2. Función auxiliar para generar las líneas de impresión
+    const generarLineas = (ventas) => {
+        let lineas = [];
+        for (const venta of ventas) {
+            let montoVentaBs = 0;
+            if (venta.tipo_pago === "Efectivo Divisa") {
+                montoVentaBs = parseFloat(venta.monto) * parseFloat(venta.tasa_dia);
+            } else {
+                montoVentaBs = parseFloat(venta.monto);
+            }
+            const tipoLetra = venta.tipo_combustible == 2 ? '(D)' : '(G)';
+            const vehiculoStr = `${venta.tipo_vehiculo.substring(0, 6)} ${tipoLetra}`;
+            const linea = [
+                venta.numero_venta.toString().padEnd(3),
+                '|',
+                vehiculoStr.padEnd(10),
+                '|',
+                montoVentaBs.toFixed(2).padStart(9),
+                '|',
+                parseFloat(venta.cantidad_litros).toFixed(2).padStart(5) + 'L'
+            ].join(' ');
+            lineas.push(linea + '\n');
+        }
+        return lineas;
     };
+
+    // 3. Añadir las ventas de Gasolina
+    if (ventasGasolina.length > 0) {
+        data.push('\x1B' + '\x61' + '\x31'); // Centrar
+        data.push('VENTAS GASOLINA\n');
+        data.push('\x1B' + '\x61' + '\x30'); // Izquierda
+        data.push('--------------------------------\n');
+        data.push(...generarLineas(ventasGasolina));
+    }
+
+    // 4. Añadir las ventas de Diesel (si existen)
+    if (ventasDiesel.length > 0) {
+        data.push('--------------------------------\n');
+        data.push('\x1B' + '\x61' + '\x31'); // Centrar
+        data.push('VENTAS DIESEL\n');
+        data.push('\x1B' + '\x61' + '\x30'); // Izquierda
+        data.push('--------------------------------\n');
+        data.push(...generarLineas(ventasDiesel));
+    }
 
     data.push(
         '--------------------------------\n',
         '\x1B' + '\x45' + '\x01', // Negrita
         `Total Vehiculos: ${dataVentas.length}\n`,
         `Total Litros: ${totalLitros.toFixed(2)} L\n`,
+        (totalLitrosGas > 0 ? `  Gasolina: ${totalLitrosGas.toFixed(2)} L\n` : ''),
+        (totalLitrosDie > 0 ? `  Diesel: ${totalLitrosDie.toFixed(2)} L\n` : ''),
         `Total Vendido: ${totalMontoBs.toFixed(2)} Bs\n`,
         '\x1B' + '\x45' + '\x00', // No Negrita
         '--------------------------------\n\n\n',
@@ -98,6 +148,8 @@ async function fntImprimirCierre(dataCierre) {
         ...(dataCierre.cant_camion > 0 ? [`Camiones: ${dataCierre.cant_camion}\n`] : []),
         `Total Atendidos: ${dataCierre.total_ventas}\n`,
         `Total Litros: ${parseFloat(dataCierre.total_litros).toFixed(2)} L\n`,
+        (parseFloat(dataCierre.total_litros_gasolina) > 0 ? `  Gasolina: ${parseFloat(dataCierre.total_litros_gasolina).toFixed(2)} L\n` : ''),
+        (parseFloat(dataCierre.total_litros_diesel) > 0 ? `  Diesel: ${parseFloat(dataCierre.total_litros_diesel).toFixed(2)} L\n` : ''),
         '--------------------------------\n',
         '\x1B' + '\x45' + '\x01',
         'TOTALES EN BOLIVARES (Bs)\n',
@@ -135,6 +187,8 @@ async function fntImprimirTicket(datTicket) {
     let simbolo = 'Bs';
     if (ticket.id_tipo_pago == 1) simbolo = '$';
 
+    const tipoCombustible = ticket.tipo_combustible == 2 ? 'Diesel' : 'Gasolina';
+
     const data = [
         '\x1B' + '\x40', // Inicializar
         '\x1B' + '\x61' + '\x31', // Centrar
@@ -149,6 +203,7 @@ async function fntImprimirTicket(datTicket) {
         '--------------------------------\n',
         `Pago: ${ticket.tipoPago}\n`,
         `Vehiculo: ${ticket.tipoVehiculo}\n`,
+        `Combustible: ${tipoCombustible}\n`,
         '\x1B' + '\x61' + '\x31', // Centrar
         '\x1D\x21\x11', // Doble altura y ancho
         '\x1B\x45\x01', // Negrita
@@ -219,7 +274,7 @@ async function initQZTrayConnection() {
  * @param {Array} data - Array con los comandos ESC/POS para la impresora.
  * @private
  */ //XP-80C o POS-58
-async function _printToQZ(data, printerName = 'POS-58') {
+async function _printToQZ(data, printerName = 'XP-80C') {
     try {
         if (!qz.websocket.isActive()) {
             notifi("Reconectando con la impresora...", "info");

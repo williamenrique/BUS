@@ -123,7 +123,11 @@ class Estacion extends Controllers{
             if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
                 $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
             }
-            $request = $this->model->updateTasa($tasa, $idEstacion);
+
+            // Verificar si el usuario es Administrador (Rol ID 1)
+            $isAdmin = (isset($_SESSION['userData']['usuario_rol_id']) && $_SESSION['userData']['usuario_rol_id'] == 1);
+
+            $request = $this->model->updateTasa($tasa, $idEstacion, $isAdmin);
             if ($request === 'already_updated') {
                 $arrResponse = ['success' => false, 'message' => 'No se puede actualizar, la tasa ya fue modificada hoy.'];
             } else if ($request) {
@@ -153,11 +157,12 @@ class Estacion extends Controllers{
             $tipoPago = intval($_POST['txtListTipoPago']);
             $monto = floatval($_POST['txtMonto']);
             $tasa = floatval($_POST['txtTasa']);
+            $tipoCombustible = intval($_POST['txtTipoCombustible'] ?? 1); // 1: Gasolina, 2: Diesel
             $idEstacion = 0;
             if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
                 $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
             }
-            $request = $this->model->setVenta($idUser, $idEstacion, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa);
+            $request = $this->model->setVenta($idUser, $idEstacion, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa, $tipoCombustible);
             if ($request > 0) {
 				$datTicket = $this->model->getTicketData($request, $idUser, date('Y-m-d'), $idEstacion);
 				// dep($datTicket);
@@ -373,8 +378,8 @@ class Estacion extends Controllers{
         $data = [
             'page_tag' => 'E/S VENTA',
             'page_title' => "Pagina Principal",
-            'page_name' => "clean",
-            'page_link' => "dataventa",
+            'page_name' => "estacion/dataventa",
+            'page_link' => "estacion/dataventa",
             'page_functions' => "function.dataventa.js"
         ];
         $this->views->getViews($this, "dataventa", $data);
@@ -435,8 +440,8 @@ class Estacion extends Controllers{
                     throw new Exception("No se pudo determinar la estación para el usuario del cierre.");
                 }
 
-                // --- CORRECCIÓN: Pasar el idCierre al método del modelo ---
-                $arrData = $this->model->getDataVenta($fechaCierre, $idUser, $idEstacion, $idCierre);
+                // --- CORRECCIÓN: Usar el método del modelo que devuelve las ventas por cierre
+                $arrData = $this->model->getVentasByCierre($idCierre, $idUser, $fechaCierre);
 
                 if (empty($arrData)) {
                     $arrResponse = ['success' => true, 'data' => []];
@@ -686,6 +691,71 @@ class Estacion extends Controllers{
                 }
             } else {
                 $arrResponse['message'] = 'ID de venta no válido.';
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function deleteAllOpenSales() {
+        $arrResponse = ['success' => false, 'message' => ''];
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (empty($data['idUser']) || empty($data['fecha'])) {
+                throw new Exception("Datos incompletos.");
+            }
+
+            $idUser = intval($data['idUser']);
+            $fecha = strClean($data['fecha']);
+
+            $deleted = $this->model->deleteAllOpenSales($idUser, $fecha);
+            if ($deleted) {
+                $arrResponse = ['success' => true, 'message' => 'Registro de ventas eliminado correctamente.'];
+            } else {
+                $arrResponse['message'] = 'No se pudieron eliminar las ventas o no se encontraron registros abiertos.';
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function getTasaCurrent() {
+        $arrResponse = array('success' => false, 'message' => '');
+        try {
+            $idEstacion = 0;
+            if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
+                $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
+            }
+            $tasa = $this->model->getTasa($idEstacion);
+            $arrResponse = ['success' => true, 'tasa' => $tasa];
+        } catch (Exception $e) {
+            $arrResponse['message'] = 'Error: ' . $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    public function deleteCierreTotal() {
+        $arrResponse = ['success' => false, 'message' => ''];
+        try {
+            $data = json_decode(file_get_contents('php://input'), true);
+            if (empty($data['idCierre']) || empty($data['idUser']) || empty($data['fecha'])) {
+                throw new Exception("Datos incompletos.");
+            }
+
+            $idCierre = intval($data['idCierre']);
+            $idUser = intval($data['idUser']);
+            $fecha = strClean($data['fecha']);
+
+            $deleted = $this->model->deleteCierreTotal($idCierre, $idUser, $fecha);
+            if ($deleted) {
+                $arrResponse = ['success' => true, 'message' => 'Cierre y ventas eliminados correctamente.'];
+            } else {
+                $arrResponse['message'] = 'No se pudo eliminar el cierre o no se encontraron registros coincidentes.';
             }
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
