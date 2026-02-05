@@ -219,7 +219,7 @@ async function initQZTrayConnection() {
  * @param {Array} data - Array con los comandos ESC/POS para la impresora.
  * @private
  */ //XP-80C o POS-58
-async function _printToQZ(data, printerName = 'POS-58') {
+async function _printToQZ(data, printerName = 'XP-80C') {
     try {
         if (!qz.websocket.isActive()) {
             notifi("Reconectando con la impresora...", "info");
