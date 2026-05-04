@@ -1,5 +1,5 @@
 <?php
-require_once '../system/core/Config/config.system.php';
+require_once '../../system/core/Config/config.system.php';
 function conectarDB() {
     $conn = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
     if ($conn->connect_error) {

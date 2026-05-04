@@ -444,10 +444,10 @@ function generarQR() {
                 const buttonContainer = document.createElement('div');
                 buttonContainer.className = 'mt-3 flex justify-center gap-2 qr-actions'; // Clase para fácil selección
                 buttonContainer.innerHTML = `
-                    <a href="${qrImage.src}" download="QR_${departamentoNombre.replace(/\s+/g, '_')}.png" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition-colors flex items-center text-sm">
+                    <a href="${qrImage.src}" download="QR_${departamentoNombre.replace(/\s+/g, '_')}.png" class="bg-green-500 hover:bg-green-600 text-green font-bold py-2 px-4 rounded-md transition-colors flex items-center text-sm">
                         <i class="fas fa-download mr-2"></i> Descargar
                     </a>
-                    <a href="${urlToEncode}" target="_blank" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition-colors flex items-center text-sm">
+                    <a href="${urlToEncode}" target="_blank" class="bg-blue-500 hover:bg-blue-600 text-red font-bold py-2 px-4 rounded-md transition-colors flex items-center text-sm">
                         <i class="fas fa-external-link-alt mr-2"></i> Ver Tabla
                     </a>
                 `;
