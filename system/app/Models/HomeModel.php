@@ -279,8 +279,8 @@ class HomeModel extends Mysql {
 
 		// Ahora acepta tanto "SISTEMA" como "SISTEMAS" para administradores
 		$isSistemasAdmin = ($roleUpper === 'ADMINISTRADOR' && ($deptUpper === 'SISTEMAS' || $deptUpper === 'SISTEMA'));
-		$isCompras = ($roleUpper === 'ENCARGADO' && $deptUpper === 'COMPRAS');
-		$isAlmacen = ($roleUpper === 'ENCARGADO' && $deptUpper === 'ALMACEN');
+		$isCompras = (($roleUpper === 'ENCARGADO' || $roleUpper === 'ADMINISTRADOR') && $deptUpper === 'COMPRAS');
+		$isAlmacen = (($roleUpper === 'ENCARGADO' || $roleUpper === 'ADMINISTRADOR') && $deptUpper === 'ALMACEN');
 
 		// 1. Notificaciones de nuevas requisiciones (visibles para Compras y Sistemas/Admin)
 		if ($isSistemasAdmin || $isCompras) {

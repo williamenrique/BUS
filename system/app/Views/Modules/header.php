@@ -115,9 +115,9 @@
                 <?php
                 // Lógica para mostrar el ícono de notificaciones de órdenes
                 // Para Encargado de Compras y Administrador de Sistemas.
-                $isCompras = ($sessionRole === 'ENCARGADO' && $sessionDept === 'COMPRAS');
+                $isCompras = (($sessionRole === 'ENCARGADO' || $sessionRole === 'ADMINISTRADOR') && $sessionDept === 'COMPRAS');
                 $isSistemasAdmin = ($sessionRole === 'ADMINISTRADOR' && ($sessionDept === 'SISTEMAS' || $sessionDept === 'SISTEMA'));
-                $isAlmacen = ($sessionRole === 'ENCARGADO' && $sessionDept === 'ALMACEN');
+                $isAlmacen = (($sessionRole === 'ENCARGADO' || $sessionRole === 'ADMINISTRADOR') && $sessionDept === 'ALMACEN');
                 if ($isCompras || $isSistemasAdmin || $isAlmacen):
                 ?>
                 <li class="nav-item dropdown" id="orderNotificationsContainer"> 
