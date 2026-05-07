@@ -450,3 +450,49 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
     */
     echo '</ul></nav>';
 }
+
+
+//aqui la funcion para historial auditoria
+// Función para registrar acciones de auditoría
+function log_audit_action(string $action_type, string $module, string $description, ?int $reference_id = null): bool {
+    // Asegurarse de que la sesión esté iniciada
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    $usuario_id = $_SESSION['idUser'] ?? null;
+    if (!$usuario_id) {
+        error_log("Intento de log_audit_action sin usuario_id en sesión. Acción: $action_type, Módulo: $module");
+        return false;
+    }
+
+    $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? 'UNKNOWN';
+
+    // Cargar el modelo de auditoría
+    $modelPath = "system/app/Models/AuditModel.php";
+    // Asegurarse de que el archivo del modelo exista y cargarlo si no está ya cargado
+    if (!class_exists('AuditModel')) {
+        if (file_exists($modelPath)) {
+            require_once $modelPath;
+        } else {
+            error_log("Error: No se pudo cargar el modelo de auditoría en log_audit_action. Ruta: " . $modelPath);
+            return false;
+        }
+    }
+
+    try {
+        $auditModel = new AuditModel();
+        return $auditModel->logAction($usuario_id, $action_type, $module, $description, $reference_id, $ip_address, $user_agent);
+    } catch (Exception $e) {
+        error_log("Error al registrar acción de auditoría en el modelo: " . $e->getMessage());
+        return false;
+    }
+}
+
+// Función para registrar acciones de auditoría desde el frontend (AJAX)
+function log_frontend_action(string $action_type, string $module, string $description, ?int $reference_id = null): bool {
+    // Reutiliza la función log_audit_action, ya que la lógica de registro es la misma.
+    // La distinción 'frontend' es más sobre el origen de la llamada que la lógica de registro en sí.
+    return log_audit_action($action_type, $module, $description, $reference_id);
+}

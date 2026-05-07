@@ -217,6 +217,65 @@ function setupDropdowns() {
     })
 }
 
+// Global audit function
+async function auditLog(actionType, module, description, referenceId = null, useSendBeacon = false) {
+    if (typeof base_url === 'undefined' || !base_url) {
+        console.error('base_url no está definida. No se puede registrar la auditoría.');
+        return;
+    }
+
+    const data = {
+        action_type: actionType,
+        module: module,
+        description: description,
+        reference_id: referenceId
+    };
+
+    const url = base_url + 'Audit/log_action';
+
+    if (useSendBeacon) {
+        // navigator.sendBeacon es ideal para enviar datos cuando la página se está cerrando,
+        // ya que la petición se envía de forma asíncrona y no bloquea el cierre.
+        try {
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(url, blob);
+        } catch (error) {
+            console.error('Error al enviar auditoría con sendBeacon:', error);
+        }
+    } else {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(data)
+            });
+            // No es necesario esperar la respuesta para auditoría, pero podemos loguear errores.
+            if (!response.ok) {
+                console.error('Error en la respuesta del servidor al registrar auditoría:', response.status, response.statusText);
+            }
+        } catch (error) {
+            console.error('Error al enviar auditoría con fetch:', error);
+        }
+    }
+}
+
+// Helper para obtener el módulo actual del URL
+function getCurrentModuleFromUrl() {
+    const path = window.location.pathname;
+    // Eliminar base_url si está presente
+    let relativePath = path.replace(base_url, '');
+    // Dividir por '/' y tomar el primer segmento como módulo
+    const segments = relativePath.split('/').filter(s => s.length > 0);
+    // Capitalizar el primer segmento para un nombre de módulo más legible
+    return segments.length > 0 ? segments[0].charAt(0).toUpperCase() + segments[0].slice(1) : 'Home';
+}
+
+// Variable para almacenar el módulo actual y evitar logs duplicados en la misma página
+let currentModule = '';
+
 // Inicialización de la aplicación
 function initApp() {
     // Inicializar tooltips de Bootstrap en toda la aplicación
@@ -233,6 +292,19 @@ function initApp() {
 
     // Configurar eventos
     setupEventListeners()
+
+    // Registrar la vista inicial de la página
+    currentModule = getCurrentModuleFromUrl();
+    auditLog('PAGE_VIEW', currentModule, `Acceso a módulo: ${currentModule}.`);
+
+    // Escuchar cambios en la URL para registrar vistas de página en SPAs o navegaciones
+    window.addEventListener('popstate', () => {
+        const newModule = getCurrentModuleFromUrl();
+        if (newModule !== currentModule) {
+            auditLog('PAGE_VIEW', newModule, `Navegación a módulo: ${newModule}.`);
+            currentModule = newModule;
+        }
+    });
     setupDropdowns()
 }
 

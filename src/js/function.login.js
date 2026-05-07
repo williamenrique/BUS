@@ -1,6 +1,12 @@
 document.addEventListener('DOMContentLoaded', function () {
     const loginForm = document.getElementById('formLogin');
     if (loginForm) {
+        // Listener para intentar registrar LOGOUT al cerrar la pestaña/navegador
+        window.addEventListener('beforeunload', function () {
+            // Usamos navigator.sendBeacon para asegurar que la petición se envíe
+            // incluso si la página se está cerrando.
+            auditLog('LOGOUT', 'Login', 'Cierre de sesión (navegador/pestaña).', null, true);
+        });
         loginForm.addEventListener('submit', handleLoginSubmit);
     }
 
@@ -66,6 +72,7 @@ async function handleLoginSubmit(e) {
         const result = await response.json();
 
         if (result.status) { // Éxito en el login
+            auditLog('LOGIN', 'Login', 'Inicio de sesión exitoso.', null, true); // Usar sendBeacon para asegurar el envío antes de la redirección
             notifi('¡Bienvenido!', 'success');
             window.location.href = base_url + 'home';
         } else {
@@ -525,6 +532,7 @@ async function forceLogoutAndRetry(userNick, loginFormData) {
         const result = await response.json();
 
         if (result.status) {
+            auditLog('FORCE_LOGOUT', 'Login', `Sesión anterior de ${userNick} forzada a cerrar.`);
             notifi('Sesión anterior cerrada. Intentando iniciar sesión de nuevo...', 'info');
             // Reintentar el login automáticamente
             document.getElementById('formLogin').requestSubmit();
@@ -585,6 +593,54 @@ async function handleRecoverySubmit(e) {
     } finally {
         submitButton.disabled = false;
         submitButton.innerHTML = originalButtonText;
+    }
+}
+
+/**
+ * Registra una acción de auditoría enviando los datos al servidor.
+ * Esta función es esencial para rastrear eventos de seguridad como el login.
+ * 
+ * @param {string} actionType - Tipo de acción (LOGIN, LOGOUT, etc.)
+ * @param {string} module - Módulo donde ocurre (ej: 'Login')
+ * @param {string} description - Texto descriptivo
+ * @param {number|null} referenceId - ID de referencia opcional
+ * @param {boolean} useSendBeacon - Si es true, usa navigator.sendBeacon (ideal para cierres de pestaña)
+ */
+async function auditLog(actionType, module, description, referenceId = null, useSendBeacon = false) {
+    if (typeof base_url === 'undefined' || !base_url) {
+        console.error('base_url no está definida. No se puede registrar la auditoría.');
+        return;
+    }
+
+    const data = {
+        action_type: actionType,
+        module: module,
+        description: description,
+        reference_id: referenceId
+    };
+
+    const url = base_url + 'Audit/log_action';
+
+    if (useSendBeacon) {
+        try {
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            navigator.sendBeacon(url, blob);
+        } catch (error) {
+            console.error('Error al enviar auditoría con sendBeacon:', error);
+        }
+    } else {
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (!response.ok) {
+                console.error('Error en la respuesta del servidor al registrar auditoría:', response.status);
+            }
+        } catch (error) {
+            console.error('Error al enviar auditoría con fetch:', error);
+        }
     }
 }
 /**
