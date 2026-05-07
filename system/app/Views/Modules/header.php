@@ -90,9 +90,11 @@
             <!-- Right navbar links -->
             <ul class="navbar-nav ml-auto">
                 <?php
+                $sessionRole = isset($_SESSION['userData']['rol_nombre']) ? strtoupper(trim($_SESSION['userData']['rol_nombre'])) : '';
+                $sessionDept = isset($_SESSION['userData']['departamento_nombre']) ? strtoupper(trim($_SESSION['userData']['departamento_nombre'])) : '';
                 // Notificaciones de Recuperación de Usuario (Campana)
                 // Visible solo para Administradores del departamento de Sistemas
-                if (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ADMINISTRADOR' && $_SESSION['userData']['departamento_nombre'] === 'Sistemas'):
+                if ($sessionRole === 'ADMINISTRADOR' && ($sessionDept === 'SISTEMAS' || $sessionDept === 'SISTEMA')):
                 ?>
                 <li class="nav-item dropdown" id="userRecoveryNotificationsContainer"> 
                     <a id="userRecoveryButton" class="nav-link" data-toggle="dropdown" href="#" aria-expanded="false">
@@ -113,9 +115,9 @@
                 <?php
                 // Lógica para mostrar el ícono de notificaciones de órdenes
                 // Para Encargado de Compras y Administrador de Sistemas.
-                $isCompras = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ENCARGADO' && $_SESSION['userData']['departamento_nombre'] === 'Compras');
-                $isSistemasAdmin = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ADMINISTRADOR' && strtoupper($_SESSION['userData']['departamento_nombre']) === 'SISTEMAS');
-                $isAlmacen = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ENCARGADO' && strtoupper($_SESSION['userData']['departamento_nombre']) === 'ALMACEN');
+                $isCompras = ($sessionRole === 'ENCARGADO' && $sessionDept === 'COMPRAS');
+                $isSistemasAdmin = ($sessionRole === 'ADMINISTRADOR' && ($sessionDept === 'SISTEMAS' || $sessionDept === 'SISTEMA'));
+                $isAlmacen = ($sessionRole === 'ENCARGADO' && $sessionDept === 'ALMACEN');
                 if ($isCompras || $isSistemasAdmin || $isAlmacen):
                 ?>
                 <li class="nav-item dropdown" id="orderNotificationsContainer"> 

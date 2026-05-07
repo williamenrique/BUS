@@ -459,6 +459,7 @@ function log_audit_action(string $action_type, string $module, string $descripti
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+    // No cerramos sesión aquí porque otros procesos podrían necesitar seguir escribiendo
 
     $usuario_id = $_SESSION['idUser'] ?? null;
     if (!$usuario_id) {

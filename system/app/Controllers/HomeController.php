@@ -140,7 +140,7 @@ class Home extends Controllers {
             // 1. Actualizar la estación en la base de datos
             $updated = $this->model->updateUserStation($userId, $stationId);
 
-            if ($updated = '1' && $updated = ' ') {
+            if ($updated == 1 || $updated == '1') {
                 // 2. Refrescar los datos de la sesión para que el cambio sea inmediato
                 // Se usa el HomeModel para refrescar la sesión
                 $newSessionData = $this->model->refreshSession($userId);
@@ -353,13 +353,33 @@ class Home extends Controllers {
         // =================================================================
         // Obtener datos del usuario de la sesión, si existen.
         $userId = $_SESSION['idUser'] ?? 0; // Usar 0 si no hay sesión
-        $userRole = $_SESSION['userData']['rol_nombre'] ?? '';
-        $userDepartmentName = $_SESSION['userData']['departamento_nombre'] ?? '';
+
+        // Si falta información del usuario, intentamos recuperarla forzosamente
+        if ($userId > 0 && (empty($_SESSION['userData']) || !isset($_SESSION['userData']['rol_nombre']))) {
+            $_SESSION['userData'] = sessionUser($userId);
+        }
+
+        // Normalizamos a MAYÚSCULAS y limpiamos espacios para máxima compatibilidad
+        $userRole = isset($_SESSION['userData']['rol_nombre']) ? strtoupper(trim($_SESSION['userData']['rol_nombre'])) : '';
+        $userDepartmentName = isset($_SESSION['userData']['departamento_nombre']) ? strtoupper(trim($_SESSION['userData']['departamento_nombre'])) : '';
+
+        // LOG DE DEPURACIÓN: Esto aparecerá en tu archivo de log de PHP (XAMPP/php/logs/php_error_log)
+        // Si ves estos valores vacíos, el problema es que sessionUser() no trae el rol/departamento.
+        error_log("DEBUG NOTIFICACIONES - UserID: $userId, Rol: $userRole, Dept: $userDepartmentName");
 
         $notificationsData = $this->model->getPendingNotifications($userId, $userRole, $userDepartmentName);
 
-        $response = ['success' => true, 'count' => $notificationsData['count'], 'notifications' => $notificationsData['notifications']];
+        // Una vez que tenemos los datos del modelo, liberamos la sesión
+        session_write_close(); // Liberamos el bloqueo de sesión para permitir peticiones paralelas (como Audit)
 
+        $response = [
+            'success' => true, 
+            'count' => $notificationsData['count'] ?? 0, 
+            'notifications' => $notificationsData['notifications'] ?? [],
+            'debug' => ['role' => $userRole, 'dept' => $userDepartmentName] // Enviamos esto al JS para verlo en consola
+        ];
+
+        header('Content-Type: application/json');
         echo json_encode($response, JSON_UNESCAPED_UNICODE);
         die();
     }

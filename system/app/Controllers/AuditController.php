@@ -7,6 +7,10 @@
 class Audit extends Controllers {
 
     public function __construct() {
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        session_write_close(); // Liberamos el bloqueo de sesión para que otras peticiones (como notificaciones) no se detengan
         parent::__construct();
     }
 

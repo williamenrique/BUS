@@ -274,9 +274,13 @@ class HomeModel extends Mysql {
 		$totalCount = 0;
 		
 		// Determinar los permisos basados en el rol y departamento
-		$isSistemasAdmin = (strtoupper($userRole) === 'ADMINISTRADOR' && strtoupper($userDepartmentName) === 'SISTEMAS');
-		$isCompras = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartmentName) === 'COMPRAS');
-		$isAlmacen = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartmentName) === 'ALMACEN');
+		$roleUpper = strtoupper(trim($userRole));
+		$deptUpper = strtoupper(trim($userDepartmentName));
+
+		// Ahora acepta tanto "SISTEMA" como "SISTEMAS" para administradores
+		$isSistemasAdmin = ($roleUpper === 'ADMINISTRADOR' && ($deptUpper === 'SISTEMAS' || $deptUpper === 'SISTEMA'));
+		$isCompras = ($roleUpper === 'ENCARGADO' && $deptUpper === 'COMPRAS');
+		$isAlmacen = ($roleUpper === 'ENCARGADO' && $deptUpper === 'ALMACEN');
 
 		// 1. Notificaciones de nuevas requisiciones (visibles para Compras y Sistemas/Admin)
 		if ($isSistemasAdmin || $isCompras) {

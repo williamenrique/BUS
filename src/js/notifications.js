@@ -7,30 +7,33 @@
  */
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Solo ejecutar si existe al menos uno de los contenedores de notificaciones
-    if ($('#userRecoveryNotificationsContainer').length || $('#orderNotificationsContainer').length) {
-        loadAllNotifications(); // Cargar al inicio
+    // Intentar cargar notificaciones al iniciar la página.
+    // No ponemos un IF aquí para permitir que la función se ejecute y verifique la UI internamente.
+    loadAllNotifications();
 
-        // Opcional: Recargar notificaciones cada 2 minutos
-        setInterval(loadAllNotifications, 30000);
+    // Recargar notificaciones automáticamente cada 30 segundos
+    setInterval(loadAllNotifications, 30000);
 
-        // Forzar recarga al hacer clic en cualquiera de las campanas
-        $('#userRecoveryButton, #requisitionNotificationsButton').on('click', function () {
-            loadAllNotifications();
-        });
-    }
+    // Delegación de eventos para los botones de las campanas en la barra de navegación
+    $(document).on('click', '#userRecoveryButton, #requisitionNotificationsButton', function () {
+        loadAllNotifications();
+    });
 });
 
 /**
  * Carga todas las notificaciones pendientes desde el controlador principal (HomeController).
  */
 async function loadAllNotifications() {
+    if (typeof base_url === 'undefined') return;
+
     try {
         const response = await fetch(base_url + 'Home/getNotifications');
         const result = await response.json();
 
+        // console.log("Respuesta de Notificaciones:", result); // Debug ya verificado
+
         if (result.success) {
-            // Ahora esta función distribuirá las notificaciones
+            // Distribuir las notificaciones a la interfaz
             distributeNotificationsUI(result.notifications);
         }
     } catch (error) {
@@ -43,59 +46,59 @@ async function loadAllNotifications() {
  * @param {Array} notifications - La lista de notificaciones para mostrar.
  */
 function distributeNotificationsUI(notifications) {
-    // Contenedores y contadores específicos
-    const recoveryCountBadge = $('#userRecoveryCount');
-    const recoveryListContainer = $('#userRecoveryItems');
-    const requisitionCountBadge = $('#requisitionNotificationCount');
-    const requisitionListContainer = $('#requisitionNotificationItems');
-    const requisitionIcon = $('#requisitionNotificationsButton i'); // Seleccionar el icono
+    // Intentamos buscar por ID específico, y si no existe, buscamos el badge dentro del botón correspondiente
+    const $recoveryBadge = $('#userRecoveryCount').length ? $('#userRecoveryCount') : $('#userRecoveryButton .navbar-badge, #userRecoveryButton .badge');
+    const $recoveryList = $('#userRecoveryItems');
+    const $orderBadge = $('#requisitionNotificationCount').length ? $('#requisitionNotificationCount') : $('#requisitionNotificationsButton .navbar-badge, #requisitionNotificationsButton .badge');
+    const $orderList = $('#requisitionNotificationItems');
+    const $orderIcon = $('#requisitionNotificationsButton i');
 
-    // Limpiar listas
-    recoveryListContainer.empty();
-    requisitionListContainer.empty();
+    // Limpiar listas si los contenedores existen
+    if ($recoveryList.length) $recoveryList.empty();
+    if ($orderList.length) $orderList.empty();
 
-    // Filtrar notificaciones por tipo
+    // Filtrar notificaciones
     const recoveryNotifs = notifications.filter(n => n.tipo_notificacion === 'recuperacion_usuario');
-    // Unificamos requisiciones y despachos pendientes en la misma campana de "órdenes"
     const orderNotifs = notifications.filter(n => n.tipo_notificacion === 'nueva_requisicion' || n.tipo_notificacion === 'despacho_pendiente');
 
     // Actualizar UI de Recuperación de Usuario
-    if (recoveryNotifs.length > 0) {
-        // (La lógica de recuperación de usuario no cambia)
-        recoveryCountBadge.text(recoveryNotifs.length).show();
-        recoveryNotifs.forEach(notif => {
-            const link = `${base_url}user/recuperar`;
-            const icon = 'fa-user-shield text-info';
-            const itemHTML = `<a href="${link}" class="dropdown-item"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;
-            recoveryListContainer.append(itemHTML);
-        });
-    } else {
-        recoveryCountBadge.hide();
-        recoveryListContainer.html('<p class="text-center text-muted p-3">No hay solicitudes nuevas.</p>');
+    if ($recoveryBadge.length) {
+        if (recoveryNotifs.length > 0) {
+            $recoveryBadge.text(recoveryNotifs.length).removeClass('d-none').css('display', 'inline-block').show();
+            recoveryNotifs.forEach(notif => {
+                const link = `${base_url}user/recuperar`;
+                const itemHTML = `<a href="${link}" class="dropdown-item"><i class="fas fa-user-shield text-info mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;
+                if ($recoveryList.length) $recoveryList.append(itemHTML);
+            });
+        } else {
+            $recoveryBadge.addClass('d-none').hide();
+            if ($recoveryList.length) $recoveryList.html('<p class="text-center text-muted p-3">No hay solicitudes nuevas.</p>');
+        }
     }
 
     // Actualizar UI de Requisiciones
-    if (orderNotifs.length > 0) {
-        requisitionCountBadge.text(orderNotifs.length).show();
-        requisitionIcon.addClass('icon-pulsate'); // Añadir animación si hay notificaciones
-        orderNotifs.forEach(notif => {
-            let link = '#';
-            let icon = 'fa-file-alt text-primary'; // Icono por defecto
+    if ($orderBadge.length) {
+        if (orderNotifs.length > 0) {
+            $orderBadge.text(orderNotifs.length).removeClass('d-none').css('display', 'inline-block').show();
+            if ($orderIcon.length) $orderIcon.addClass('icon-pulsate');
 
-            if (notif.tipo_notificacion === 'nueva_requisicion') {
-                link = `${base_url}Requisicion/requisicion/${notif.id_referencia}`;
-                icon = 'fa-file-alt text-primary'; // Icono para requisición
-            } else if (notif.tipo_notificacion === 'despacho_pendiente') {
-                link = `${base_url}Orden/despachosPendientes`; // Apunta a la nueva página de despachos pendientes
-                icon = 'fa-box-open text-success'; // Icono para despacho
-            }
+            orderNotifs.forEach(notif => {
+                let link = '#', icon = 'fa-file-alt text-primary';
+                if (notif.tipo_notificacion === 'nueva_requisicion') {
+                    link = `${base_url}Requisicion/requisicion/${notif.id_referencia}`;
+                    icon = 'fa-file-alt text-primary';
+                } else if (notif.tipo_notificacion === 'despacho_pendiente') {
+                    link = `${base_url}Orden/despachosPendientes`;
+                    icon = 'fa-box-open text-success';
+                }
 
-            const itemHTML = `<a href="${link}" class="dropdown-item" style="white-space: normal;"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;
-            requisitionListContainer.append(itemHTML);
-        });
-    } else {
-        requisitionCountBadge.hide();
-        requisitionIcon.removeClass('icon-pulsate'); // Quitar animación si no hay notificaciones
-        requisitionListContainer.html('<p class="text-center text-muted p-3">No hay requisiciones nuevas.</p>');
+                const itemHTML = `<a href="${link}" class="dropdown-item" style="white-space: normal;"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;
+                if ($orderList.length) $orderList.append(itemHTML);
+            });
+        } else {
+            $orderBadge.addClass('d-none').hide();
+            if ($orderIcon.length) $orderIcon.removeClass('icon-pulsate');
+            if ($orderList.length) $orderList.html('<p class="text-center text-muted p-3">No hay requisiciones nuevas.</p>');
+        }
     }
 }

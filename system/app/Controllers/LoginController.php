@@ -104,6 +104,7 @@ class Login extends Controllers{
         $_SESSION['session_created'] = time();
         $_SESSION['last_activity'] = time();
         $userData = $this->model->sessionLogin($userId);
+        $_SESSION['userData'] = $userData; // <-- AÑADIDO: Asignar userData a la sesión
         // Guardar información de la sesión en la base de datos
         $this->model->saveSessionInfo([
             'session_id' => session_id(),
