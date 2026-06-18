@@ -126,7 +126,6 @@ private $db; //para inicializar la base de datos
                 $userRole = $_SESSION['userData']['rol_nombre'] ?? ''; // 'Encargado'
                 $userDepartment = $_SESSION['userData']['departamento_nombre'] ?? ''; // 'Compras'
                 $estadoNum = $arrData[$i]['estado_orden'];
-                $hasInsufficientStock = $arrData[$i]['has_insufficient_stock_items'];
                 $idDespacho = $arrData[$i]['id_despacho'];
 
                 // Lógica de Estado (Badge o Botón)
@@ -134,17 +133,12 @@ private $db; //para inicializar la base de datos
                 $canApprove = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartment) === 'COMPRAS') || (strtoupper($userRole) === 'ADMINISTRADOR');
 
                 if ($canApprove && $estadoNum == 1) {
-                    $badgeText = 'Requisición';
-                    if ($hasInsufficientStock) {
-                        $badgeText .= ' <span class="badge badge-danger">Stock Insuficiente</span>';
-                    }
-                    $arrData[$i]['estado_orden'] = '<button class="btn btn-warning btn-sm" onClick="fntLoadRequisicionParaAprobar('.$idDespacho.')" title="Cargar para Aprobar">' . $badgeText . '</button>';
+                    $arrData[$i]['estado_orden'] = '<button class="btn btn-warning btn-sm" onClick="fntLoadRequisicionParaAprobar('.$idDespacho.')" title="Cargar para Aprobar">Requisición</button>';
                 } else {
                     // Para todos los demás casos, es un badge normal
                     $badge = '<span class="badge badge-secondary">Desconocido</span>';
-                    if ($estadoNum == 1) $badge = '<span class="badge badge-warning">Pendiente' . ($hasInsufficientStock ? ' <span class="badge badge-danger">Stock Insuficiente</span>' : '') . '</span>';
+                    if ($estadoNum == 1) $badge = '<span class="badge badge-warning">Pendiente</span>';
                     if ($estadoNum == 2) $badge = '<span class="badge badge-info">Aprobada</span>';
-                    // No se muestra "Sin Stock" aquí, ya que Compras ya aprobó y descontó.
                     if ($estadoNum == 3) $badge = '<span class="badge badge-success">Despachada</span>'; // Este estado ya no debería verse aquí
                     if ($estadoNum == 4) $badge = '<span class="badge badge-danger">Rechazada</span>';
                     $arrData[$i]['estado_orden'] = $badge;

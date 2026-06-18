@@ -91,8 +91,11 @@
             <ul class="navbar-nav ml-auto">
                 <?php
                 // Notificaciones de Recuperación de Usuario (Campana)
-                // Visible solo para Administradores del departamento de Sistemas
-                if (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ADMINISTRADOR' && $_SESSION['userData']['departamento_nombre'] === 'Sistemas'):
+                // Visible para Administradores o personal de Sistemas
+                $isAdmin = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ADMINISTRADOR');
+                $isSistemas = (isset($_SESSION['userData']['departamento_nombre']) && (strtoupper($_SESSION['userData']['departamento_nombre']) === 'SISTEMAS' || strtoupper($_SESSION['userData']['departamento_nombre']) === 'SISTEMA'));
+                
+                if ($isAdmin || $isSistemas):
                 ?>
                 <li class="nav-item dropdown" id="userRecoveryNotificationsContainer"> 
                     <a id="userRecoveryButton" class="nav-link" data-toggle="dropdown" href="#" aria-expanded="false">
@@ -111,12 +114,13 @@
                 </li>
                 <?php endif; ?>
                 <?php
-                // Lógica para mostrar el ícono de notificaciones de órdenes
-                // Para Encargado de Compras y Administrador de Sistemas.
-                $isCompras = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ENCARGADO' && $_SESSION['userData']['departamento_nombre'] === 'Compras');
-                $isSistemasAdmin = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ADMINISTRADOR' && strtoupper($_SESSION['userData']['departamento_nombre']) === 'SISTEMAS');
-                $isAlmacen = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ENCARGADO' && strtoupper($_SESSION['userData']['departamento_nombre']) === 'ALMACEN');
-                if ($isCompras || $isSistemasAdmin || $isAlmacen):
+                // Notificaciones de Órdenes (Requisiciones, Despachos, Procesos) - Visibles para Admin/Sistemas y Encargados de Compras, Almacén, Operaciones
+                $isEncargado = (isset($_SESSION['userData']['rol_nombre']) && strtoupper($_SESSION['userData']['rol_nombre']) === 'ENCARGADO');
+                $isComprasEncargado = ($isEncargado && isset($_SESSION['userData']['departamento_nombre']) && strtoupper($_SESSION['userData']['departamento_nombre']) === 'COMPRAS');
+                $isAlmacenEncargado = ($isEncargado && isset($_SESSION['userData']['departamento_nombre']) && strtoupper($_SESSION['userData']['departamento_nombre']) === 'ALMACEN');
+                $isOperacionesEncargado = ($isEncargado && isset($_SESSION['userData']['departamento_nombre']) && strtoupper($_SESSION['userData']['departamento_nombre']) === 'OPERACIONES');
+
+                if ($isAdmin || $isSistemas || $isComprasEncargado || $isAlmacenEncargado || $isOperacionesEncargado):
                 ?>
                 <li class="nav-item dropdown" id="orderNotificationsContainer"> 
                     <a class="nav-link" data-toggle="dropdown" href="#" id="requisitionNotificationsButton">

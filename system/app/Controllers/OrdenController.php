@@ -44,7 +44,7 @@ class Orden extends Controllers{
         // 2. Mostrar un mensaje JSON (para APIs)
         // 3. Guardar en variable para mostrar en vista
         // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',
@@ -364,31 +364,56 @@ class Orden extends Controllers{
             $ordenesData = $this->ordenModel->selectOrdenes();
 
             // Añadir badges de estado y botones de acción dinámicos
-            for ($i = 0; $i < count($ordenesData); $i++) {
+            for ($i = 0; $i < count($ordenesData); $i++) { // Loop through each order
+                $userRole = $_SESSION['userData']['rol_nombre'] ?? '';
+                $userDepartment = $_SESSION['userData']['departamento_nombre'] ?? '';
+
+                $estadoNum = $ordenesData[$i]['estado_orden'];
+                $hasOutOfStockItems = $ordenesData[$i]['has_out_of_stock_items'];
+                $idDespacho = $ordenesData[$i]['id_despacho'];
+
                 $estadoBadge = '';
-                $btnView = '<button class="btn btn-info btn-sm" onClick="fntViewOrden('.$ordenesData[$i]['id_despacho'].')" title="Ver Detalles"><i class="far fa-eye"></i></button>';
-                $btnPrint = '<button class="btn btn-secondary btn-sm" onClick="fntImprimirRequisicion('.$ordenesData[$i]['id_despacho'].')" title="Imprimir Orden"><i class="fas fa-print"></i></button>';
-                $acciones = $btnView . '&nbsp;' . $btnPrint;
+                $btnView = '<button class="btn btn-info btn-sm" onClick="fntViewOrden('.$idDespacho.')" title="Ver Detalles"><i class="far fa-eye"></i></button>';
+                $btnPrint = '<button class="btn btn-secondary btn-sm" onClick="fntImprimirRequisicion('.$idDespacho.')" title="Imprimir Orden"><i class="fas fa-print"></i></button>';
+                $btnDelete = '<button onclick="fntdelDesp('.$idDespacho.')" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-trash-alt"></i></button>';
+
+                $acciones = $btnView . '&nbsp;' . $btnPrint . '&nbsp;' . $btnDelete; // Default buttons
 
                 switch ($ordenesData[$i]['estado_orden']) {
-                    case 1:
-                        $estadoBadge = '<span class="badge badge-warning">Pendiente</span>';
-                        // Para estado pendiente, se puede ver e imprimir
+                    case 1: // Pendiente (Requisición)
+                        $estadoBadge = '<span class="badge badge-warning">Requisición</span>';
+                        // Only Compras (Encargado) or Administrator can approve/process
+                        if ($hasInsufficientStock) {
+                            $estadoBadge = '<span class="badge badge-warning">Requisición <span class="badge badge-danger">Stock Insuficiente</span></span>';
+                        }
+                        $canProcess = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartment) === 'COMPRAS') || (strtoupper($userRole) === 'ADMINISTRADOR');
+                        if ($canProcess) {
+                            $acciones .= '&nbsp;<button class="btn btn-primary btn-sm" onClick="fntAprobarOrden('.$idDespacho.')" title="Aprobar Requisición"><i class="fas fa-check-double"></i></button>';
+                            $acciones .= '&nbsp;<button class="btn btn-warning btn-sm" onClick="fntNotificarEnProceso('.$idDespacho.')" title="Notificar a Operaciones: En Proceso"><i class="fas fa-bell"></i></button>';
+                        }
                         break;
-                    case 2:
+                    case 2: // Aprobada
                         $estadoBadge = '<span class="badge badge-info">Aprobada</span>';
-                        $btnDespachar = '<button class="btn btn-success btn-sm" onClick="fntCargarParaDespachar('.$ordenesData[$i]['id_despacho'].')" title="Completar Despacho"><i class="fas fa-truck"></i></button>';
-                        $acciones .= '&nbsp;' . $btnDespachar;
+                        // Only Almacen (Encargado) or Administrator can dispatch
+                        $canDispatch = (strtoupper($userDepartment) === 'ALMACEN' && strtoupper($userRole) === 'ENCARGADO') || (strtoupper($userRole) === 'ADMINISTRADOR');
+                        if ($canDispatch) {
+                            $acciones .= '&nbsp;<button class="btn btn-success btn-sm" onClick="fntCargarParaDespachar('.$ordenesData[$i]['id_despacho'].')" title="Completar Despacho"><i class="fas fa-truck"></i></button>';
+                        }
                         break;
-                    case 3:
+                    case 3: // Despachada
                         $estadoBadge = '<span class="badge badge-success">Despachada</span>';
-                        // Para estado despachada, se puede ver e imprimir
+                        break;
+                    case 4: // Rechazada
+                        $estadoBadge = '<span class="badge badge-danger">Rechazada</span>';
+                        break;
+                    default:
+                        $estadoBadge = '<span class="badge badge-secondary">Desconocido</span>';
                         break;
                 }
                 $ordenesData[$i]['estado_badge'] = $estadoBadge;
                 $ordenesData[$i]['acciones'] = '<div class="text-center d-flex justify-content-center">' . $acciones . '</div>';
             }
-    
+
             $arrResponse = [
                 // DataTables en modo cliente espera los datos en la clave "data"
                 "data" => $ordenesData
@@ -537,9 +562,81 @@ class Orden extends Controllers{
             'page_title' => "Órdenes por Despachar",
             'page_name' => "almacen",
             'page_link' => "despachos",
-            'page_functions' => "function.despachos.js" // Nuevo JS
+            'page_functions' => "function.despachos.js"
         ];
-        $this->views->getViews($this, "despachos", $data); // Nueva vista
+        $this->views->getViews($this, "despachos", $data);
+    }
+
+    /**
+     * Inserta una notificación para Operaciones indicando que una orden está en proceso.
+     * Solo accesible para el departamento de Compras.
+     */
+    public function notificarEnProceso()
+    {
+        $arrResponse = ['success' => false, 'message' => 'Error al enviar notificación.'];
+        try {
+            // Reutilizar la lógica de notificarOperaciones
+            // Simular el POST para notificarOperaciones
+            $_POST['id_despacho'] = $_POST['id_despacho'] ?? 0;
+            $_POST['tipo'] = 'en_proceso'; // Indicar que es una notificación "en proceso"
+
+            // Llamar a la función notificarOperaciones
+            // Capturar la salida de notificarOperaciones para devolverla
+            ob_start();
+            $this->notificarOperaciones();
+            $output = ob_get_clean();
+            $arrResponse = json_decode($output, true);
+
+            if ($arrResponse['success']) {
+                $arrResponse['message'] = 'Operaciones ha sido notificado.';
+            } else {
+                // Si notificarOperaciones falló, su mensaje ya estará en $arrResponse['message']
+                $arrResponse['message'] = $arrResponse['message'] ?? 'Error desconocido al notificar.';
+            }
+        } catch (Exception $e) {
+            $arrResponse['message'] = $e->getMessage();
+        }
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    /**
+     * Notifica automáticamente a Operaciones cuando Compras aprueba una requisición.
+     */
+    public function notificarOperaciones() {
+        $arrResponse = ['success' => false];
+        try {
+            $idDespacho = intval($_POST['id_despacho'] ?? 0);
+            $tipo       = $_POST['tipo'] ?? 'aprobada';
+            if ($idDespacho <= 0) throw new Exception('ID inválido.');
+
+            $nick   = $_SESSION['userData']['usuario_nick'] ?? 'Usuario';
+            $orden  = $this->ordenModel->selectDepacho($idDespacho);
+            $unidad = $orden['id_unidad'] ?? "#{$idDespacho}";
+
+            if ($tipo === 'aprobada') {
+                // Limpiar notificaciones previas de "en proceso" para esta orden
+                $sql_clear = "UPDATE table_notificaciones SET leido = 1 WHERE tipo_notificacion = 'orden_en_proceso' AND id_referencia = ? AND leido = 0";
+                $this->ordenModel->update($sql_clear, [$idDespacho]);
+
+                $mensaje   = "Requisición #{$idDespacho} (Unidad {$unidad}) fue APROBADA por Compras ({$nick}). Será atendida por Almacén.";
+                $tipoNotif = 'orden_aprobada_ops';
+            } else {
+                $mensaje   = "Orden #{$idDespacho} (Unidad {$unidad}) está en proceso de compra. Notificado por {$nick}.";
+                $tipoNotif = 'orden_en_proceso';
+            }
+
+            $sql = "INSERT INTO table_notificaciones (tipo_notificacion, id_referencia, mensaje) VALUES (?, ?, ?)";
+            $this->ordenModel->insertRaw($sql, [$tipoNotif, $idDespacho, $mensaje]);
+            $arrResponse = ['success' => true];
+
+        } catch (Exception $e) {
+            $arrResponse['message'] = $e->getMessage();
+        }
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
     }
 }
 ?>

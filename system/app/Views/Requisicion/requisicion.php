@@ -171,6 +171,9 @@
                             </div>
                         </div>
                         <div class="card-footer text-right">
+                            <?php if ($userDepartment === 'Compras' || $userDepartment === 'Sistemas'): ?>
+                            <button id="btnEnProcesoUrl" class="btn btn-warning"><i class="fas fa-bell"></i> Notificar En Proceso</button>
+                            <?php endif; ?>
                             <button id="btnAprobarUrl" class="btn btn-success"><i class="fas fa-check"></i> Aprobar Requisición</button>
                             <button id="btnOcultarUrl" class="btn btn-secondary">Ocultar Detalle</button>
                         </div>

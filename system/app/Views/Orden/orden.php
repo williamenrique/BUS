@@ -168,9 +168,10 @@
                                             <th>ID</th>
                                             <th>Fecha</th>
                                             <th>Unidad</th>
-                                            <th>Operador</th>
-                                            <th>Artículos</th>
-                                            <th>Acciones</th>
+                                            <th class="text-center">Estado</th>
+                                            <th>Creador</th>
+                                            <th class="text-center">Artículos</th>
+                                            <th class="text-center">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody id="boxInvoce">

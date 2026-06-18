@@ -48,7 +48,7 @@ class Clean extends Controllers{
         // 2. Mostrar un mensaje JSON (para APIs)
         // 3. Guardar en variable para mostrar en vista
         // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',

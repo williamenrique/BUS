@@ -56,8 +56,15 @@ function distributeNotificationsUI(notifications) {
 
     // Filtrar notificaciones por tipo
     const recoveryNotifs = notifications.filter(n => n.tipo_notificacion === 'recuperacion_usuario');
-    // Unificamos requisiciones y despachos pendientes en la misma campana de "órdenes"
-    const orderNotifs = notifications.filter(n => n.tipo_notificacion === 'nueva_requisicion' || n.tipo_notificacion === 'despacho_pendiente');
+    // Unificamos requisiciones, despachos pendientes y órdenes despachadas en la misma campana
+    const orderNotifs = notifications.filter(n =>
+        n.tipo_notificacion === 'nueva_requisicion' ||
+        n.tipo_notificacion === 'despacho_pendiente' ||
+        n.tipo_notificacion === 'orden_despachada' ||
+        n.tipo_notificacion === 'orden_en_proceso' ||
+        n.tipo_notificacion === 'orden_aprobada_ops' ||
+        n.tipo_notificacion === 'orden_despachada_ops'
+    );
 
     // Actualizar UI de Recuperación de Usuario
     if (recoveryNotifs.length > 0) {
@@ -84,10 +91,22 @@ function distributeNotificationsUI(notifications) {
 
             if (notif.tipo_notificacion === 'nueva_requisicion') {
                 link = `${base_url}Requisicion/requisicion/${notif.id_referencia}`;
-                icon = 'fa-file-alt text-primary'; // Icono para requisición
+                icon = 'fa-file-alt text-primary';
             } else if (notif.tipo_notificacion === 'despacho_pendiente') {
-                link = `${base_url}Orden/despachosPendientes`; // Apunta a la nueva página de despachos pendientes
-                icon = 'fa-box-open text-success'; // Icono para despacho
+                link = `${base_url}Orden/despachosPendientes`;
+                icon = 'fa-box-open text-success';
+            } else if (notif.tipo_notificacion === 'orden_despachada') {
+                link = `${base_url}Orden/orden`;
+                icon = 'fa-truck text-warning';
+            } else if (notif.tipo_notificacion === 'orden_en_proceso') {
+                link = `${base_url}Orden/orden`;
+                icon = 'fa-cogs text-orange';
+            } else if (notif.tipo_notificacion === 'orden_aprobada_ops') {
+                link = `${base_url}Orden/orden`;
+                icon = 'fa-check-circle text-success';
+            } else if (notif.tipo_notificacion === 'orden_despachada_ops') {
+                link = `${base_url}Orden/orden`;
+                icon = 'fa-truck text-success';
             }
 
             const itemHTML = `<a href="${link}" class="dropdown-item" style="white-space: normal;"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;

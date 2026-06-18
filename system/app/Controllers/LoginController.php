@@ -117,12 +117,12 @@ class Login extends Controllers{
 	 * forzar la session activa para cerrarla si ya existe 
 	 */
     public function forceLogout() {
-        // Recibe el userId por POST (puede venir como JSON o FormData)
-        $userNick = $_POST['userId'] ?? null;
+        // Recibe el userNick por POST (puede venir como JSON o FormData)
+        $userNick = $_POST['userNick'] ?? null; // Changed from 'userId' to 'userNick' as per JS
         if (!$userNick) {
             // Si no viene por POST, intenta obtenerlo por JSON
             $data = json_decode(file_get_contents('php://input'), true);
-            $userNick = $data['userId'] ?? null;
+            $userNick = $data['userNick'] ?? null; // Changed from 'userId' to 'userNick'
         }
         if ($userNick) {
             $activeSession = $this->model->getActiveSession(NULL, $userNick);

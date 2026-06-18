@@ -141,7 +141,7 @@
                                                     <tr>
                                                         <th>Artículo</th>
                                                         <th class="text-center">Cantidad</th>
-                                                        <th class="text-center">Monto Divisa ($)</th>
+                                                        <th class="text-center">Costo Unitario($)</th>
                                                         <th class="text-center">Monto Bs (Calculado)</th>
                                                     </tr>
                                                 </thead>

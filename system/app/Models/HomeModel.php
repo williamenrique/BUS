@@ -61,7 +61,7 @@ class HomeModel extends Mysql {
                             GROUP BY p.id_producto, p.producto ORDER BY total_despachado DESC LIMIT 1";
 
         // CORRECCIÓN: Contar órdenes despachadas (estado 3) en el mes actual
-        $sql_orders_despachadas = "SELECT COUNT(id_despacho) as total_despachadas FROM table_alm_despacho WHERE estado_orden = 3 AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?";
+        $sql_orders_despachadas = "SELECT COUNT(id_despacho) as total_despachadas FROM table_alm_despacho WHERE estado_orden = 3 AND status_despacho = 1 AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?";
         // NUEVO: Contar órdenes aprobadas pendientes de despacho (estado 2)
         $sql_orders_aprobadas = "SELECT COUNT(id_despacho) as total_aprobadas FROM table_alm_despacho WHERE estado_orden = 2 AND status_despacho = 1";
         
@@ -274,18 +274,22 @@ class HomeModel extends Mysql {
 		$totalCount = 0;
 		
 		// Determinar los permisos basados en el rol y departamento
-		$isSistemasAdmin = (strtoupper($userRole) === 'ADMINISTRADOR' && strtoupper($userDepartmentName) === 'SISTEMAS');
-		$isCompras = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartmentName) === 'COMPRAS');
-		$isAlmacen = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartmentName) === 'ALMACEN');
+		$isSistemasAdmin = (strtoupper(trim($userDepartmentName)) === 'SISTEMAS' || strtoupper(trim($userDepartmentName)) === 'SISTEMA' || strtoupper(trim($userRole)) === 'ADMINISTRADOR'); // Admin/Sistema ve todo
+		
+		// Encargados de cada departamento ven sus notificaciones específicas
+		$isEncargadoCompras = (strtoupper(trim($userDepartmentName)) === 'COMPRAS' && strtoupper(trim($userRole)) === 'ENCARGADO');
+		$isEncargadoAlmacen = (strtoupper(trim($userDepartmentName)) === 'ALMACEN' && strtoupper(trim($userRole)) === 'ENCARGADO');
+		$isEncargadoOperaciones = (strtoupper(trim($userDepartmentName)) === 'OPERACIONES' && strtoupper(trim($userRole)) === 'ENCARGADO');
 
 		// 1. Notificaciones de nuevas requisiciones (visibles para Compras y Sistemas/Admin)
-		if ($isSistemasAdmin || $isCompras) {
+		if ($isSistemasAdmin || $isEncargadoCompras) {
 			$sql_requisiciones = "SELECT
 									id_notificacion,
 									'nueva_requisicion' as tipo_notificacion,
 									id_referencia,
 									mensaje,
-									DATE_FORMAT(fecha_creacion, '%d/%m %h:%i %p') as fecha_creacion
+									DATE_FORMAT(fecha_creacion, '%d/%m %h:%i %p') as fecha_creacion,
+									fecha_creacion as fecha_raw
 								FROM table_notificaciones
 								WHERE tipo_notificacion = 'nueva_requisicion' AND leido = 0";
 			$requisition_notifications = $this->select_all($sql_requisiciones);
@@ -300,7 +304,8 @@ class HomeModel extends Mysql {
 								r.id as id_referencia,
 								'recuperacion_usuario' as tipo_notificacion,
 								CONCAT('Solicitud de ', p.personal_nombre) as mensaje,
-								DATE_FORMAT(r.request_date, '%d/%m %h:%i %p') as fecha_creacion
+								DATE_FORMAT(r.request_date, '%d/%m %h:%i %p') as fecha_creacion,
+								r.request_date as fecha_raw
 							FROM table_recovery_requests r
 							JOIN table_usuarios u ON r.user_id = u.usuario_id
 							JOIN table_personal p ON u.usuario_id_personal = p.id_personal
@@ -312,13 +317,14 @@ class HomeModel extends Mysql {
 		}
 
 		// 3. Notificaciones de despachos pendientes (visibles para Almacén y Sistemas/Admin)
-		if ($isSistemasAdmin || $isAlmacen) {
+		if ($isSistemasAdmin || $isEncargadoAlmacen) {
 			$sql_despachos = "SELECT
 									id_notificacion,
 									'despacho_pendiente' as tipo_notificacion,
 									id_referencia,
 									mensaje,
-									DATE_FORMAT(fecha_creacion, '%d/%m %h:%i %p') as fecha_creacion
+									DATE_FORMAT(fecha_creacion, '%d/%m %h:%i %p') as fecha_creacion,
+									fecha_creacion as fecha_raw
 								FROM table_notificaciones
 								WHERE tipo_notificacion = 'despacho_pendiente' AND leido = 0";
 			$despacho_notifications = $this->select_all($sql_despachos);
@@ -327,10 +333,28 @@ class HomeModel extends Mysql {
 			}
 		}
 
-		// 3. Ordenar todas las notificaciones por fecha de creación descendente
+		// 4. Notificaciones de requisiciones en proceso (visibles para Operaciones y Sistemas/Admin)
+		if ($isSistemasAdmin || $isEncargadoOperaciones) {
+			$sql_proceso = "SELECT
+									id_notificacion,
+									tipo_notificacion,
+									id_referencia,
+									mensaje,
+									DATE_FORMAT(fecha_creacion, '%d/%m %h:%i %p') as fecha_creacion,
+									fecha_creacion as fecha_raw
+								FROM table_notificaciones
+								WHERE tipo_notificacion IN ('requisicion_proceso', 'orden_en_proceso', 'orden_aprobada_ops', 'orden_despachada_ops') 
+								AND leido = 0";
+			$proceso_notifications = $this->select_all($sql_proceso);
+			if ($proceso_notifications) {
+				$notifications = array_merge($notifications, $proceso_notifications);
+			}
+		}
+
+		// 5. Ordenar todas las notificaciones por fecha de creación descendente
 		if (!empty($notifications)) {
 			usort($notifications, function ($a, $b) {
-				return strtotime(str_replace('/', '-', $b['fecha_creacion'])) - strtotime(str_replace('/', '-', $a['fecha_creacion']));
+				return strtotime($b['fecha_raw']) - strtotime($a['fecha_raw']);
 			});
 		}
 

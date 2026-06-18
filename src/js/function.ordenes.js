@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 function setTitleByRole() {
     const titleElement = document.getElementById('form-title');
-    if (currentUserRole === 'JEFE DE TALLER' || currentUserRole === 'JEFE DE PATIO') {
+    if (userRole === 'JEFE DE TALLER' || userRole === 'JEFE DE PATIO') {
         titleElement.innerHTML = '<i class="fas fa-clipboard-list mr-2"></i> Nueva Requisición';
     } else {
         titleElement.innerHTML = '<i class="fas fa-truck-loading mr-2"></i> Nuevo Despacho';
@@ -454,7 +454,7 @@ function inicializarDataTable() {
         },
         "columns": [
             { "data": "id_despacho" },
-            { "data": "fecha_despacho" },
+            { "data": "fecha_aprobacion" },
             {
                 "data": null, "render": function (data, type, row) {
                     return `${row.id_unidad} - ${row.modelo_unidad}`;
@@ -465,7 +465,7 @@ function inicializarDataTable() {
                     return formatEstadoOrden(data);
                 }
             },
-            { "data": "operador_nombre" },
+            { "data": "creador_nombre" },
             {
                 "data": "total_articulos", "className": "text-center", "render": function (data, type, row) {
                     return `<span class="badge badge-info">${data} artículos</span>`;
@@ -493,9 +493,9 @@ function inicializarDataTable() {
     // Aplicar filtro por defecto según el rol del usuario
     tblOrdenes.on('init.dt', function () {
         let defaultFilter = '';
-        if (currentUserRole === 'COMPRAS') {
+        if (userRole === 'COMPRAS') {
             defaultFilter = 'Requisición';
-        } else if (currentUserRole === 'ALMACEN') {
+        } else if (userRole === 'ALMACEN') {
             defaultFilter = 'Aprobada';
         }
 
@@ -531,20 +531,25 @@ function formatEstadoOrden(estado) {
 }
 
 function getOrdenActionButtons(row) {
-    let buttons = `<button onclick="fntViewOrden(${row.id_despacho})" class="btn btn-info btn-sm" title="Ver detalles"><i class="fas fa-eye"></i></button>`;
+    return `<div class="btn-group">${row.acciones}</div>`; // The actions are now rendered by the server
+}
 
-    if (parseInt(row.estado_orden) === 1 && (currentUserRole === 'COMPRAS' || currentUserRole === 'ADMINISTRADOR')) {
-        buttons += ` <button onclick="fntAprobarOrden(${row.id_despacho})" class="btn btn-primary btn-sm" title="Aprobar Requisición"><i class="fas fa-check-double"></i></button>`;
+async function fntNotificarEnProceso(idDespacho) {
+    const result = await showConfirm(
+        'Notificar a Operaciones',
+        `¿Desea notificar a Operaciones que la Orden #${idDespacho} está en proceso de compra?`,
+        'question',
+        'Sí, notificar'
+    );
+    if (!result.isConfirmed) return;
+    try {
+        const params = new URLSearchParams({ id_despacho: idDespacho });
+        const response = await fetch(base_url + 'Orden/notificarEnProceso', { method: 'POST', body: params });
+        const data = await response.json();
+        notifi(data.message, data.success ? 'success' : 'error');
+    } catch (error) {
+        notifi('Error al enviar la notificación.', 'error');
     }
-
-    if (parseInt(row.estado_orden) === 2 && (currentUserRole === 'ALMACEN' || currentUserRole === 'ADMINISTRADOR')) {
-        buttons += ` <button onclick="fntDespacharOrden(${row.id_despacho})" class="btn btn-success btn-sm" title="Despachar Orden"><i class="fas fa-truck"></i></button>`;
-    }
-
-    buttons += ` <button onclick="fntImpDespacho(${row.id_despacho})" class="btn btn-secondary btn-sm" title="Imprimir PDF"><i class="fas fa-print"></i></button>`;
-    buttons += ` <button onclick="fntdelDesp(${row.id_despacho})" class="btn btn-danger btn-sm" title="Anular"><i class="fas fa-trash-alt"></i></button>`;
-
-    return `<div class="btn-group">${buttons}</div>`;
 }
 
 async function fntAprobarOrden(idDespacho) {
@@ -555,6 +560,9 @@ async function fntAprobarOrden(idDespacho) {
         const data = await response.json();
         if (data.success) {
             notifi(data.message, 'success');
+            // Notificar automáticamente a Operaciones que la requisición fue aprobada
+            const paramsNotif = new URLSearchParams({ id_despacho: idDespacho, tipo: 'aprobada' });
+            await fetch(base_url + 'Orden/notificarOperaciones', { method: 'POST', body: paramsNotif });
             tblOrdenes.ajax.reload();
         } else {
             notifi(data.message, 'error');

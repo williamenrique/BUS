@@ -105,26 +105,37 @@ class RequisicionModel extends Mysql {
             }
 
             // 4. Actualizar el estado del despacho a "Aprobada" (estado_orden = 2) para que Almacén pueda procesarlo.
-            $sql_update_despacho = "UPDATE table_alm_despacho SET estado_orden = 2 WHERE id_despacho = ?";
-            $this->update($sql_update_despacho, [$idRequisicion]);
+            $sql_update_despacho = "UPDATE table_alm_despacho SET estado_orden = 2, usuario_aprobador_id = ?, fecha_aprobacion = NOW() WHERE id_despacho = ?";
+            $this->update($sql_update_despacho, [$idUsuarioAprobador, $idRequisicion]);
 
-            // 5. Marcar la notificación de 'nueva_requisicion' como leída
+            // 5. Actualizar el estado en la tabla de requisición específica
+            $sql_update_req = "UPDATE table_alm_requisicion SET status_requisicion = 2 WHERE id_despacho_fk = ?";
+            $this->update($sql_update_req, [$idRequisicion]);
+
+            // 6. Insertar cada artículo en la tabla de compras pendientes para su posterior costeo.
+            $despachoInfo = $this->select("SELECT id_flota, fecha_despacho FROM table_alm_despacho WHERE id_despacho = ?", [$idRequisicion]);
+            foreach ($requisicion['articulos'] as $item) {
+                $sql_pendiente = "INSERT INTO table_compras_pendientes 
+                                    (id_despacho, id_producto, id_flota, cant_despacho, fecha_despacho, status_costeo)
+                                  VALUES (?, ?, ?, ?, ?, 'Pendiente')";
+                $params_pendiente = [$idRequisicion, $item['id_producto'], $despachoInfo['id_flota'], $item['cant_despacho'], $despachoInfo['fecha_despacho']];
+                $this->insert($sql_pendiente, $params_pendiente);
+            }
+
+            // 7. Marcar la notificación de 'nueva_requisicion' como leída
             $sql_update_notif = "UPDATE table_notificaciones SET leido = 1 WHERE tipo_notificacion = 'nueva_requisicion' AND id_referencia = ?";
             $this->update($sql_update_notif, [$idRequisicion]);
 
-            // 6. Crear una nueva notificación para Almacén para que despachen la orden
+            // 8. Crear una nueva notificación para Almacén para que despachen la orden
             $sql_notificacion_almacen = "INSERT INTO table_notificaciones (tipo_notificacion, id_referencia, mensaje, leido) VALUES (?, ?, ?, 0)";
-            $mensaje_almacen = "Despacho #${idRequisicion} pendiente de preparación en Almacén.";
+            $mensaje_almacen = "Requisición #{$idRequisicion} aprobada. Pendiente de despacho en Almacén.";
             $this->insert($sql_notificacion_almacen, ['despacho_pendiente', $idRequisicion, $mensaje_almacen]);
 
             // Si todo fue exitoso, confirmar la transacción
             $this->commit();
-            return $idRequisicion; // Devolvemos el mismo ID
-
+            return true;
         } catch (Exception $e) {
-            // Si algo falla, revertir todos los cambios
             $this->rollBack();
-            // Loguear el error y lanzarlo para que el controlador lo capture
             error_log("Error en aprobarRequisicionYGenerarDespacho: " . $e->getMessage());
             throw $e;
         }
@@ -205,7 +216,8 @@ class RequisicionModel extends Mysql {
                     req.tipo_orden,
                     p.personal_nombre as creador_nombre,
                     p.personal_apellido as creador_apellido,
-                    d.estado_orden
+                    d.estado_orden,
+                    (SELECT EXISTS(SELECT 1 FROM table_alm_requisicion_detalle rd JOIN table_alm_relacion_producto rpr ON rd.id_producto = rpr.id_producto WHERE rd.id_requisicion_fk = req.id_requisicion AND rpr.cant_producto < rd.cantidad_solicitada)) AS has_insufficient_stock_items
                 FROM table_alm_despacho d
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_usuarios u ON d.user_id = u.usuario_id
@@ -214,46 +226,6 @@ class RequisicionModel extends Mysql {
                 WHERE d.status_despacho = 1
                 ORDER BY d.id_despacho DESC";
         return $this->select_all($sql);
-    }
-
-    /**
-     * Aprueba una requisición cambiando su estado y notificando a Almacén.
-     * @param int $idDespacho El ID del despacho que representa la requisición.
-     * @param int $idUsuarioAprobador El ID del usuario de Compras que aprueba.
-     * @return bool
-     */
-    public function aprobarRequisicion(int $idDespacho, int $idUsuarioAprobador) {
-        $this->beginTransaction();
-        try {
-            // 1. Verificar que la orden exista y esté pendiente
-            $orden = $this->select("SELECT estado_orden FROM table_alm_despacho WHERE id_despacho = ?", [$idDespacho]);
-            if (empty($orden) || $orden['estado_orden'] != 1) {
-                throw new Exception("La requisición no existe o ya fue procesada.");
-            }
-
-            // 2. Actualizar el estado de la orden en `table_alm_despacho` a 'Aprobada' (2)
-            $sql_update_despacho = "UPDATE table_alm_despacho SET estado_orden = 2, usuario_aprobador_id = ?, fecha_aprobacion = NOW() WHERE id_despacho = ?";
-            $this->update($sql_update_despacho, [$idUsuarioAprobador, $idDespacho]);
-
-            // 3. Actualizar el estado en la tabla de requisición específica
-            $sql_update_req = "UPDATE table_alm_requisicion SET status_requisicion = 2 WHERE id_despacho_fk = ?";
-            $this->update($sql_update_req, [$idDespacho]);
-
-            // 4. Marcar la notificación original para Compras como leída
-            $sql_update_notif_compras = "UPDATE table_notificaciones SET leido = 1 WHERE tipo_notificacion = 'nueva_requisicion' AND id_referencia = ?";
-            $this->update($sql_update_notif_compras, [$idDespacho]);
-
-            // 5. Crear una nueva notificación para Almacén
-            $sql_notificacion_almacen = "INSERT INTO table_notificaciones (tipo_notificacion, id_referencia, mensaje, leido) VALUES (?, ?, ?, 0)";
-            $mensaje_almacen = "Requisición #${idDespacho} aprobada. Pendiente de despacho en Almacén.";
-            $this->insert($sql_notificacion_almacen, ['despacho_pendiente', $idDespacho, $mensaje_almacen]);
-
-            $this->commit();
-            return true;
-        } catch (Exception $e) {
-            $this->rollBack();
-            throw $e; // Re-lanzar la excepción para que el controlador la capture
-        }
     }
 
 }

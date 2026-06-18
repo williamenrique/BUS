@@ -45,7 +45,7 @@ class Home extends Controllers {
         // 2. Mostrar un mensaje JSON (para APIs)
         // 3. Guardar en variable para mostrar en vista
         // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',
@@ -140,7 +140,7 @@ class Home extends Controllers {
             // 1. Actualizar la estación en la base de datos
             $updated = $this->model->updateUserStation($userId, $stationId);
 
-            if ($updated = '1' && $updated = ' ') {
+            if ($updated) {
                 // 2. Refrescar los datos de la sesión para que el cambio sea inmediato
                 // Se usa el HomeModel para refrescar la sesión
                 $newSessionData = $this->model->refreshSession($userId);

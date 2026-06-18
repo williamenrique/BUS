@@ -312,6 +312,8 @@ async function fntGetArtRequisicion(selectedData) {
 
 /**
  * Valida la cantidad ingresada en tiempo real contra el stock disponible.
+ * Para requisiciones, permite solicitar más del stock disponible, pero muestra una advertencia.
+ * Siempre retorna true si la cantidad es > 0, para permitir la adición a la requisición.
  */
 function validarCantidadRequisicion() {
     const cantidadInput = document.getElementById('txtCant');
@@ -326,9 +328,9 @@ function validarCantidadRequisicion() {
     }
 
     if (cantidad > stockDisponible) {
-        validationElement.textContent = `Stock insuficiente. Disponible: ${stockDisponible}.`;
-        validationElement.className = 'form-text text-danger';
-        return false;
+        validationElement.textContent = `Stock insuficiente. Disponible: ${stockDisponible}. Se solicitará a Compras.`;
+        validationElement.className = 'form-text text-warning'; // Advertencia, no error
+        return true; // Permitir agregar a la requisición, es una solicitud
     }
 
     validationElement.textContent = `Stock disponible: ${stockDisponible}. Cantidad válida.`;
@@ -343,6 +345,7 @@ function agregarArticuloATabla() {
     const selectArticulo = document.getElementById('listArticulo');
     const cantidadInput = document.getElementById('txtCant');
     const idArticulo = selectArticulo.value;
+    const stockDisponible = parseFloat(cantidadInput.dataset.stockDisponible) || 0;
     const cantidad = parseFloat(cantidadInput.value);
 
     if (!idArticulo || idArticulo === "0") {
@@ -350,8 +353,11 @@ function agregarArticuloATabla() {
         return;
     }
 
-    if (!validarCantidadRequisicion()) {
-        notifi('Seleccione un artículo y una cantidad válida.', 'warning');
+    // Validar que la cantidad sea mayor a 0.
+    // La función validarCantidadRequisicion ahora solo asegura que la cantidad sea > 0
+    // y muestra el mensaje de stock, pero siempre retorna true si la cantidad es válida.
+    if (isNaN(cantidad) || cantidad <= 0) {
+        notifi('La cantidad solicitada debe ser mayor a 0.', 'warning');
         return;
     }
 
@@ -361,13 +367,15 @@ function agregarArticuloATabla() {
         return;
     }
 
+    const stockBadge = stockDisponible <= 0 ? '<span class="badge badge-danger ml-2">Sin Stock</span>' : '';
+
     const nombreArticulo = selectArticulo.options[selectArticulo.selectedIndex].text.split(' (Stock:')[0];
     const tablaBody = document.getElementById('tblArticulosAgregados').querySelector('tbody');
 
     const fila = `
         <tr data-id-articulo="${idArticulo}">
             <td>${idArticulo}</td>
-            <td>${nombreArticulo}</td>
+            <td>${nombreArticulo} ${stockBadge}</td>
             <td class="text-center">${cantidad}</td>
             <td class="text-center">
                 <button type="button" class="btn btn-danger btn-sm btn-eliminar-articulo" title="Eliminar">
@@ -407,24 +415,6 @@ function actualizarResumenArticulos() {
 
     if (resumenTotalArticulosElem) resumenTotalArticulosElem.textContent = totalArticulos;
     if (resumenTotalUnidadesElem) resumenTotalUnidadesElem.textContent = totalUnidades;
-}
-
-/**
- * Actualiza el conteo de artículos y unidades en la tarjeta de resumen.
- */
-function actualizarResumenArticulos() {
-    const tablaBody = document.getElementById('tblArticulosAgregados').querySelector('tbody');
-    const filas = tablaBody.querySelectorAll('tr');
-
-    const totalArticulos = filas.length;
-    let totalUnidades = 0;
-
-    filas.forEach(fila => {
-        totalUnidades += parseFloat(fila.cells[2].textContent) || 0;
-    });
-
-    document.getElementById('resumenTotalArticulos').textContent = totalArticulos;
-    document.getElementById('resumenTotalUnidades').textContent = totalUnidades;
 }
 
 /**
@@ -487,8 +477,11 @@ async function fntViewRequisicion(idDespacho) {
                 req.articulos.forEach(articulo => {
                     const row = `
                         <tr>
-                            <td>${articulo.producto} (${articulo.present_producto})</td>
-                            <td class="text-center">${articulo.cant_despacho}</td>
+                            <td>
+                                ${articulo.producto} (${articulo.present_producto})
+                                ${articulo.stock_actual < articulo.cant_despacho ? '<span class="badge badge-danger ml-2">Sin Stock</span>' : ''}
+                            </td>
+                            <td class="text-center">${articulo.cant_despacho} (Disp: ${articulo.stock_actual})</td>
                         </tr>
                     `;
                     tablaArticulosBody.insertAdjacentHTML('beforeend', row);
@@ -546,7 +539,28 @@ async function fntLoadRequisicionParaAprobar(idDespacho) {
 
             // Configurar botones
             const btnAprobar = container.querySelector('#btnAprobarUrl');
-            btnAprobar.dataset.idDespacho = idDespacho; // Guardar el ID en el botón
+            const btnEnProceso = container.querySelector('#btnEnProcesoUrl');
+            btnAprobar.dataset.idDespacho = idDespacho;
+
+            //const btnEnProceso = container.querySelector('#btnEnProcesoUrl');
+            if (btnEnProceso) {
+                btnEnProceso.onclick = () => fntNotificarEnProcesoReq(idDespacho);
+            }
+
+            // Lógica para habilitar/deshabilitar el botón de aprobar
+            let canApprove = true;
+            let stockWarningMessage = '';
+            if (req.articulos && req.articulos.length > 0) {
+                req.articulos.forEach(articulo => {
+                    if (articulo.stock_actual < articulo.cant_despacho) {
+                        canApprove = false;
+                        stockWarningMessage = 'No se puede aprobar: Hay artículos con stock insuficiente.';
+                    }
+                });
+            }
+
+            btnAprobar.disabled = !canApprove;
+            if (!canApprove) notifi(stockWarningMessage, 'warning');
 
             // Mostrar la sección y ocultar el botón de "Ocultar" si no es necesario
             container.style.display = 'block';
@@ -587,19 +601,35 @@ async function fntAprobarRequisicion(idDespacho) {
         const res = await response.json();
         notifi(res.msg, res.success ? 'success' : 'error');
         if (res.success) {
+            // Notificar automáticamente a Operaciones que fue aprobada
+            const paramsNotif = new URLSearchParams({ id_despacho: idDespacho, tipo: 'aprobada' });
+            await fetch(base_url + 'Orden/notificarOperaciones', { method: 'POST', body: paramsNotif });
             document.getElementById('viewRequisicionUrl').style.display = 'none';
-            // 1. Actualizar la campana de notificaciones
-            if (typeof loadAllNotifications === 'function') {
-                loadAllNotifications();
-            }
-            // 2. Recargar la tabla para que el estado y los botones se actualicen
-            // 1. Actualizar la campana de notificaciones
-            if (typeof loadAllNotifications === 'function') {
-                loadAllNotifications();
-            }
-            // 2. Recargar la tabla para que el estado y los botones se actualicen
+            if (typeof loadAllNotifications === 'function') loadAllNotifications();
             tableRequisicion.ajax.reload();
         }
+    }
+}
+
+async function fntNotificarEnProcesoReq(idDespacho) {
+    const result = await Swal.fire({
+        title: 'Notificar a Operaciones',
+        text: `¿Desea notificar a Operaciones que la Requisición #${idDespacho} está en proceso de compra?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f39c12',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Sí, notificar',
+        cancelButtonText: 'Cancelar'
+    });
+    if (!result.isConfirmed) return;
+    try {
+        const params = new URLSearchParams({ id_despacho: idDespacho });
+        const response = await fetch(base_url + 'Orden/notificarEnProceso', { method: 'POST', body: params });
+        const data = await response.json();
+        notifi(data.message, data.success ? 'success' : 'error');
+    } catch (error) {
+        notifi('Error al enviar la notificación.', 'error');
     }
 }
 
