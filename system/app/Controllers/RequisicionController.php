@@ -123,14 +123,13 @@ private $db; //para inicializar la base de datos
             $arrData = $this->model->getRequisiciones();
 
             for ($i = 0; $i < count($arrData); $i++) {
-                $userRole = $_SESSION['userData']['rol_nombre'] ?? ''; // 'Encargado'
-                $userDepartment = $_SESSION['userData']['departamento_nombre'] ?? ''; // 'Compras'
+                $userRole = $_SESSION['userData']['rol_nombre'] ?? '';
+                $userDepartment = $_SESSION['userData']['departamento_nombre'] ?? '';
                 $estadoNum = $arrData[$i]['estado_orden'];
                 $hasInsufficientStock = $arrData[$i]['has_insufficient_stock_items'];
                 $idDespacho = $arrData[$i]['id_despacho'];
 
                 // Lógica de Estado (Badge o Botón)
-                // Solo Compras (Encargado) o Administrador pueden ver el estado como un botón para aprobar.
                 $canApprove = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartment) === 'COMPRAS') || (strtoupper($userRole) === 'ADMINISTRADOR');
 
                 if ($canApprove && $estadoNum == 1) {
@@ -140,12 +139,10 @@ private $db; //para inicializar la base de datos
                     }
                     $arrData[$i]['estado_orden'] = '<button class="btn btn-warning btn-sm" onClick="fntLoadRequisicionParaAprobar('.$idDespacho.')" title="Cargar para Aprobar">' . $badgeText . '</button>';
                 } else {
-                    // Para todos los demás casos, es un badge normal
                     $badge = '<span class="badge badge-secondary">Desconocido</span>';
                     if ($estadoNum == 1) $badge = '<span class="badge badge-warning">Pendiente' . ($hasInsufficientStock ? ' <span class="badge badge-danger">Stock Insuficiente</span>' : '') . '</span>';
                     if ($estadoNum == 2) $badge = '<span class="badge badge-info">Aprobada</span>';
-                    // No se muestra "Sin Stock" aquí, ya que Compras ya aprobó y descontó.
-                    if ($estadoNum == 3) $badge = '<span class="badge badge-success">Despachada</span>'; // Este estado ya no debería verse aquí
+                    if ($estadoNum == 3) $badge = '<span class="badge badge-success">Despachada</span>';
                     if ($estadoNum == 4) $badge = '<span class="badge badge-danger">Rechazada</span>';
                     $arrData[$i]['estado_orden'] = $badge;
                 }
@@ -155,7 +152,7 @@ private $db; //para inicializar la base de datos
                 $btnPrint = '<button class="btn btn-secondary btn-sm" onClick="fntImprimirRequisicion('.$idDespacho.')" title="Imprimir Orden"><i class="fas fa-print"></i></button>';
                 $btnAprobar = '';
                 $btnEnProceso = '';
-                if ($userRole === 'Encargado' && $userDepartment === 'Compras' && $estadoNum == 1) {
+                if (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartment) === 'COMPRAS' && $estadoNum == 1) {
                     $btnAprobar = '<button class="btn btn-primary btn-sm ml-1" onClick="fntLoadRequisicionParaAprobar('.$idDespacho.')" title="Cargar para Aprobar"><i class="fas fa-check-double"></i></button>';
                     $btnEnProceso = '<button class="btn btn-warning btn-sm ml-1" onClick="fntNotificarEnProcesoReq('.$idDespacho.')" title="Notificar a Operaciones: En Proceso"><i class="fas fa-bell"></i></button>';
                 }
@@ -166,7 +163,6 @@ private $db; //para inicializar la base de datos
             echo json_encode(['data' => $arrData], JSON_UNESCAPED_UNICODE);
 
         } catch (Exception $e) {
-            // Manejo de errores
             echo json_encode(['data' => [], 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
         die();
@@ -210,6 +206,7 @@ private $db; //para inicializar la base de datos
 
     /**
      * Procesa la aprobación de una requisición.
+     * CORREGIDO: Ahora llama correctamente al método del modelo.
      */
     public function aprobarRequisicion() {
         if ($_POST) {
@@ -222,10 +219,55 @@ private $db; //para inicializar la base de datos
             }
 
             try {
-                $request = $this->model->aprobarRequisicion($idDespacho, $idUsuarioAprobador);
-                echo json_encode(['success' => true, 'msg' => 'Requisición aprobada con éxito. Notificación enviada a Almacén.'], JSON_UNESCAPED_UNICODE);
+                // CORRECCIÓN: El método en el modelo se llama aprobarRequisicionYGenerarDespacho
+                $request = $this->model->aprobarRequisicionYGenerarDespacho($idDespacho, $idUsuarioAprobador);
+                if ($request) {
+                    echo json_encode(['success' => true, 'msg' => 'Requisición aprobada con éxito. Stock descontado y notificación enviada a Almacén.'], JSON_UNESCAPED_UNICODE);
+                } else {
+                    echo json_encode(['success' => false, 'msg' => 'No se pudo aprobar la requisición.'], JSON_UNESCAPED_UNICODE);
+                }
             } catch (Exception $e) {
-                echo json_encode(['success' => false, 'msg' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+                echo json_encode(['success' => false, 'msg' => 'Error al aprobar: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            }
+        }
+        die();
+    }
+
+    /**
+     * Notifica a Operaciones que una orden está en proceso.
+     * NUEVO MÉTODO AGREGADO
+     */
+    public function notificarEnProceso() {
+        if ($_POST) {
+            $idDespacho = intval($_POST['id_despacho']);
+            $usuarioNick = $_SESSION['userData']['usuario_nick'] ?? 'Usuario';
+
+            if ($idDespacho <= 0) {
+                echo json_encode(['success' => false, 'msg' => 'ID de requisición inválido.'], JSON_UNESCAPED_UNICODE);
+                die();
+            }
+
+            try {
+                // Llamar al método del modelo OrdenModel que ya existe para esta funcionalidad
+                // Usamos el modelo OrdenModel que ya tiene el método existeNotifEnProceso e insertarNotifEnProceso
+                $ordenModel = new OrdenModel();
+                
+                // Verificar si ya existe una notificación activa para esta orden hoy
+                if ($ordenModel->existeNotifEnProceso($idDespacho)) {
+                    echo json_encode(['success' => false, 'msg' => 'Ya existe una notificación activa para esta orden hoy.'], JSON_UNESCAPED_UNICODE);
+                    die();
+                }
+
+                // Obtener la unidad para el mensaje
+                $unidadInfo = $this->model->select("SELECT f.id_unidad FROM table_flota f JOIN table_alm_despacho d ON f.id_flota = d.id_flota WHERE d.id_despacho = ?", [$idDespacho]);
+                $idUnidad = $unidadInfo['id_unidad'] ?? $idDespacho;
+
+                // Insertar la notificación
+                $ordenModel->insertarNotifEnProceso($idDespacho, $usuarioNick, $idUnidad);
+                
+                echo json_encode(['success' => true, 'msg' => 'Notificación enviada a Operaciones.'], JSON_UNESCAPED_UNICODE);
+            } catch (Exception $e) {
+                echo json_encode(['success' => false, 'msg' => 'Error al notificar: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
             }
         }
         die();
@@ -251,8 +293,6 @@ private $db; //para inicializar la base de datos
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
-
-    // Aquí se agregarán más métodos como getRequisiciones, aprobarRequisicion, etc.
 
 }
 ?>

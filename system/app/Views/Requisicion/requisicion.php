@@ -130,14 +130,18 @@
                     </div>
                     <?php endif; ?>
 
-                    <!-- =========== SECCIÓN PARA APROBAR REQUISICIÓN (MOVIDA AQUÍ) =========== -->
+                    <!-- =========== SECCIÓN PARA APROBAR REQUISICIÓN =========== -->
                     <?php if ($userDepartment === 'Compras' || $userDepartment === 'Sistemas'): ?>
-                    <!-- La sección de aprobación solo es visible para Compras y Sistemas -->
                     <div id="viewRequisicionUrl" class="card card-info card-outline" style="display: none;">
                         <div class="card-header">
                             <h3 class="card-title">
                                 <i class="fas fa-eye"></i> Detalle de Requisición #<span id="viewIdRequisicionUrl"></span>
                             </h3>
+                            <div class="card-tools">
+                                <button type="button" class="btn btn-tool" id="btnOcultarUrl" title="Ocultar Detalle">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
                         <div class="card-body">
                             <div class="row">
@@ -153,29 +157,50 @@
                                 <div class="col-md-6">
                                     <h6>Personal Involucrado</h6>
                                     <ul class="list-unstyled">
-                                        <li><strong>Jefe de Patio/Taller:</strong> <span id="viewJefePatio"></span></li>
+                                        <li><strong>Creador de la Requisicion:</strong> <span id="viewJefePatio"></span></li>
                                         <li><strong>Mecánico:</strong> <span id="viewMecanico"></span></li>
                                     </ul>
                                 </div>
                             </div>
                             <hr>
                             <h6>Diagnóstico / Observaciones</h6>
-                            <p id="viewDiagnostico"></p>
+                            <p id="viewDiagnostico" class="text-muted"></p>
                             <hr>
                             <h6>Artículos Solicitados</h6>
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered">
-                                    <thead class="thead-light"><tr><th>Artículo</th><th>Cantidad</th></tr></thead>
+                                    <thead class="thead-light">
+                                        <tr>
+                                            <th>Artículo</th>
+                                            <th class="text-center" style="width: 100px;">Cantidad</th>
+                                            <th class="text-center" style="width: 120px;">Stock</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="viewTablaArticulosReq"></tbody>
                                 </table>
                             </div>
                         </div>
-                        <div class="card-footer text-right">
-                            <?php if ($userDepartment === 'Compras' || $userDepartment === 'Sistemas'): ?>
-                            <button id="btnEnProcesoUrl" class="btn btn-warning"><i class="fas fa-bell"></i> Notificar En Proceso</button>
-                            <?php endif; ?>
-                            <button id="btnAprobarUrl" class="btn btn-success"><i class="fas fa-check"></i> Aprobar Requisición</button>
-                            <button id="btnOcultarUrl" class="btn btn-secondary">Ocultar Detalle</button>
+                        <div class="card-footer">
+                            <div class="row">
+                                <?php if ($userDepartment === 'Compras' || $userDepartment === 'Sistemas'): ?>
+                                <div class="col-md-6">
+                                    <button id="btnEnProcesoUrl" class="btn btn-warning btn-block">
+                                        <i class="fas fa-bell"></i> Notificar En Proceso
+                                    </button>
+                                </div>
+                                <div class="col-md-6">
+                                    <button id="btnAprobarUrl" class="btn btn-success btn-block">
+                                        <i class="fas fa-check"></i> Aprobar Requisición
+                                    </button>
+                                </div>
+                                <?php else: ?>
+                                <div class="col-md-12">
+                                    <button id="btnAprobarUrl" class="btn btn-success btn-block">
+                                        <i class="fas fa-check"></i> Aprobar Requisición
+                                    </button>
+                                </div>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     </div>
                     <?php endif; ?>
@@ -272,7 +297,7 @@
                 </div>
                 <hr>
                 <h6>Diagnóstico / Observaciones</h6>
-                <p id="modalViewDiagnostico"></p>
+                <p id="modalViewDiagnostico" class="text-muted"></p>
                 <hr>
                 <h6>Artículos Solicitados</h6>
                 <div class="table-responsive">
@@ -280,7 +305,8 @@
                         <thead class="thead-light">
                             <tr>
                                 <th>Artículo</th>
-                                <th>Cantidad</th>
+                                <th class="text-center" style="width: 100px;">Cantidad</th>
+                                <th class="text-center" style="width: 120px;">Stock</th>
                             </tr>
                         </thead>
                         <tbody id="modalViewTablaArticulosReq">

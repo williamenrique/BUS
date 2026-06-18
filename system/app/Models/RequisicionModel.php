@@ -8,6 +8,15 @@ class RequisicionModel extends Mysql {
         parent::__construct();
         $this->personalModel = new PersonalModel();
     }
+
+    /**
+     * Método genérico para ejecutar consultas SELECT simples
+     * CORREGIDO: Ahora es compatible con la firma de la clase padre
+     */
+    public function select(string $query, array $arrValues = []): ?array {
+        return parent::select($query, $arrValues);
+    }
+
     /**
      * Selecciona todas las requisiciones para la DataTable.
      */
@@ -16,15 +25,15 @@ class RequisicionModel extends Mysql {
                     d.id_despacho as id_requisicion,
                     d.fecha_despacho as fecha_requisicion,
                     f.id_unidad,
-                    'N/A' as tipo_orden, -- Este campo no existe en despachos, se pone un placeholder
+                    'N/A' as tipo_orden,
                     d.estado_orden as status_requisicion,
-                    d.despachador as creador -- Usamos el despachador como creador
+                    d.despachador as creador
                 FROM table_alm_despacho d
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
-                WHERE 1=1"; // Placeholder para futuras condiciones
+                WHERE 1=1";
 
         if ($status === 'Pendiente') {
-            $sql .= " AND d.estado_orden = 1"; // 1 = Requisicion (Pendiente de aprobación)
+            $sql .= " AND d.estado_orden = 1";
         }
 
         $sql .= " ORDER BY d.id_despacho DESC";
@@ -33,22 +42,19 @@ class RequisicionModel extends Mysql {
 
     /**
      * Selecciona una requisición específica con sus detalles.
+     * CORREGIDO: Ahora incluye stock_actual para cada artículo.
      */
-    public function selectRequisicionById(int $idRequisicion){ // $idRequisicion aquí es el id_despacho_fk
-        // El $idRequisicion que recibimos es en realidad el id_despacho de table_alm_despacho.
-        // El $idRequisicion que recibimos es en realidad el id_despacho que actúa como ID de flujo.
+    public function selectRequisicionById(int $idRequisicion){
         $sql = "SELECT 
                     r.id_requisicion as id_requisicion_interna,
                     r.id_despacho_fk as id_despacho_flujo,
                     r.fecha_creacion as fecha_requisicion,
                     r.observacion as diagnostico,
-                    -- CORRECCIÓN: Usar el estado de la tabla de despacho, que es el estado maestro del flujo.
                     d.estado_orden as status_requisicion,
                     r.id_flota,
                     r.mecanico_cedula,
                     r.tipo_orden,
                     r.user_id_creador,
-                    -- CORRECCIÓN: Obtener el operador y despachador final. Usar COALESCE para mostrar el nombre guardado si no hay coincidencia en la tabla de personal.
                     COALESCE(CONCAT(p_operador.personal_nombre, ' ', p_operador.personal_apellido), d.operador) as operador_final,
                     COALESCE(CONCAT(p_despachador.personal_nombre, ' ', p_despachador.personal_apellido), d.despachador) as despachador_final,
                     CONCAT(p_creador.personal_nombre, ' ', p_creador.personal_apellido) as jefe_patio_nombre,
@@ -57,7 +63,7 @@ class RequisicionModel extends Mysql {
                     fm.modelo_unidad
                 FROM table_alm_requisicion r
                 INNER JOIN table_usuarios u ON r.user_id_creador = u.usuario_id
-                INNER JOIN table_alm_despacho d ON r.id_despacho_fk = d.id_despacho -- Unir con despacho para obtener los datos finales
+                INNER JOIN table_alm_despacho d ON r.id_despacho_fk = d.id_despacho
                 INNER JOIN table_personal p_creador ON u.usuario_id_personal = p_creador.id_personal
                 LEFT JOIN table_personal p_operador ON d.operador = p_operador.id_personal
                 LEFT JOIN table_personal p_despachador ON d.despachador = p_despachador.id_personal
@@ -69,8 +75,17 @@ class RequisicionModel extends Mysql {
         $requisicion = $this->select($sql, [$idRequisicion]);
 
         if($requisicion){
-            // Obtenemos los artículos de la tabla de detalle de requisición usando el ID interno
-            $sql_articulos = "SELECT rd.cantidad_solicitada as cant_despacho, p.id_producto, p.producto, p.present_producto FROM table_alm_requisicion_detalle rd JOIN table_alm_producto p ON rd.id_producto = p.id_producto WHERE rd.id_requisicion_fk = ?";
+            // CORRECCIÓN: Ahora incluimos stock_actual en la consulta de artículos
+            $sql_articulos = "SELECT 
+                                rd.cantidad_solicitada as cant_despacho, 
+                                p.id_producto, 
+                                p.producto, 
+                                p.present_producto,
+                                rp.cant_producto as stock_actual
+                            FROM table_alm_requisicion_detalle rd 
+                            JOIN table_alm_producto p ON rd.id_producto = p.id_producto
+                            JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                            WHERE rd.id_requisicion_fk = ?";
             $requisicion['articulos'] = $this->select_all($sql_articulos, [$requisicion['id_requisicion_interna']]);
         }
         return $requisicion;
@@ -99,12 +114,11 @@ class RequisicionModel extends Mysql {
 
             // 3. Descontar el stock del inventario
             foreach ($requisicion['articulos'] as $item) {
-                // Actualizar (restar) stock en `table_alm_relacion_producto`
                 $sql_update_stock = "UPDATE table_alm_relacion_producto SET cant_producto = cant_producto - ? WHERE id_producto = ?";
                 $this->update($sql_update_stock, [$item['cant_despacho'], $item['id_producto']]);
             }
 
-            // 4. Actualizar el estado del despacho a "Aprobada" (estado_orden = 2) para que Almacén pueda procesarlo.
+            // 4. Actualizar el estado del despacho a "Aprobada" (estado_orden = 2)
             $sql_update_despacho = "UPDATE table_alm_despacho SET estado_orden = 2, usuario_aprobador_id = ?, fecha_aprobacion = NOW() WHERE id_despacho = ?";
             $this->update($sql_update_despacho, [$idUsuarioAprobador, $idRequisicion]);
 
@@ -142,50 +156,48 @@ class RequisicionModel extends Mysql {
     }
 
     /**
-	 * Inserta una requisición completa:
-	 * 1. Crea un registro en `table_alm_despacho` para mantener el flujo y notificaciones.
-	 * 2. Crea el registro principal en `table_alm_requisicion`.
-	 * 3. Inserta los artículos en `table_alm_requisicion_detalle`.
-	 * 4. Genera la notificación para Compras.
-	 * Todo esto se hace dentro de una transacción.
-	 */
-	public function insertRequisicionCompleta(int $intUnidad, string $srtMec, string $tipoOrden, string $srtObs, int $intIdUser, string $strDate, array $articulos) {
-		$this->beginTransaction();
-		try {
-			// Paso 1: Crear la entrada en `table_alm_despacho` para generar la notificación y mantener el flujo.
-			// Usamos placeholders para operador y despachador, ya que se llenarán después.
+     * Inserta una requisición completa:
+     * 1. Crea un registro en `table_alm_despacho` para mantener el flujo y notificaciones.
+     * 2. Crea el registro principal en `table_alm_requisicion`.
+     * 3. Inserta los artículos en `table_alm_requisicion_detalle`.
+     * 4. Genera la notificación para Compras.
+     * Todo esto se hace dentro de una transacción.
+     */
+    public function insertRequisicionCompleta(int $intUnidad, string $srtMec, string $tipoOrden, string $srtObs, int $intIdUser, string $strDate, array $articulos) {
+        $this->beginTransaction();
+        try {
             // Obtener el nombre completo del mecánico a partir de su cédula
-            $mechanicInfo = $this->personalModel->selectPersonalFullNameByCedula($srtMec); // $srtMec es la cédula
-            $mechanicName = $srtMec; // Valor por defecto en caso de no encontrar el nombre
+            $mechanicInfo = $this->personalModel->selectPersonalFullNameByCedula($srtMec);
+            $mechanicName = $srtMec;
             if ($mechanicInfo) {
                 $mechanicName = trim($mechanicInfo['personal_nombre'] . ' ' . $mechanicInfo['personal_apellido']);
             }
 
-			$queryDespacho = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden) VALUES(?,?,?,?,?,?,?,?,?)";
-			$idDespacho = $this->insert($queryDespacho, [$intUnidad, 'N/A', $mechanicName, 'N/A', $strDate, $intIdUser, $srtObs, 1, 1]);
+            $queryDespacho = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden, origen_despacho) VALUES(?,?,?,?,?,?,?,?,?, 'Requisicion')";
+            $idDespacho = $this->insert($queryDespacho, [$intUnidad, 'N/A', $mechanicName, 'N/A', $strDate, $intIdUser, $srtObs, 1, 1]);
 
-			if ($idDespacho <= 0) {
-				throw new Exception("No se pudo crear el registro de despacho base.");
-			}
+            if ($idDespacho <= 0) {
+                throw new Exception("No se pudo crear el registro de despacho base.");
+            }
 
-			// Paso 2: Crear el registro principal en `table_alm_requisicion`
-			$queryRequisicion = "INSERT INTO table_alm_requisicion (id_despacho_fk, id_flota, mecanico_cedula, tipo_orden, observacion, user_id_creador) VALUES (?, ?, ?, ?, ?, ?)";
-			$idRequisicion = $this->insert($queryRequisicion, [$idDespacho, $intUnidad, $srtMec, $tipoOrden, $srtObs, $intIdUser]);
+            // Paso 2: Crear el registro principal en `table_alm_requisicion`
+            $queryRequisicion = "INSERT INTO table_alm_requisicion (id_despacho_fk, id_flota, mecanico_cedula, tipo_orden, observacion, user_id_creador) VALUES (?, ?, ?, ?, ?, ?)";
+            $idRequisicion = $this->insert($queryRequisicion, [$idDespacho, $intUnidad, $srtMec, $tipoOrden, $srtObs, $intIdUser]);
 
-			if ($idRequisicion <= 0) {
-				throw new Exception("No se pudo crear la requisición principal.");
-			}
+            if ($idRequisicion <= 0) {
+                throw new Exception("No se pudo crear la requisición principal.");
+            }
 
-			// Paso 3: Insertar los artículos en `table_alm_requisicion_detalle`
-			foreach ($articulos as $articulo) {
-				$idArticulo = $articulo['id'];
-				$cantidad = $articulo['cantidad'];
-				$queryDetalle = "INSERT INTO table_alm_requisicion_detalle (id_requisicion_fk, id_producto, cantidad_solicitada) VALUES (?, ?, ?)";
-				$this->insert($queryDetalle, [$idRequisicion, $idArticulo, $cantidad]);
-			}
+            // Paso 3: Insertar los artículos en `table_alm_requisicion_detalle`
+            foreach ($articulos as $articulo) {
+                $idArticulo = $articulo['id'];
+                $cantidad = $articulo['cantidad'];
+                $queryDetalle = "INSERT INTO table_alm_requisicion_detalle (id_requisicion_fk, id_producto, cantidad_solicitada) VALUES (?, ?, ?)";
+                $this->insert($queryDetalle, [$idRequisicion, $idArticulo, $cantidad]);
+            }
 
-			// Paso 4: Generar la notificación para Compras (aprovechando la lógica existente)
-			$sql_user = "SELECT p.personal_nombre, p.personal_apellido FROM table_usuarios u JOIN table_personal p ON u.usuario_id_personal = p.id_personal WHERE u.usuario_id = ?";
+            // Paso 4: Generar la notificación para Compras
+            $sql_user = "SELECT p.personal_nombre, p.personal_apellido FROM table_usuarios u JOIN table_personal p ON u.usuario_id_personal = p.id_personal WHERE u.usuario_id = ?";
             $user_info = $this->select($sql_user, [$intIdUser]);
             $creator_name = $user_info ? trim($user_info['personal_nombre'] . ' ' . $user_info['personal_apellido']) : 'Usuario del sistema';
 
@@ -193,16 +205,15 @@ class RequisicionModel extends Mysql {
             $mensaje = "Nueva Requisición #{$idDespacho} creada por {$creator_name}.";
             $this->insert($sql_notificacion, ['nueva_requisicion', $idDespacho, $mensaje]);
 
-			// Si todo fue exitoso, confirmar la transacción
-			$this->commit();
-			return $idDespacho; // Devolvemos el ID del despacho que es el que controla el flujo
+            $this->commit();
+            return $idDespacho;
 
-		} catch (Exception $e) {
-			$this->rollBack();
-			error_log("Error en insertRequisicionCompleta: " . $e->getMessage());
-			return 0; // Retornar 0 en caso de error
-		}
-	}
+        } catch (Exception $e) {
+            $this->rollBack();
+            error_log("Error en insertRequisicionCompleta: " . $e->getMessage());
+            return 0;
+        }
+    }
 
     /**
      * Obtiene la lista de todas las requisiciones para la DataTable.
@@ -217,7 +228,11 @@ class RequisicionModel extends Mysql {
                     p.personal_nombre as creador_nombre,
                     p.personal_apellido as creador_apellido,
                     d.estado_orden,
-                    (SELECT EXISTS(SELECT 1 FROM table_alm_requisicion_detalle rd JOIN table_alm_relacion_producto rpr ON rd.id_producto = rpr.id_producto WHERE rd.id_requisicion_fk = req.id_requisicion AND rpr.cant_producto < rd.cantidad_solicitada)) AS has_insufficient_stock_items
+                    (SELECT EXISTS(
+                        SELECT 1 FROM table_alm_requisicion_detalle rd 
+                        JOIN table_alm_relacion_producto rpr ON rd.id_producto = rpr.id_producto 
+                        WHERE rd.id_requisicion_fk = req.id_requisicion AND rpr.cant_producto < rd.cantidad_solicitada
+                    )) AS has_insufficient_stock_items
                 FROM table_alm_despacho d
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_usuarios u ON d.user_id = u.usuario_id
@@ -229,3 +244,4 @@ class RequisicionModel extends Mysql {
     }
 
 }
+?>
