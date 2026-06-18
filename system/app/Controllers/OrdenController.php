@@ -116,8 +116,6 @@ class Orden extends Controllers{
         die();
     }
 
-
-
     public function getListFlota(){
         try {
             $arrData = $this->ordenModel->selectListFlota();
@@ -227,6 +225,9 @@ class Orden extends Controllers{
                     case 2:
                         $estadoBadge = '<span class="badge badge-info">Aprobada</span>';
                         break;
+                    case 3:
+                        $estadoBadge = '<span class="badge badge-success">Despachada</span>';
+                        break;
                     default:
                         $estadoBadge = '<span class="badge badge-secondary">Desconocido</span>';
                         break;
@@ -236,7 +237,13 @@ class Orden extends Controllers{
                 // Añadir botones de acción para cada orden pendiente de despacho
                 $btnView = '<button class="btn btn-info btn-sm" onClick="fntViewOrden('.$arrData[$i]['id_despacho'].')" title="Ver Detalles"><i class="far fa-eye"></i></button>';
                 $btnPrint = '<button class="btn btn-secondary btn-sm" onClick="fntImprimirRequisicion('.$arrData[$i]['id_despacho'].')" title="Imprimir Orden"><i class="fas fa-print"></i></button>';
-                $btnDespachar = '<button class="btn btn-success btn-sm ml-1" onClick="fntCargarParaDespachar('.$arrData[$i]['id_despacho'].')" title="Completar Despacho"><i class="fas fa-truck"></i></button>';
+                
+                // Solo mostrar el botón de despachar si la orden está aprobada (estado 2)
+                if ($arrData[$i]['estado_orden'] == 2) {
+                    $btnDespachar = '<button class="btn btn-success btn-sm ml-1" onClick="fntCargarParaDespachar('.$arrData[$i]['id_despacho'].')" title="Completar Despacho"><i class="fas fa-truck"></i></button>';
+                } else {
+                    $btnDespachar = '';
+                }
                 
                 $arrData[$i]['acciones'] = '<div class="text-center d-flex justify-content-center">' . $btnView . '&nbsp;' . $btnPrint . '&nbsp;' . $btnDespachar . '</div>';
             }
@@ -369,7 +376,7 @@ class Orden extends Controllers{
                 $userDepartment = $_SESSION['userData']['departamento_nombre'] ?? '';
 
                 $estadoNum = $ordenesData[$i]['estado_orden'];
-                $hasOutOfStockItems = $ordenesData[$i]['has_out_of_stock_items'];
+                $hasOutOfStockItems = $ordenesData[$i]['has_insufficient_stock_items'] ?? false;
                 $idDespacho = $ordenesData[$i]['id_despacho'];
 
                 $estadoBadge = '';
@@ -383,7 +390,7 @@ class Orden extends Controllers{
                     case 1: // Pendiente (Requisición)
                         $estadoBadge = '<span class="badge badge-warning">Requisición</span>';
                         // Only Compras (Encargado) or Administrator can approve/process
-                        if ($hasInsufficientStock) {
+                        if ($hasOutOfStockItems) {
                             $estadoBadge = '<span class="badge badge-warning">Requisición <span class="badge badge-danger">Stock Insuficiente</span></span>';
                         }
                         $canProcess = (strtoupper($userRole) === 'ENCARGADO' && strtoupper($userDepartment) === 'COMPRAS') || (strtoupper($userRole) === 'ADMINISTRADOR');
@@ -428,7 +435,7 @@ class Orden extends Controllers{
     }
 
     public function getOrdenDetalle($idDespacho){
-    $arrResponse = ['status' => false, 'msg' => 'Error al obtener detalles de la orden'];
+        $arrResponse = ['status' => false, 'msg' => 'Error al obtener detalles de la orden'];
         try {
             $idDespacho = intval($idDespacho);
             // Obtener información básica de la orden
@@ -446,10 +453,11 @@ class Orden extends Controllers{
             }
         } catch (Exception $e) {
             $arrResponse['message'] = $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
     }
-    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-    die();
-}
+
     public function getBuscarOrden(){
         try {
             $strCod = !empty($_POST['txtCod']) ? $_POST['txtCod'] : '';
@@ -508,7 +516,6 @@ class Orden extends Controllers{
         die();
     }
 
-
     public function reporteDesp($idDespacho){
         try {
             $arrData = $this->ordenModel->selectDepacho($idDespacho);
@@ -550,7 +557,6 @@ class Orden extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
-
 
     public function despachos() {
         if (!$this->validateSession()) {
@@ -635,6 +641,78 @@ class Orden extends Controllers{
             $arrResponse['message'] = $e->getMessage();
         }
         header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    /**
+     * Aprueba una orden de requisición.
+     * Cambia el estado de la orden a 'Aprobada' (2).
+     */
+    public function aprobarOrden() {
+        $arrResponse = ['success' => false, 'message' => 'Error al aprobar la orden'];
+        try {
+            $idDespacho = intval($_POST['id_despacho'] ?? 0);
+            if ($idDespacho <= 0) {
+                throw new Exception('ID de orden inválido.');
+            }
+
+            // Verificar que la orden exista y esté en estado pendiente (1)
+            $orden = $this->ordenModel->selectDepacho($idDespacho);
+            if (empty($orden) || $orden['estado_orden'] != 1) {
+                throw new Exception('La orden no existe o no está pendiente de aprobación.');
+            }
+
+            // Verificar que todos los artículos tengan stock suficiente
+            $sql_check = "SELECT 
+                            rd.cantidad_solicitada,
+                            rpr.cant_producto,
+                            p.producto,
+                            (rpr.cant_producto >= rd.cantidad_solicitada) as suficiente
+                        FROM table_alm_requisicion_detalle rd
+                        JOIN table_alm_requisicion r ON rd.id_requisicion_fk = r.id_requisicion
+                        JOIN table_alm_relacion_producto rpr ON rd.id_producto = rpr.id_producto
+                        JOIN table_alm_producto p ON rd.id_producto = p.id_producto
+                        WHERE r.id_despacho_fk = ?";
+            
+            $articulos = $this->ordenModel->select_all($sql_check, [$idDespacho]);
+            $stockInsuficiente = false;
+            $mensajeStock = '';
+
+            foreach ($articulos as $art) {
+                if (!$art['suficiente']) {
+                    $stockInsuficiente = true;
+                    $mensajeStock .= "{$art['producto']}: solicita {$art['cantidad_solicitada']}, disponible {$art['cant_producto']}. ";
+                }
+            }
+
+            if ($stockInsuficiente) {
+                throw new Exception('No se puede aprobar la orden. Stock insuficiente: ' . $mensajeStock);
+            }
+
+            // Actualizar el estado de la orden a 'Aprobada' (2)
+            $sql_update = "UPDATE table_alm_despacho SET estado_orden = 2, fecha_aprobacion = NOW() WHERE id_despacho = ?";
+            $this->ordenModel->update($sql_update, [$idDespacho]);
+
+            // Actualizar el estado de la requisición a 'Aprobada' (2)
+            $sql_update_req = "UPDATE table_alm_requisicion SET status_requisicion = 2 WHERE id_despacho_fk = ?";
+            $this->ordenModel->update($sql_update_req, [$idDespacho]);
+
+            // Crear notificación para Almacén: orden aprobada para despachar
+            $sql_notif = "INSERT INTO table_notificaciones (tipo_notificacion, id_referencia, mensaje) VALUES ('despacho_pendiente', ?, ?)";
+            $mensaje = "Requisición #{$idDespacho} aprobada por Compras. Disponible para despacho en Almacén.";
+            $this->ordenModel->insert($sql_notif, [$idDespacho, $mensaje]);
+
+            // Notificar a Operaciones que la orden fue aprobada
+            $_POST['id_despacho'] = $idDespacho;
+            $_POST['tipo'] = 'aprobada';
+            $this->notificarOperaciones();
+
+            $arrResponse = ['success' => true, 'message' => 'Orden aprobada correctamente. Almacén ha sido notificado.'];
+
+        } catch (Exception $e) {
+            $arrResponse['message'] = $e->getMessage();
+        }
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
