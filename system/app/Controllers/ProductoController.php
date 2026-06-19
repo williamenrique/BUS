@@ -143,24 +143,24 @@ class Producto extends Controllers{
      * Obtiene la lista de todos los productos para la DataTable.
      * @return string JSON con la lista de productos.
      */
-    public function getProductos(){
-        $arrResponse = array('success' => false, 'data' => array());
-        try {
-            $productos = $this->model->selectInventarioAll();
-            $arrResponse = [
-                'success' => true,
-                'data' => $productos
-            ];
-        } catch (Exception $e) {
-            $arrResponse = [
-                'success' => false,
-                'message' => 'Error al cargar los productos: ' . $e->getMessage()
-            ];
-        }
-        header('Content-Type: application/json');
-        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        die();
+public function getProductos(){
+    $arrResponse = array('success' => false, 'data' => array());
+    try {
+        $productos = $this->model->selectInventarioAll();
+        $arrResponse = [
+            'success' => true,
+            'data' => $productos
+        ];
+    } catch (Exception $e) {
+        $arrResponse = [
+            'success' => false,
+            'message' => 'Error al cargar los productos: ' . $e->getMessage()
+        ];
     }
+    header('Content-Type: application/json');
+    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+    die();
+}
 
     /**
      * Obtiene los datos de un producto específico por su ID.

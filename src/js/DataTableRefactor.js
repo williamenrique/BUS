@@ -166,8 +166,21 @@ class DynamicTable {
             const result = await response.json();
             console.log('Datos recibidos:', result);
             
+            // Verificar si la respuesta tiene el formato esperado
+            let dataArray = [];
             if (result.success && result.data) {
-                this.data = result.data;
+                dataArray = result.data;
+            } else if (Array.isArray(result)) {
+                // Si la respuesta es un array directo
+                dataArray = result;
+            } else {
+                console.error('Formato de respuesta no reconocido:', result);
+                this.showError('Formato de datos no reconocido');
+                return;
+            }
+            
+            if (dataArray.length > 0 || dataArray === []) {
+                this.data = dataArray;
                 this.filteredData = [...this.data];
                 this.totalRecords = this.data.length;
                 this.calculateTotalPages();
@@ -177,7 +190,7 @@ class DynamicTable {
                     this.onLoad(this.data);
                 }
             } else {
-                console.error('Respuesta sin éxito:', result);
+                console.error('Datos vacíos o formato incorrecto:', result);
                 this.showError('No se pudieron cargar los datos');
             }
         } catch (error) {
@@ -208,8 +221,7 @@ class DynamicTable {
                 
                 if (columnMatch) return true;
                 
-                // BÚSQUEDA EN TODOS LOS CAMPOS DEL OBJETO (para columnas sin 'data')
-                // Esto permite buscar en campos que no tienen 'data' en la configuración
+                // BÚSQUEDA EN TODOS LOS CAMPOS DEL OBJETO
                 for (const key in row) {
                     if (row[key] !== undefined && row[key] !== null) {
                         const value = String(row[key]).toLowerCase();
@@ -465,13 +477,324 @@ class DynamicTable {
 // FUNCIONES DE INICIALIZACIÓN DE TABLAS
 // =================================================================================
 
-// ... (todas las demás funciones como initUsuariosDynamicTable, initDepartamentosDynamicTable, etc.)
-// ... (no las repito aquí por espacio, pero deben estar en tu archivo)
+function loadDynamicTableStyles() {
+    const styles = `
+        <style>
+            .dynamic-table-container { position: relative; }
+            .table-header { background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; }
+            .table-footer { background: #f8f9fa; padding: 10px; border-radius: 4px; border: 1px solid #dee2e6; }
+            .table-info { font-size: 14px; color: #6c757d; }
+            .sortable { cursor: pointer; position: relative; }
+            .sortable:hover { background-color: #f2f2f2; }
+            .sortable.sort-asc::after { content: ' ↑'; font-size: 12px; color: #007bff; }
+            .sortable.sort-desc::after { content: ' ↓'; font-size: 12px; color: #007bff; }
+            .page-size-selector { width: 80px; }
+            .search-box { flex-grow: 1; max-width: 300px; min-width: 150px; }
+            .table-responsive { max-height: 500px; overflow-y: auto; }
+            .table tbody tr { transition: background-color 0.2s; }
+            .table tbody tr:hover { background-color: #f5f5f5; }
+            .btn-retry { transition: all 0.2s; }
+            .btn-retry:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        </style>
+    `;
+    
+    if (!$('#dynamic-table-styles').length) {
+        $('head').append(styles);
+    }
+}
 
-// =================================================================================
-// FUNCIÓN PARA PERSONAL (CORREGIDA)
-// =================================================================================
+$(document).ready(function() {
+    loadDynamicTableStyles();
+});
 
+/**
+ * Función para inicializar tabla de usuarios
+ */
+function initUsuariosDynamicTable() {
+    console.log('Inicializando tabla dinámica de usuarios...');
+    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
+    
+    const config = {
+        tableId: 'usuariosTable',
+        apiUrl: base_url + 'User/getUsuarios/',
+        container: '#usuariosTable_wrapper',
+        pageSize: 10,
+        columns: [
+            { title: 'ID', data: 'usuario_id', width: '50px', className: 'text-center' },
+            { title: 'Identificación', data: 'personal_cedula', width: '120px' },
+            { title: 'Nombre Completo', render: (data) => `${data.personal_nombre} ${data.personal_apellido}` },
+            { title: 'Nick', data: 'usuario_nick', width: '100px' },
+            { title: 'Email', data: 'personal_email' },
+            { title: 'Teléfono', data: 'personal_tlf', width: '120px' },
+            { title: 'Rol', data: 'rol_nombre', width: '120px' },
+            { title: 'Departamento', data: 'departamento_nombre', width: '150px' },
+            { 
+                title: 'Estado', width: '100px',
+                render: (data) => data.usuario_status == 1 ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-danger">Inactivo</span>'
+            },
+            { 
+                title: 'Acciones', width: '150px', className: 'text-center',
+                render: (data) => `
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary btn-edit" data-id="${data.usuario_id}"><i class="fas fa-edit"></i></button>
+                        <button class="btn ${data.usuario_status == 1 ? 'btn-danger' : 'btn-success'} btn-status" data-id="${data.usuario_id}">
+                            ${data.usuario_status == 1 ? '<i class="fas fa-ban"></i>' : '<i class="fas fa-check"></i>'}
+                        </button>
+                    </div>
+                `
+            }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de departamentos
+ */
+function initDepartamentosDynamicTable() {
+    console.log('Inicializando tabla dinámica de departamentos...');
+    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
+    
+    const config = {
+        tableId: 'tableDepartamentos',
+        apiUrl: base_url + 'User/getDepartamentos',
+        container: '#tableDepartamentos_wrapper',
+        pageSize: 10,
+        columns: [
+            { title: 'ID', data: 'departamento_id', width: '50px', className: 'text-center' },
+            { title: 'Nombre', data: 'departamento_nombre' },
+            { 
+                title: 'Estado', width: '100px', className: 'text-center',
+                render: (data) => data.departamento_status == 1 ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-danger">Inactivo</span>'
+            },
+            { 
+                title: 'Acciones', width: '150px', className: 'text-center',
+                render: (data) => `
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary btn-edit-depto" data-id="${data.departamento_id}"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger btn-delete-depto" data-id="${data.departamento_id}"><i class="fas fa-trash"></i></button>
+                    </div>
+                `
+            }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de roles
+ */
+function initRolesDynamicTable() {
+    console.log('Inicializando tabla dinámica de roles...');
+    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
+    
+    const config = {
+        tableId: 'tableRoles',
+        apiUrl: base_url + 'User/getRolesForTable',
+        container: '#tableRoles_wrapper',
+        pageSize: 10,
+        columns: [
+            { title: 'ID', data: 'rol_id', width: '50px', className: 'text-center' },
+            { title: 'Nombre', data: 'rol_nombre' },
+            { 
+                title: 'Estado', width: '100px', className: 'text-center',
+                render: (data) => data.rol_status == 1 ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-danger">Inactivo</span>'
+            },
+            { 
+                title: 'Acciones', width: '150px', className: 'text-center',
+                render: (data) => `
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-primary btn-edit-rol" data-id="${data.rol_id}"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-danger btn-delete-rol" data-id="${data.rol_id}"><i class="fas fa-trash"></i></button>
+                    </div>
+                `
+            }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de inventario de productos
+ */
+function initInventarioDynamicTable() {
+    console.log('Inicializando tabla dinámica de inventario...');
+    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
+    
+    const config = {
+        tableId: 'tableInventario',
+        apiUrl: base_url + 'Producto/getInventario',
+        container: '#tableInventario_wrapper',
+        pageSize: 15,
+        columns: [
+            { title: 'ID', data: 'id_producto', width: '50px', className: 'text-center' },
+            { title: 'Artículo', data: 'producto' },
+            { title: 'Tipo', data: 'enlace_producto' },
+            { title: 'Proveedor', data: 'empresa_proveedor' },
+            { title: 'Ubicación', data: 'ubicacion' },
+            { 
+                title: 'Stock', data: 'cant_producto', width: '120px', className: 'text-center',
+                render: (data) => {
+                    const stock = parseFloat(data.cant_producto);
+                    const presentacion = data.present_producto || 'Und';
+                    if (stock <= 0) return '<span class="stock-badge stock-out">Sin Stock</span>';
+                    else if (stock < 10) return `<span class="stock-badge stock-low">${stock} ${presentacion}</span>`;
+                    else return `<span class="stock-badge stock-high">${stock} ${presentacion}</span>`;
+                }
+            }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de órdenes
+ */
+function initOrdenesDynamicTable() {
+    console.log('Inicializando tabla dinámica de órdenes...');
+    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
+    
+    const config = {
+        tableId: 'tblOrdenes',
+        apiUrl: base_url + 'Orden/getOrdenes',
+        container: '#tblOrdenes_wrapper',
+        pageSize: 10,
+        columns: [
+            { title: 'ID', data: 'id_despacho', width: '50px', className: 'text-center' },
+            { title: 'Fecha', data: 'fecha_aprobacion', width: '120px' },
+            { title: 'Unidad', render: (data) => `${data.id_unidad} - ${data.modelo_unidad}` },
+            { title: 'Estado', className: 'text-center', render: (data) => data.estado_badge || '' },
+            { title: 'Creador', data: 'creador_nombre' },
+            { title: 'Artículos', className: 'text-center', render: (data) => `<span class="badge badge-info">${data.total_articulos} artículos</span>` },
+            { title: 'Acciones', className: 'text-center', render: (data) => `<div class="btn-group">${data.acciones}</div>` }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de flota
+ */
+function initFlotaDynamicTable(options = {}) {
+    console.log('Inicializando tabla dinámica de flota...');
+    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
+    
+    const localStatusMap = typeof statusMap !== 'undefined' ? statusMap : {
+        0: { text: 'Desincorporada', color: 'badge-secondary' },
+        1: { text: 'Operativa', color: 'badge-success' },
+        2: { text: 'Inoperativa', color: 'badge-warning' },
+        3: { text: 'Mantenimiento', color: 'badge-info' },
+        4: { text: 'Por Desincorporar', color: 'badge-purple' },
+        5: { text: 'Crítica', color: 'badge-danger' }
+    };
+    
+    const config = {
+        tableId: 'tableFlota',
+        apiUrl: base_url + 'Flota/getFlota',
+        container: '#tableFlota_wrapper',
+        pageSize: 10,
+        onLoad: options.onLoad,
+        onDraw: options.onDraw,
+        columns: [
+            { 
+                title: 'ID Unidad',
+                data: 'id_unidad',
+                render: (data) => `<a href="${base_url}flota/historialunidad/${data.id_flota}" class="font-weight-bold">${data.id_unidad}</a>`
+            },
+            { title: 'Marca', data: 'marca_unidad' },
+            { title: 'Modelo', data: 'modelo_unidad' },
+            { title: 'VIN', data: 'vim_unidad' },
+            { 
+                title: 'Estado', data: 'status_unidad', className: 'text-center',
+                render: (data) => {
+                    const status = localStatusMap[data.status_unidad] || { text: 'Desconocido', color: 'badge-light' };
+                    return `<span class="badge ${status.color}">${status.text}</span>`;
+                }
+            },
+            { 
+                title: 'Acciones', className: 'text-center',
+                render: (data) => `
+                    <div class="btn-group">
+                        <button onclick="fntViewUnidad(${data.id_flota})" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></button>
+                        <button onclick="fntEditUnidad(${data.id_flota})" class="btn btn-primary btn-sm"><i class="fas fa-pencil-alt"></i></button>
+                        <button onclick="fntStatusUnidad(${data.id_flota})" class="btn btn-warning btn-sm"><i class="fas fa-exchange-alt"></i></button>
+                    </div>
+                `
+            }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de productos - CORREGIDA
+ */
+function initProductosDynamicTable() {
+    console.log('Inicializando tabla dinámica de productos...');
+    if (typeof base_url === 'undefined') {
+        console.error('base_url no está definida.');
+        return null;
+    }
+    
+    const config = {
+        tableId: 'tableProducto',
+        apiUrl: base_url + 'Producto/getProductos',
+        container: '#tableProducto_wrapper',
+        pageSize: 10,
+        columns: [
+            { 
+                title: 'ID', 
+                data: 'id_producto', 
+                width: '50px', 
+                className: 'text-center' 
+            },
+            { 
+                title: 'Artículo', 
+                data: 'producto' 
+            },
+            { 
+                title: 'Tipo', 
+                data: 'enlace_producto' 
+            },
+            { 
+                title: 'Proveedor', 
+                data: 'empresa_proveedor' 
+            },
+            { 
+                title: 'Ubicación', 
+                data: 'ubicacion' 
+            },
+            { 
+                title: 'Stock', 
+                data: 'cant_producto',
+                width: '120px', 
+                className: 'text-center',
+                render: (data) => {
+                    const stock = parseFloat(data.cant_producto);
+                    const presentacion = data.present_producto || 'Und';
+                    if (stock <= 0) {
+                        return `<a href="javascript:void(0)" onclick="cargarStockForm(${data.id_producto})" class="stock-badge stock-out" style="cursor:pointer;text-decoration:none;">Sin Stock <i class="fas fa-plus-circle ml-1"></i></a>`;
+                    } else if (stock < 10) {
+                        return `<span class="stock-badge stock-low">${stock} ${presentacion}</span>`;
+                    } else {
+                        return `<span class="stock-badge stock-high">${stock} ${presentacion}</span>`;
+                    }
+                }
+            },
+            { 
+                title: 'Acciones', 
+                width: '100px', 
+                className: 'text-center',
+                render: (data) => `<button class="btn btn-danger btn-sm" onClick="fntDelProducto(${data.id_producto})"><i class="far fa-trash-alt"></i></button>`
+            }
+        ]
+    };
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de personal - CORREGIDA
+ */
 function initPersonalDynamicTable() {
     console.log('Inicializando tabla dinámica de personal...');
     
@@ -571,71 +894,4 @@ function initPersonalDynamicTable() {
     });
     
     return table;
-}
-
-// =================================================================================
-// FUNCIÓN PARA FLOTA (CORREGIDA)
-// =================================================================================
-
-function initFlotaDynamicTable(options = {}) {
-    console.log('Inicializando tabla dinámica de flota...');
-    if (typeof base_url === 'undefined') { console.error('base_url no está definida.'); return null; }
-    
-    const localStatusMap = typeof statusMap !== 'undefined' ? statusMap : {
-        0: { text: 'Desincorporada', color: 'badge-secondary' },
-        1: { text: 'Operativa', color: 'badge-success' },
-        2: { text: 'Inoperativa', color: 'badge-warning' },
-        3: { text: 'Mantenimiento', color: 'badge-info' },
-        4: { text: 'Por Desincorporar', color: 'badge-purple' },
-        5: { text: 'Crítica', color: 'badge-danger' }
-    };
-    
-    const config = {
-        tableId: 'tableFlota',
-        apiUrl: base_url + 'Flota/getFlota',
-        container: '#tableFlota_wrapper',
-        pageSize: 10,
-        onLoad: options.onLoad,
-        onDraw: options.onDraw,
-        columns: [
-            { 
-                title: 'ID Unidad',
-                data: 'id_unidad',
-                render: (data) => `<a href="${base_url}flota/historialunidad/${data.id_flota}" class="font-weight-bold">${data.id_unidad}</a>`
-            },
-            { 
-                title: 'Marca', 
-                data: 'marca_unidad' 
-            },
-            { 
-                title: 'Modelo', 
-                data: 'modelo_unidad' 
-            },
-            { 
-                title: 'VIN', 
-                data: 'vim_unidad' 
-            },
-            { 
-                title: 'Estado', 
-                data: 'status_unidad',
-                className: 'text-center',
-                render: (data) => {
-                    const status = localStatusMap[data.status_unidad] || { text: 'Desconocido', color: 'badge-light' };
-                    return `<span class="badge ${status.color}">${status.text}</span>`;
-                }
-            },
-            { 
-                title: 'Acciones', 
-                className: 'text-center',
-                render: (data) => `
-                    <div class="btn-group">
-                        <button onclick="fntViewUnidad(${data.id_flota})" class="btn btn-info btn-sm"><i class="fas fa-eye"></i></button>
-                        <button onclick="fntEditUnidad(${data.id_flota})" class="btn btn-primary btn-sm"><i class="fas fa-pencil-alt"></i></button>
-                        <button onclick="fntStatusUnidad(${data.id_flota})" class="btn btn-warning btn-sm"><i class="fas fa-exchange-alt"></i></button>
-                    </div>
-                `
-            }
-        ]
-    };
-    return new DynamicTable(config);
 }
