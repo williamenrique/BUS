@@ -72,7 +72,8 @@ class Orden extends Controllers{
             'page_title' => "Sistema de Órdenes",
             'page_name' => "almacen",
             'page_link' => "despacho",
-            'page_functions' => "function.ordenes.js"
+            'page_functions' => "function.ordenes.js",
+            'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
         ];
         $this->views->getViews($this, "orden", $data);
     }
@@ -422,11 +423,14 @@ class Orden extends Controllers{
             }
 
             $arrResponse = [
-                // DataTables en modo cliente espera los datos en la clave "data"
+                "success" => true,
                 "data" => $ordenesData
             ];
         } catch (Exception $e) {
-            $arrResponse = ["data" => [], "error" => "Error al cargar las órdenes: " . $e->getMessage()];
+            $arrResponse = [
+                "success" => false,
+                "message" => "Error al cargar las órdenes: " . $e->getMessage()
+            ];
         }
 
         header('Content-Type: application/json');

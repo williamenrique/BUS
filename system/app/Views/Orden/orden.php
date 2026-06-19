@@ -49,27 +49,23 @@
                             <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas</h3>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="tblOrdenes" class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Fecha</th>
-                                            <th>Unidad</th>
-                                            <th class="text-center">Estado</th>
-                                            <th>Creador</th>
-                                            <th class="text-center">Artículos</th>
-                                            <th class="text-center">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="boxInvoce">
-                                        <!-- DataTables will populate this -->
-                                    </tbody>
-                                </table>
+                            <!-- Contenedor para tabla dinámica de órdenes -->
+                            <div id="tblOrdenes_wrapper">
+                                <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
                             </div>
                         </div>
                     </div>
                 </div>
+
+<!-- Deshabilitar DataTables CSS -->
+<style>
+    .dataTables_wrapper {
+        display: none;
+    }
+    #tblOrdenes_wrapper {
+        display: block !important;
+    }
+</style>
 
                 <!-- Sidebar Section -->
                 <div class="col-lg-4">

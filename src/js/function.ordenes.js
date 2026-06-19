@@ -458,7 +458,9 @@ async function enviarFormulario(e) {
             document.querySelector("#totalUnidades").textContent = '0';
 
             // Recargar la tabla de órdenes y la barra de progreso
-            tblOrdenes.ajax.reload();
+            if (tblOrdenes && typeof tblOrdenes.reload === 'function') {
+                tblOrdenes.reload();
+            }
             await actualizarProgresoOrdenes();
 
             // Restablecer fecha actual
@@ -508,72 +510,29 @@ async function actualizarProgresoOrdenes() {
 
 // Inicializar DataTable
 function inicializarDataTable() {
-    if (tblOrdenes) {
-        tblOrdenes.destroy();
-    }
-
-    tblOrdenes = $('#tblOrdenes').DataTable({
-        "processing": true, // Muestra el indicador de "Cargando..."
-        "serverSide": false, // Paginación del lado del cliente
-        "autoWidth": false,
-        language: {
-            url: base_url + 'src/plugins/js/es_es.json'
-        },
-        "ajax": {
-            "url": base_url + "Orden/getOrdenes",
-            "dataSrc": "data" // Indicamos que los datos están en el array 'data'
-        },
-        "columns": [
-            { "data": "id_despacho" },
-            { "data": "fecha_aprobacion" },
-            {
-                "data": null, "render": function (data, type, row) {
-                    return `${row.id_unidad} - ${row.modelo_unidad}`;
-                }
-            },
-            {
-                "data": "estado_orden", "className": "text-center", "render": function (data, type, row) {
-                    return formatEstadoOrden(data);
-                }
-            },
-            { "data": "creador_nombre" },
-            {
-                "data": "total_articulos", "className": "text-center", "render": function (data, type, row) {
-                    return `<span class="badge badge-info">${data} artículos</span>`;
-                }
-            },
-            {
-                "data": null, "orderable": false, "className": "text-center", "render": function (data, type, row) {
-                    return getOrdenActionButtons(row);
+    console.log('Inicializando tabla de órdenes dinámica...');
+    if (typeof initOrdenesDynamicTable !== 'undefined') {
+        tblOrdenes = initOrdenesDynamicTable();
+        
+        // Aplicar filtro por defecto según el rol del usuario
+        setTimeout(() => {
+            let defaultFilter = '';
+            if (typeof userRole !== 'undefined') {
+                if (userRole === 'COMPRAS') {
+                    defaultFilter = 'Requisición';
+                } else if (userRole === 'ALMACEN') {
+                    defaultFilter = 'Aprobada';
                 }
             }
-        ],
-        pageLength: 10,
-        lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Todos"]],
-        order: [[0, 'desc']],
-        "responsive": true,
-        "bDestroy": true,
-        dom: 'lBfrtip', // Estructura DOM para AdminLTE
-        buttons: [
-            { extend: 'excelHtml5', text: '<i class="fas fa-file-excel"></i> Excel', className: 'btn btn-success' },
-            { extend: 'pdfHtml5', text: '<i class="fas fa-file-pdf"></i> PDF', className: 'btn btn-danger' },
-            { extend: 'print', text: '<i class="fas fa-print"></i> Imprimir', className: 'btn btn-info' }
-        ]
-    });
 
-    // Aplicar filtro por defecto según el rol del usuario
-    tblOrdenes.on('init.dt', function () {
-        let defaultFilter = '';
-        if (userRole === 'COMPRAS') {
-            defaultFilter = 'Requisición';
-        } else if (userRole === 'ALMACEN') {
-            defaultFilter = 'Aprobada';
-        }
-
-        if (defaultFilter) {
-            tblOrdenes.column(3).search(defaultFilter, true, false).draw(); // Columna 3 es "ESTADO"
-        }
-    });
+            if (defaultFilter && tblOrdenes && typeof tblOrdenes.search === 'function') {
+                tblOrdenes.searchElement.val(defaultFilter);
+                tblOrdenes.search();
+            }
+        }, 300);
+    } else {
+        console.error('initOrdenesDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+    }
 }
 
 function formatEstadoOrden(estado) {
@@ -634,7 +593,9 @@ async function fntAprobarOrden(idDespacho) {
             // Notificar automáticamente a Operaciones que la requisición fue aprobada
             const paramsNotif = new URLSearchParams({ id_despacho: idDespacho, tipo: 'aprobada' });
             await fetch(base_url + 'Orden/notificarOperaciones', { method: 'POST', body: paramsNotif });
-            tblOrdenes.ajax.reload();
+            if (tblOrdenes && typeof tblOrdenes.reload === 'function') {
+                tblOrdenes.reload();
+            }
         } else {
             notifi(data.message, 'error');
         }
@@ -649,7 +610,9 @@ async function fntDespacharOrden(idDespacho) {
         const data = await response.json();
         if (data.success) {
             notifi(data.message, 'success');
-            tblOrdenes.ajax.reload();
+            if (tblOrdenes && typeof tblOrdenes.reload === 'function') {
+                tblOrdenes.reload();
+            }
         } else {
             notifi(data.message, 'error');
         }
@@ -865,7 +828,9 @@ async function fntdelDesp(idDesp) {
 
             if (objData.success) {
                 notifi(objData.message, 'success');
-                $('#tblOrdenes').DataTable().ajax.reload(); // Recargar listado
+                if (tblOrdenes && typeof tblOrdenes.reload === 'function') {
+                    tblOrdenes.reload();
+                } // Recargar listado
             } else {
                 notifi(objData.message, 'error');
             }

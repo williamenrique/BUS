@@ -1,0 +1,34 @@
+En estos momentos, las siguientes 5 tablas están utilizando el sistema de tablas dinámicas personalizadas de DataTableRefactor (DynamicTable):
+
+Listado de Usuarios:
+
+Vista: 
+
+newuser.php
+Inicializador: initUsuariosDynamicTable()
+Gestión de Departamentos:
+
+Vista: 
+
+departamentos.php
+ (columna izquierda)
+Inicializador: initDepartamentosDynamicTable()
+Gestión de Roles:
+
+Vista: 
+
+departamentos.php
+ (columna derecha)
+Inicializador: initRolesDynamicTable()
+Inventario de Productos:
+
+Vista: 
+
+inventario.php
+Inicializador: initInventarioDynamicTable()
+Órdenes Registradas:
+
+Vista: 
+
+orden.php
+Inicializador: initOrdenesDynamicTable()

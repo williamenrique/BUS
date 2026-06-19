@@ -139,5 +139,5 @@ Para verificar la implementación:
 
 ---
 
-**ESTADO ACTUAL**: ✅ Tabla de Usuarios migrada exitosamente
-**PRÓXIMA TABLA**: Departamentos (siguiente en la lista)
+**ESTADO ACTUAL**: ✅ Tabla de Usuarios, Departamentos, Roles, Inventario y Órdenes migradas exitosamente
+**PRÓXIMA TABLA**: Productos (siguiente en la lista)

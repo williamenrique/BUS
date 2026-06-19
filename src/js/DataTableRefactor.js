@@ -42,9 +42,9 @@ class DynamicTable {
         const tableContainer = $(`
             <div class="dynamic-table-container">
                 <div class="table-header mb-3">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="search-box">
-                            <div class="input-group input-group-sm" style="width: 300px;">
+                            <div class="input-group input-group-sm">
                                 <input type="text" class="form-control form-control-sm table-search" 
                                        placeholder="Buscar...">
                                 <div class="input-group-append">
@@ -77,7 +77,7 @@ class DynamicTable {
                     </table>
                 </div>
                 <div class="table-footer mt-3">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                         <div class="table-info"></div>
                         <div class="table-pagination"></div>
                     </div>
@@ -586,7 +586,9 @@ function loadDynamicTableStyles() {
             }
             
             .search-box {
-                min-width: 300px;
+                flex-grow: 1;
+                max-width: 300px;
+                min-width: 150px;
             }
             
             .table-responsive {
@@ -743,6 +745,140 @@ function initRolesDynamicTable() {
                             </button>
                         </div>
                     `;
+                }
+            }
+        ]
+    };
+    
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de inventario de productos
+ */
+function initInventarioDynamicTable() {
+    console.log('Inicializando tabla dinámica de inventario...');
+    
+    // Verificar que base_url esté definida
+    if (typeof base_url === 'undefined') {
+        console.error('base_url no está definida. Verificar que esté definida en el header.');
+        return null;
+    }
+    
+    const apiUrl = base_url + 'Producto/getInventario';
+    console.log('URL de la API inventario:', apiUrl);
+    
+    const config = {
+        tableId: 'tableInventario',
+        apiUrl: apiUrl,
+        container: '#tableInventario_wrapper',
+        pageSize: 15,
+        columns: [
+            { 
+                title: 'ID',
+                data: 'id_producto',
+                width: '50px',
+                className: 'text-center'
+            },
+            { 
+                title: 'Artículo',
+                data: 'producto'
+            },
+            { 
+                title: 'Tipo',
+                data: 'enlace_producto'
+            },
+            { 
+                title: 'Proveedor',
+                data: 'empresa_proveedor'
+            },
+            { 
+                title: 'Ubicación',
+                data: 'ubicacion'
+            },
+            { 
+                title: 'Stock',
+                width: '120px',
+                className: 'text-center',
+                render: (data) => {
+                    const stock = parseFloat(data.cant_producto);
+                    const presentacion = data.present_producto || 'Und';
+                    if (stock <= 0) {
+                        return `<span class="stock-badge stock-out">Sin Stock</span>`;
+                    } else if (stock < 10) {
+                        return `<span class="stock-badge stock-low">${stock} ${presentacion}</span>`;
+                    } else {
+                        return `<span class="stock-badge stock-high">${stock} ${presentacion}</span>`;
+                    }
+                }
+            }
+        ]
+    };
+    
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de órdenes
+ */
+function initOrdenesDynamicTable() {
+    console.log('Inicializando tabla dinámica de órdenes...');
+    
+    // Verificar que base_url esté definida
+    if (typeof base_url === 'undefined') {
+        console.error('base_url no está definida. Verificar que esté definida en el header.');
+        return null;
+    }
+    
+    const apiUrl = base_url + 'Orden/getOrdenes';
+    console.log('URL de la API órdenes:', apiUrl);
+    
+    const config = {
+        tableId: 'tblOrdenes',
+        apiUrl: apiUrl,
+        container: '#tblOrdenes_wrapper',
+        pageSize: 10,
+        columns: [
+            { 
+                title: 'ID',
+                data: 'id_despacho',
+                width: '50px',
+                className: 'text-center'
+            },
+            { 
+                title: 'Fecha',
+                data: 'fecha_aprobacion',
+                width: '120px'
+            },
+            { 
+                title: 'Unidad',
+                render: (data) => {
+                    return `${data.id_unidad} - ${data.modelo_unidad}`;
+                }
+            },
+            { 
+                title: 'Estado',
+                className: 'text-center',
+                render: (data) => {
+                    return data.estado_badge || '';
+                }
+            },
+            { 
+                title: 'Creador',
+                data: 'creador_nombre'
+            },
+            { 
+                title: 'Artículos',
+                className: 'text-center',
+                render: (data) => {
+                    return `<span class="badge badge-info">${data.total_articulos} artículos</span>`;
+                }
+            },
+            { 
+                title: 'Acciones',
+                className: 'text-center',
+                render: (data) => {
+                    return `<div class="btn-group">${data.acciones}</div>`;
                 }
             }
         ]
