@@ -76,7 +76,8 @@ private $db; //para inicializar la base de datos
 			'page_name' => "requisicion",
 			'page_link' => "perfil",//activar el menu desplegable o un lin solo
 			'page_functions' => "function.requisicion.js",
-            'id_requisicion_url' => $idRequisicionUrl // Pasamos el ID de la URL a la vista
+            'id_requisicion_url' => $idRequisicionUrl, // Pasamos el ID de la URL a la vista
+            'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
 		];
 		$this->views->getViews($this, "requisicion", $data);
     }
@@ -118,15 +119,20 @@ private $db; //para inicializar la base de datos
     /**
      * Obtiene la lista de requisiciones para la DataTable.
      */
+    /**
+     * Obtiene la lista de requisiciones para la tabla dinámica.
+     * Devuelve datos CRUDOS con formato {success: true, data: [...]}
+     */
     public function getRequisiciones() {
         try {
             $arrData = $this->model->getRequisiciones();
+            $processedData = [];
 
             for ($i = 0; $i < count($arrData); $i++) {
                 $userRole = $_SESSION['userData']['rol_nombre'] ?? '';
                 $userDepartment = $_SESSION['userData']['departamento_nombre'] ?? '';
                 $estadoNum = $arrData[$i]['estado_orden'];
-                $hasInsufficientStock = $arrData[$i]['has_insufficient_stock_items'];
+                $hasInsufficientStock = $arrData[$i]['has_insufficient_stock_items'] ?? false;
                 $idDespacho = $arrData[$i]['id_despacho'];
 
                 // Lógica de Estado (Badge o Botón)
@@ -158,12 +164,16 @@ private $db; //para inicializar la base de datos
                 }
 
                 $arrData[$i]['acciones'] = '<div class="text-center d-flex justify-content-center">' . $btnView . '&nbsp;' . $btnPrint . '&nbsp;' . $btnAprobar . '&nbsp;' . $btnEnProceso . '</div>';
+                
+                // Guardar datos procesados
+                $processedData[] = $arrData[$i];
             }
 
-            echo json_encode(['data' => $arrData], JSON_UNESCAPED_UNICODE);
+            // Devolver en el formato esperado por DynamicTable
+            echo json_encode(['success' => true, 'data' => $processedData], JSON_UNESCAPED_UNICODE);
 
         } catch (Exception $e) {
-            echo json_encode(['data' => [], 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['success' => false, 'data' => [], 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
         die();
     }

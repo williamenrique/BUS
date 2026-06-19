@@ -1,9 +1,17 @@
-// Este código debe ir en tu archivo: src/js/function.requisicion.js
+/**
+ * Archivo: function.requisicion.js
+ * Descripción: Lógica de JavaScript para la gestión de Requisiciones.
+ *              Utiliza DynamicTable en lugar de DataTables tradicional.
+ */
+
 let tableRequisicion;
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Inicializar DataTables para la tabla de requisiciones (si existe)
+    console.log('DOM cargado - Inicializando requisiciones...');
+    
+    // Inicializar la tabla dinámica de requisiciones
     inicializarTablaRequisiciones();
+    
     // Inicializar Select2 en los campos correspondientes
     inicializarSelects();
 
@@ -14,49 +22,29 @@ document.addEventListener('DOMContentLoaded', function () {
     configurarEventListenersFormulario();
 
     // Verificar si se pasó un ID de requisición en la URL
-    const idRequisicionUrl = document.getElementById('id_requisicion_url').value;
-    if (idRequisicionUrl && idRequisicionUrl > 0) {
+    const idRequisicionUrl = document.getElementById('id_requisicion_url');
+    if (idRequisicionUrl && idRequisicionUrl.value && idRequisicionUrl.value > 0) {
         // Ocultar el formulario de creación y cargar la requisición para aprobar
         const formCreacion = document.querySelector('.card-primary');
         if (formCreacion) {
             formCreacion.style.display = 'none';
         }
-        fntLoadRequisicionParaAprobar(idRequisicionUrl); // Cargar la requisición para aprobar
+        fntLoadRequisicionParaAprobar(idRequisicionUrl.value);
     }
 });
 
 /**
- * Inicializa la DataTable para mostrar la lista de requisiciones.
+ * Inicializa la tabla dinámica de requisiciones usando DataTableRefactor
  */
 function inicializarTablaRequisiciones() {
-    tableRequisicion = $('#tableRequisicion').DataTable({
-        "aProcessing": true,
-        "aServerSide": false, // La paginación será del lado del cliente
-        "language": { "url": `${base_url}src/plugins/js/es_es.json` },
-        "ajax": {
-            "url": base_url + "Requisicion/getRequisiciones",
-            "dataSrc": "data" // La data viene en la propiedad "data" del JSON
-        },
-        "columns": [
-            { "data": "id_despacho" },
-            { "data": "fecha_despacho" },
-            { "data": "id_unidad" },
-            { "data": "tipo_orden" },
-            {
-                "data": null,
-                "render": function (data, type, row) {
-                    return `${row.creador_nombre || ''} ${row.creador_apellido || ''}`;
-                }
-            },
-            { "data": "estado_orden", "className": "text-center" },
-            { "data": "acciones", "orderable": false, "className": "text-center" }
-        ],
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]],
-        "dom": "lfrtip" // Estructura simple para la tabla
-    });
+    console.log('Inicializando tabla de requisiciones dinámica...');
+    
+    if (typeof initRequisicionesDynamicTable !== 'undefined') {
+        tableRequisicion = initRequisicionesDynamicTable();
+        console.log('Tabla de requisiciones inicializada:', tableRequisicion);
+    } else {
+        console.error('initRequisicionesDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+    }
 }
 
 /**
@@ -69,24 +57,25 @@ function inicializarSelects() {
         width: '100%'
     };
 
-    // Aplicar Select2 y configurar estilos para todos los selects
     ['listUnidad', 'listMecanico', 'listArticulo'].forEach(id => {
+        const select = document.getElementById(id);
+        if (!select) return;
+        
         $(`#${id}`).select2({
             ...config,
             placeholder: $(`#${id}`).data('placeholder') || 'Seleccione una opción'
         }).on('select2:open', function () {
-            // Aplicar altura máxima y scroll al desplegable cuando se abre
             $('.select2-results__options').css({
                 'max-height': '250px',
                 'overflow-y': 'auto'
             });
-            // Enfocar el campo de búsqueda
             setTimeout(() => {
-                document.querySelector('.select2-search__field').focus();
+                const searchField = document.querySelector('.select2-search__field');
+                if (searchField) searchField.focus();
             }, 50);
         }).next('.select2-container').find('.select2-selection').css({
-            'min-height': 'calc(2.25rem + 2px)', // Altura estándar de Bootstrap 4 form-control
-            'border': '1px solid #ced4da' // Borde estándar de Bootstrap 4 form-control
+            'min-height': 'calc(2.25rem + 2px)',
+            'border': '1px solid #ced4da'
         });
     });
 }
@@ -96,7 +85,6 @@ function inicializarSelects() {
  */
 async function cargarDatosParaSelects() {
     try {
-        // Reutilizamos el endpoint del controlador de Órdenes que ya nos da estos datos.
         const response = await fetch(base_url + 'Orden/getInitialData');
         if (!response.ok) throw new Error('Error al cargar datos iniciales.');
 
@@ -105,7 +93,6 @@ async function cargarDatosParaSelects() {
             const { flota, mecanicos, articulos } = result.data;
 
             populateSelect('listUnidad', flota, 'id_flota', item => `${item.id_unidad} - ${item.modelo_unidad}`, 'Buscar y seleccionar una unidad');
-            // Usamos la cédula del mecánico como valor, según el nuevo flujo
             populateSelect('listMecanico', mecanicos, 'personal_cedula', item => `${item.personal_cedula} - ${item.personal_nombre} ${item.personal_apellido}`, 'Buscar y seleccionar un mecánico');
             populateSelect('listArticulo', articulos, 'id_producto', item => `${item.producto} (Stock: ${item.cant_producto})`, 'Buscar y seleccionar un artículo', item => ({ 'data-stock': item.cant_producto || 0 }));
         } else {
@@ -124,16 +111,15 @@ function populateSelect(selectId, data, valueField, textFieldFn, defaultOptionTe
     const select = document.getElementById(selectId);
     if (!select) return;
 
-    select.innerHTML = ''; // Limpiar opciones existentes
-    select.innerHTML = `<option value=""></option>`; // Opción vacía para el placeholder de Select2
+    select.innerHTML = '';
+    select.innerHTML = `<option value=""></option>`;
 
     if (data && Array.isArray(data)) {
         data.forEach(item => {
             const option = document.createElement('option');
-            option.value = item[valueField] || ''; // Asegurarse de que el valor no sea undefined
+            option.value = item[valueField] || '';
             option.textContent = textFieldFn(item);
 
-            // Esta es la parte clave que no se estaba ejecutando correctamente.
             if (dataAttributesFn) {
                 const attributes = dataAttributesFn(item);
                 for (const key in attributes) {
@@ -143,133 +129,151 @@ function populateSelect(selectId, data, valueField, textFieldFn, defaultOptionTe
             select.appendChild(option);
         });
     }
-    // Establecer el placeholder en el atributo data-placeholder del select
+    
     $(select).data('placeholder', defaultOptionText);
 
-    // Forzar la actualización de Select2 para que muestre el placeholder
-    // y aplique los estilos si ya estaba inicializado.
     if ($(select).data('select2')) {
         $(select).trigger('change');
     }
 }
 
-
 /**
  * Configura todos los listeners para los botones y el formulario de creación.
  */
 function configurarEventListenersFormulario() {
-    // Configurar el formulario de CREACIÓN de requisición (solo si existe)
     const formRequisicion = document.getElementById('formRequisicion');
-    if (formRequisicion) {
-        const btnAgregar = document.getElementById('btnAgregaArticulo');
-        const cantidadInput = document.getElementById('txtCant');
-        const tablaArticulos = document.getElementById('tblArticulosAgregados').querySelector('tbody');
+    if (!formRequisicion) return;
 
+    const btnAgregar = document.getElementById('btnAgregaArticulo');
+    const cantidadInput = document.getElementById('txtCant');
+    const tablaArticulos = document.getElementById('tblArticulosAgregados').querySelector('tbody');
+
+    if (cantidadInput) {
         cantidadInput.addEventListener('input', validarCantidadRequisicion);
-        btnAgregar.addEventListener('click', agregarArticuloATabla);
+    }
 
+    if (btnAgregar) {
+        btnAgregar.addEventListener('click', agregarArticuloATabla);
+    }
+
+    if (tablaArticulos) {
         tablaArticulos.addEventListener('click', function (e) {
             if (e.target.closest('.btn-eliminar-articulo')) {
                 e.target.closest('tr').remove();
-                actualizarResumenArticulos(); // CORRECCIÓN: Actualizar resumen al eliminar.
-            }
-        });
-
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Mover los listeners aquí para que se activen al cargar la página.
-        $('#listUnidad').on('select2:select', function (e) {
-            const data = e.params.data;
-            document.getElementById('resumenUnidad').textContent = data.text || 'No seleccionada';
-        });
-
-        $('#listMecanico').on('select2:select', function (e) {
-            const data = e.params.data;
-            const nombre = data.text.split(' - ')[1] || 'No seleccionado';
-            document.getElementById('resumenMecanico').textContent = nombre;
-        });
-        // --- FIN DE LA CORRECCIÓN ---
-
-        document.getElementById('btnCancel').addEventListener('click', () => {
-            formRequisicion.reset();
-            $('#listUnidad, #listMecanico, #listArticulo').val(null).trigger('change');
-            tablaArticulos.innerHTML = '';
-            cantidadInput.value = '';
-            cantidadInput.disabled = true;
-            document.getElementById('stockValidationRequisicion').textContent = '';
-        });
-
-        $('#listArticulo').on('select2:select', function (e) {
-            const selectedData = e.params.data;
-            fntGetArtRequisicion(selectedData);
-        });
-
-        formRequisicion.addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            const idUnidad = document.getElementById('listUnidad').value;
-            const idMecanico = document.getElementById('listMecanico').value;
-
-            if (!idUnidad || !idMecanico) {
-                notifi('Debe seleccionar la Unidad y el Mecánico.', 'warning');
-                return;
-            }
-
-            const articulos = [];
-            tablaArticulos.querySelectorAll('tr').forEach(fila => {
-                articulos.push({
-                    id: fila.dataset.idArticulo,
-                    // CORRECCIÓN: Asegurarse de que la cantidad sea un número
-                    cantidad: parseFloat(fila.cells[2].textContent)
-                });
-            });
-
-            if (articulos.length === 0) {
-                notifi('Debe agregar al menos un artículo a la requisición.', 'warning');
-                return;
-            }
-
-            actualizarResumenArticulos(); // Actualizar el resumen una última vez antes de enviar
-
-            const formData = new FormData(formRequisicion);
-            formData.append('articulos', JSON.stringify(articulos));
-
-            const btnSubmit = document.getElementById('btnActionForm');
-            btnSubmit.disabled = true;
-            btnSubmit.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Guardando...`;
-
-            try {
-                const response = await fetch(base_url + 'Requisicion/setRequisicion', {
-                    method: 'POST',
-                    body: formData
-                });
-                const result = await response.json();
-
-                if (result.success) {
-                    notifi(result.msg, 'success');
-                    formRequisicion.reset();
-                    $('#listUnidad, #listMecanico, #listArticulo').val(null).trigger('change');
-                    tablaArticulos.innerHTML = '';
-                    resetResumen(); // Limpiar el resumen después de guardar
-                    if (tableRequisicion) {
-                        tableRequisicion.ajax.reload();
-                    }
-                } else {
-                    notifi(result.msg, 'error');
-                }
-            } catch (error) {
-                console.error('Error al guardar requisición:', error);
-                notifi('Error de conexión al guardar la requisición.', 'error');
-            } finally {
-                btnSubmit.disabled = false;
-                btnSubmit.innerHTML = `<i class="fas fa-save"></i> Guardar Requisición`;
+                actualizarResumenArticulos();
             }
         });
     }
 
-    // Configurar la sección de APROBACIÓN de requisición (solo si existe)
-    const formAprobacion = document.getElementById('viewRequisicionUrl');
-    if (formAprobacion) {
-        formAprobacion.querySelector('#btnAprobarUrl').addEventListener('click', function () {
+    // Eventos de Select2 para resumen
+    $('#listUnidad').on('select2:select', function (e) {
+        const data = e.params.data;
+        const resumenUnidad = document.getElementById('resumenUnidad');
+        if (resumenUnidad) resumenUnidad.textContent = data.text || 'No seleccionada';
+    });
+
+    $('#listMecanico').on('select2:select', function (e) {
+        const data = e.params.data;
+        const nombre = data.text.split(' - ')[1] || 'No seleccionado';
+        const resumenMecanico = document.getElementById('resumenMecanico');
+        if (resumenMecanico) resumenMecanico.textContent = nombre;
+    });
+
+    // Botón Cancelar
+    const btnCancel = document.getElementById('btnCancel');
+    if (btnCancel) {
+        btnCancel.addEventListener('click', () => {
+            formRequisicion.reset();
+            $('#listUnidad, #listMecanico, #listArticulo').val(null).trigger('change');
+            if (tablaArticulos) tablaArticulos.innerHTML = '';
+            if (cantidadInput) {
+                cantidadInput.value = '';
+                cantidadInput.disabled = true;
+            }
+            const stockValidation = document.getElementById('stockValidationRequisicion');
+            if (stockValidation) stockValidation.textContent = '';
+            resetResumen();
+        });
+    }
+
+    // Evento de selección de artículo
+    $('#listArticulo').on('select2:select', function (e) {
+        const selectedData = e.params.data;
+        fntGetArtRequisicion(selectedData);
+    });
+
+    // Submit del formulario
+    formRequisicion.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const idUnidad = document.getElementById('listUnidad').value;
+        const idMecanico = document.getElementById('listMecanico').value;
+
+        if (!idUnidad || !idMecanico) {
+            notifi('Debe seleccionar la Unidad y el Mecánico.', 'warning');
+            return;
+        }
+
+        const articulos = [];
+        if (tablaArticulos) {
+            tablaArticulos.querySelectorAll('tr').forEach(fila => {
+                articulos.push({
+                    id: fila.dataset.idArticulo,
+                    cantidad: parseFloat(fila.cells[2].textContent) || 0
+                });
+            });
+        }
+
+        if (articulos.length === 0) {
+            notifi('Debe agregar al menos un artículo a la requisición.', 'warning');
+            return;
+        }
+
+        actualizarResumenArticulos();
+
+        const formData = new FormData(formRequisicion);
+        formData.append('articulos', JSON.stringify(articulos));
+
+        const btnSubmit = document.getElementById('btnActionForm');
+        if (btnSubmit) {
+            btnSubmit.disabled = true;
+            btnSubmit.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Guardando...`;
+        }
+
+        try {
+            const response = await fetch(base_url + 'Requisicion/setRequisicion', {
+                method: 'POST',
+                body: formData
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                notifi(result.msg, 'success');
+                formRequisicion.reset();
+                $('#listUnidad, #listMecanico, #listArticulo').val(null).trigger('change');
+                if (tablaArticulos) tablaArticulos.innerHTML = '';
+                resetResumen();
+                if (tableRequisicion && typeof tableRequisicion.reload === 'function') {
+                    tableRequisicion.reload();
+                }
+            } else {
+                notifi(result.msg, 'error');
+            }
+        } catch (error) {
+            console.error('Error al guardar requisición:', error);
+            notifi('Error de conexión al guardar la requisición.', 'error');
+        } finally {
+            if (btnSubmit) {
+                btnSubmit.disabled = false;
+                btnSubmit.innerHTML = `<i class="fas fa-save"></i> Guardar Requisición`;
+            }
+        }
+    });
+
+    // Configurar la sección de APROBACIÓN
+    const btnAprobar = document.querySelector('#btnAprobarUrl');
+    if (btnAprobar) {
+        btnAprobar.addEventListener('click', function () {
             fntAprobarRequisicion(this.dataset.idDespacho);
         });
     }
@@ -281,9 +285,11 @@ function configurarEventListenersFormulario() {
 async function fntGetArtRequisicion(selectedData) {
     const cantidadInput = document.getElementById('txtCant');
     const stockValidationElement = document.getElementById('stockValidationRequisicion');
-    cantidadInput.value = ''; // Limpiar cantidad al cambiar de artículo
+    
+    if (!cantidadInput || !stockValidationElement) return;
+    
+    cantidadInput.value = '';
 
-    // Si no hay datos seleccionados (por ejemplo, al deseleccionar), deshabilitar y limpiar.
     if (!selectedData || !selectedData.id || selectedData.id === "0") {
         stockValidationElement.textContent = '';
         cantidadInput.disabled = true;
@@ -291,19 +297,16 @@ async function fntGetArtRequisicion(selectedData) {
     }
 
     try {
-        // CORRECCIÓN: Accedemos al stock directamente desde el objeto 'data' que nos da Select2.
-        // Buscamos el elemento HTML original para leer el atributo 'data-stock'.
         const selectedOptionElement = $(selectedData.element);
         const stockDisponible = parseFloat(selectedOptionElement.data('stock')) || 0;
 
-        document.getElementById('txtCant').dataset.stockDisponible = stockDisponible; // Guardar stock en el dataset del input
+        cantidadInput.dataset.stockDisponible = stockDisponible;
         stockValidationElement.textContent = `Stock disponible: ${stockDisponible}`;
         stockValidationElement.className = 'form-text text-muted';
         cantidadInput.disabled = false;
-        validarCantidadRequisicion(); // Validar por si ya había un valor
+        validarCantidadRequisicion();
     } catch (error) {
         console.error('Error obteniendo stock del artículo:', error);
-        notifi('Error al obtener stock del artículo', 'error');
         stockValidationElement.textContent = 'Error al cargar stock.';
         stockValidationElement.className = 'form-text text-danger';
         cantidadInput.disabled = true;
@@ -312,14 +315,15 @@ async function fntGetArtRequisicion(selectedData) {
 
 /**
  * Valida la cantidad ingresada en tiempo real contra el stock disponible.
- * Para requisiciones, permite solicitar más del stock disponible, pero muestra una advertencia.
- * Siempre retorna true si la cantidad es > 0, para permitir la adición a la requisición.
  */
 function validarCantidadRequisicion() {
     const cantidadInput = document.getElementById('txtCant');
+    const validationElement = document.getElementById('stockValidationRequisicion');
+    
+    if (!cantidadInput || !validationElement) return false;
+    
     const cantidad = parseInt(cantidadInput.value);
     const stockDisponible = parseFloat(cantidadInput.dataset.stockDisponible) || 0;
-    const validationElement = document.getElementById('stockValidationRequisicion');
 
     if (isNaN(cantidad) || cantidad <= 0) {
         validationElement.textContent = `Stock disponible: ${stockDisponible}. Cantidad no válida.`;
@@ -329,8 +333,8 @@ function validarCantidadRequisicion() {
 
     if (cantidad > stockDisponible) {
         validationElement.textContent = `Stock insuficiente. Disponible: ${stockDisponible}. Se solicitará a Compras.`;
-        validationElement.className = 'form-text text-warning'; // Advertencia, no error
-        return true; // Permitir agregar a la requisición, es una solicitud
+        validationElement.className = 'form-text text-warning';
+        return true;
     }
 
     validationElement.textContent = `Stock disponible: ${stockDisponible}. Cantidad válida.`;
@@ -344,6 +348,9 @@ function validarCantidadRequisicion() {
 function agregarArticuloATabla() {
     const selectArticulo = document.getElementById('listArticulo');
     const cantidadInput = document.getElementById('txtCant');
+    
+    if (!selectArticulo || !cantidadInput) return;
+    
     const idArticulo = selectArticulo.value;
     const stockDisponible = parseFloat(cantidadInput.dataset.stockDisponible) || 0;
     const cantidad = parseFloat(cantidadInput.value);
@@ -353,24 +360,21 @@ function agregarArticuloATabla() {
         return;
     }
 
-    // Validar que la cantidad sea mayor a 0.
-    // La función validarCantidadRequisicion ahora solo asegura que la cantidad sea > 0
-    // y muestra el mensaje de stock, pero siempre retorna true si la cantidad es válida.
     if (isNaN(cantidad) || cantidad <= 0) {
         notifi('La cantidad solicitada debe ser mayor a 0.', 'warning');
         return;
     }
 
-    // Evitar duplicados
-    if (document.querySelector(`#tblArticulosAgregados tr[data-id-articulo="${idArticulo}"]`)) {
-        notifi('Este artículo ya ha sido agregado. Edite la cantidad si desea modificarla.', 'info');
+    const tablaBody = document.getElementById('tblArticulosAgregados')?.querySelector('tbody');
+    if (!tablaBody) return;
+
+    if (tablaBody.querySelector(`tr[data-id-articulo="${idArticulo}"]`)) {
+        notifi('Este artículo ya ha sido agregado.', 'info');
         return;
     }
 
     const stockBadge = stockDisponible <= 0 ? '<span class="badge badge-danger ml-2">Sin Stock</span>' : '';
-
     const nombreArticulo = selectArticulo.options[selectArticulo.selectedIndex].text.split(' (Stock:')[0];
-    const tablaBody = document.getElementById('tblArticulosAgregados').querySelector('tbody');
 
     const fila = `
         <tr data-id-articulo="${idArticulo}">
@@ -387,49 +391,53 @@ function agregarArticuloATabla() {
 
     tablaBody.insertAdjacentHTML('beforeend', fila);
 
-    // Limpiar campos
     cantidadInput.value = '';
     cantidadInput.disabled = true;
-    document.getElementById('stockValidationRequisicion').textContent = '';
+    const stockValidation = document.getElementById('stockValidationRequisicion');
+    if (stockValidation) stockValidation.textContent = '';
     $('#listArticulo').val(null).trigger('change');
-    actualizarResumenArticulos(); // CORRECCIÓN: Actualizar resumen al agregar.
+    actualizarResumenArticulos();
 }
-// --- INICIO DE LA CORRECCIÓN ---
+
 /**
  * Actualiza el conteo de artículos y unidades en la tarjeta de resumen.
  */
 function actualizarResumenArticulos() {
     const tablaBody = document.getElementById('tblArticulosAgregados')?.querySelector('tbody');
-    if (!tablaBody) return; // Salir si la tabla no existe
+    if (!tablaBody) return;
 
     const filas = tablaBody.querySelectorAll('tr');
     const totalArticulos = filas.length;
     let totalUnidades = 0;
 
     filas.forEach(fila => {
-        totalUnidades += parseFloat(fila.cells[2].textContent) || 0;
+        const celdaCantidad = fila.cells[2];
+        if (celdaCantidad) {
+            totalUnidades += parseFloat(celdaCantidad.textContent) || 0;
+        }
     });
 
-    const resumenTotalArticulosElem = document.getElementById('resumenTotalArticulos');
-    const resumenTotalUnidadesElem = document.getElementById('resumenTotalUnidades');
-
-    if (resumenTotalArticulosElem) resumenTotalArticulosElem.textContent = totalArticulos;
-    if (resumenTotalUnidadesElem) resumenTotalUnidadesElem.textContent = totalUnidades;
+    const resumenTotalArticulos = document.getElementById('resumenTotalArticulos');
+    const resumenTotalUnidades = document.getElementById('resumenTotalUnidades');
+    
+    if (resumenTotalArticulos) resumenTotalArticulos.textContent = totalArticulos;
+    if (resumenTotalUnidades) resumenTotalUnidades.textContent = totalUnidades;
 }
 
 /**
  * Resetea la tarjeta de resumen a su estado inicial.
  */
 function resetResumen() {
-    document.getElementById('resumenUnidad').textContent = 'No seleccionada';
-    document.getElementById('resumenMecanico').textContent = 'No seleccionado';
-    actualizarResumenArticulos(); // Esto pondrá los contadores de artículos en 0
+    const resumenUnidad = document.getElementById('resumenUnidad');
+    const resumenMecanico = document.getElementById('resumenMecanico');
+    
+    if (resumenUnidad) resumenUnidad.textContent = 'No seleccionada';
+    if (resumenMecanico) resumenMecanico.textContent = 'No seleccionado';
+    actualizarResumenArticulos();
 }
-// --- FIN DE LA CORRECCIÓN ---
 
 /**
  * Muestra los detalles de una requisición en un modal.
- * @param {number} idDespacho - El ID del despacho (que es el id_despacho_fk de la requisición).
  */
 async function fntViewRequisicion(idDespacho) {
     try {
@@ -441,61 +449,57 @@ async function fntViewRequisicion(idDespacho) {
         if (result.success) {
             const req = result.data;
 
-            // Poblar los campos del modal con los datos de la requisición
-            document.getElementById('modalViewIdRequisicion').textContent = req.id_despacho_flujo; // Mostrar el ID de despacho
+            document.getElementById('modalViewIdRequisicion').textContent = req.id_despacho_flujo;
             document.getElementById('modalViewFechaRequisicion').textContent = req.fecha_requisicion_formatted;
             document.getElementById('modalViewUnidad').textContent = `${req.id_unidad} - ${req.modelo_unidad}`;
             document.getElementById('modalViewTipoOrden').textContent = req.tipo_orden;
-            document.getElementById('modalViewStatusRequisicion').innerHTML = req.status_display; // Usar innerHTML para el badge
+            document.getElementById('modalViewStatusRequisicion').innerHTML = req.status_display;
 
             document.getElementById('modalViewJefePatio').textContent = req.jefe_patio_nombre;
             document.getElementById('modalViewMecanico').textContent = req.mecanico_nombre || req.mecanico_cedula;
 
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Mostrar los datos del operador y despachador final si la orden ya fue despachada (estado 3)
             const operadorFinalContainer = document.getElementById('modalOperadorFinalContainer');
             const despachadorFinalContainer = document.getElementById('modalDespachadorFinalContainer');
 
             if (req.status_requisicion == 3) {
                 document.getElementById('modalViewOperadorFinal').textContent = req.operador_final || 'N/A';
                 document.getElementById('modalViewDespachadorFinal').textContent = req.despachador_final || 'N/A';
-                operadorFinalContainer.style.display = 'list-item';
-                despachadorFinalContainer.style.display = 'list-item';
+                if (operadorFinalContainer) operadorFinalContainer.style.display = 'list-item';
+                if (despachadorFinalContainer) despachadorFinalContainer.style.display = 'list-item';
             } else {
-                operadorFinalContainer.style.display = 'none';
-                despachadorFinalContainer.style.display = 'none';
+                if (operadorFinalContainer) operadorFinalContainer.style.display = 'none';
+                if (despachadorFinalContainer) despachadorFinalContainer.style.display = 'none';
             }
-            // --- FIN DE LA CORRECCIÓN ---
 
             document.getElementById('modalViewDiagnostico').textContent = req.diagnostico || 'Sin observaciones.';
 
-            // Poblar la tabla de artículos
             const tablaArticulosBody = document.getElementById('modalViewTablaArticulosReq');
-            tablaArticulosBody.innerHTML = ''; // Limpiar elementos anteriores
+            if (tablaArticulosBody) {
+                tablaArticulosBody.innerHTML = '';
 
-            if (req.articulos && req.articulos.length > 0) {
-                req.articulos.forEach(articulo => {
-                    const isOutOfStock = parseFloat(articulo.stock_actual) < parseFloat(articulo.cant_despacho);
-                    const nameHTML = isOutOfStock
-                        ? `<a href="${base_url}Producto/producto?id_producto=${articulo.id_producto}" class="text-danger font-weight-bold" title="Haga clic para agregar stock a este artículo">${articulo.producto} (${articulo.present_producto}) <i class="fas fa-external-link-alt fa-xs ml-1"></i></a>`
-                        : `${articulo.producto} (${articulo.present_producto})`;
-                    const stockStatus = !isOutOfStock 
-                        ? `<span class="badge badge-success">Hay Stock (Disp: ${articulo.stock_actual})</span>`
-                        : `<span class="badge badge-danger">Sin Stock (Disp: ${articulo.stock_actual})</span>`;
-                    const row = `
-                        <tr>
-                            <td>${nameHTML}</td>
-                            <td class="text-center">${articulo.cant_despacho}</td>
-                            <td class="text-center">${stockStatus}</td>
-                        </tr>
-                    `;
-                    tablaArticulosBody.insertAdjacentHTML('beforeend', row);
-                });
-            } else {
-                tablaArticulosBody.innerHTML = '<tr><td colspan="3" class="text-center">No hay artículos solicitados.</td></tr>';
+                if (req.articulos && req.articulos.length > 0) {
+                    req.articulos.forEach(articulo => {
+                        const isOutOfStock = parseFloat(articulo.stock_actual) < parseFloat(articulo.cant_despacho);
+                        const nameHTML = isOutOfStock
+                            ? `<a href="${base_url}Producto/producto?id_producto=${articulo.id_producto}" class="text-danger font-weight-bold" title="Haga clic para agregar stock">${articulo.producto} (${articulo.present_producto}) <i class="fas fa-external-link-alt fa-xs ml-1"></i></a>`
+                            : `${articulo.producto} (${articulo.present_producto})`;
+                        const stockStatus = !isOutOfStock 
+                            ? `<span class="badge badge-success">Hay Stock (Disp: ${articulo.stock_actual})</span>`
+                            : `<span class="badge badge-danger">Sin Stock (Disp: ${articulo.stock_actual})</span>`;
+                        const row = `
+                            <tr>
+                                <td>${nameHTML}</td>
+                                <td class="text-center">${articulo.cant_despacho}</td>
+                                <td class="text-center">${stockStatus}</td>
+                            </tr>
+                        `;
+                        tablaArticulosBody.insertAdjacentHTML('beforeend', row);
+                    });
+                } else {
+                    tablaArticulosBody.innerHTML = '<tr><td colspan="3" class="text-center">No hay artículos solicitados.</td></tr>';
+                }
             }
 
-            // Mostrar el modal
             $('#modalViewRequisicion').modal('show');
 
         } else {
@@ -509,7 +513,6 @@ async function fntViewRequisicion(idDespacho) {
 
 /**
  * Carga dinámicamente los detalles de una requisición en la sección de aprobación.
- * @param {number} idDespacho - El ID del despacho a cargar.
  */
 async function fntLoadRequisicionParaAprobar(idDespacho) {
     try {
@@ -520,9 +523,9 @@ async function fntLoadRequisicionParaAprobar(idDespacho) {
         if (result.success) {
             const req = result.data;
             const container = document.getElementById('viewRequisicionUrl');
+            if (!container) return;
 
-            // Llenar los campos de la tarjeta de detalles
-            container.querySelector('#viewIdRequisicionUrl').textContent = req.id_despacho_flujo; // Mostrar el ID de despacho
+            container.querySelector('#viewIdRequisicionUrl').textContent = req.id_despacho_flujo;
             container.querySelector('#viewFechaRequisicion').textContent = req.fecha_requisicion_formatted;
             container.querySelector('#viewUnidad').textContent = `${req.id_unidad} - ${req.modelo_unidad}`;
             container.querySelector('#viewTipoOrden').textContent = req.tipo_orden;
@@ -531,60 +534,61 @@ async function fntLoadRequisicionParaAprobar(idDespacho) {
             container.querySelector('#viewMecanico').textContent = req.mecanico_cedula;
             container.querySelector('#viewDiagnostico').textContent = req.diagnostico || 'N/A';
 
-            // Llenar tabla de artículos
             const tablaBody = container.querySelector('#viewTablaArticulosReq');
-            tablaBody.innerHTML = '';
-            if (req.articulos && req.articulos.length > 0) {
-                req.articulos.forEach(articulo => {
-                    const isOutOfStock = parseFloat(articulo.stock_actual) < parseFloat(articulo.cant_despacho);
-                    const nameHTML = isOutOfStock
-                        ? `<a href="${base_url}Producto/producto?id_producto=${articulo.id_producto}" class="text-danger font-weight-bold" title="Haga clic para agregar stock a este artículo">${articulo.producto} <i class="fas fa-external-link-alt fa-xs ml-1"></i></a>`
-                        : `${articulo.producto}`;
-                    const stockStatus = !isOutOfStock 
-                        ? `<span class="badge badge-success">Hay Stock (Disp: ${articulo.stock_actual})</span>`
-                        : `<span class="badge badge-danger">Sin Stock (Disp: ${articulo.stock_actual})</span>`;
-                    tablaBody.innerHTML += `
-                        <tr>
-                            <td>${nameHTML}</td>
-                            <td class="text-center">${articulo.cant_despacho}</td>
-                            <td class="text-center">${stockStatus}</td>
-                        </tr>
-                    `;
-                });
-            } else {
-                tablaBody.innerHTML = '<tr><td colspan="3" class="text-center">No hay artículos.</td></tr>';
+            if (tablaBody) {
+                tablaBody.innerHTML = '';
+                if (req.articulos && req.articulos.length > 0) {
+                    req.articulos.forEach(articulo => {
+                        const isOutOfStock = parseFloat(articulo.stock_actual) < parseFloat(articulo.cant_despacho);
+                        const nameHTML = isOutOfStock
+                            ? `<a href="${base_url}Producto/producto?id_producto=${articulo.id_producto}" class="text-danger font-weight-bold" title="Haga clic para agregar stock">${articulo.producto} <i class="fas fa-external-link-alt fa-xs ml-1"></i></a>`
+                            : `${articulo.producto}`;
+                        const stockStatus = !isOutOfStock 
+                            ? `<span class="badge badge-success">Hay Stock (Disp: ${articulo.stock_actual})</span>`
+                            : `<span class="badge badge-danger">Sin Stock (Disp: ${articulo.stock_actual})</span>`;
+                        tablaBody.innerHTML += `
+                            <tr>
+                                <td>${nameHTML}</td>
+                                <td class="text-center">${articulo.cant_despacho}</td>
+                                <td class="text-center">${stockStatus}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    tablaBody.innerHTML = '<tr><td colspan="3" class="text-center">No hay artículos.</td></tr>';
+                }
             }
 
-            // Configurar botones
             const btnAprobar = container.querySelector('#btnAprobarUrl');
-            const btnEnProceso = container.querySelector('#btnEnProcesoUrl');
-            btnAprobar.dataset.idDespacho = idDespacho;
+            if (btnAprobar) {
+                btnAprobar.dataset.idDespacho = idDespacho;
+            }
 
-            //const btnEnProceso = container.querySelector('#btnEnProcesoUrl');
+            const btnEnProceso = container.querySelector('#btnEnProcesoUrl');
             if (btnEnProceso) {
                 btnEnProceso.onclick = () => fntNotificarEnProcesoReq(idDespacho);
             }
 
-            // Lógica para habilitar/deshabilitar el botón de aprobar
             let canApprove = true;
-            let stockWarningMessage = '';
             if (req.articulos && req.articulos.length > 0) {
                 req.articulos.forEach(articulo => {
                     if (articulo.stock_actual < articulo.cant_despacho) {
                         canApprove = false;
-                        stockWarningMessage = 'No se puede aprobar: Hay artículos con stock insuficiente.';
                     }
                 });
             }
 
-            btnAprobar.disabled = !canApprove;
-            if (!canApprove) notifi(stockWarningMessage, 'warning');
+            if (btnAprobar) {
+                btnAprobar.disabled = !canApprove;
+                if (!canApprove) notifi('No se puede aprobar: Hay artículos con stock insuficiente.', 'warning');
+            }
 
-            // Mostrar la sección y ocultar el botón de "Ocultar" si no es necesario
             container.style.display = 'block';
-            container.querySelector('#btnOcultarUrl').onclick = () => container.style.display = 'none';
+            const btnOcultar = container.querySelector('#btnOcultarUrl');
+            if (btnOcultar) {
+                btnOcultar.onclick = () => container.style.display = 'none';
+            }
 
-            // Desplazarse a la sección
             container.scrollIntoView({ behavior: 'smooth' });
 
         } else {
@@ -598,7 +602,6 @@ async function fntLoadRequisicionParaAprobar(idDespacho) {
 
 /**
  * Envía la solicitud para aprobar la requisición.
- * @param {number} idDespacho - El ID del despacho a aprobar.
  */
 async function fntAprobarRequisicion(idDespacho) {
     const result = await Swal.fire({
@@ -615,20 +618,39 @@ async function fntAprobarRequisicion(idDespacho) {
     if (result.isConfirmed) {
         const formData = new FormData();
         formData.append('id_despacho_aprobar', idDespacho);
-        const response = await fetch(base_url + 'Requisicion/aprobarRequisicion', { method: 'POST', body: formData });
-        const res = await response.json();
-        notifi(res.msg, res.success ? 'success' : 'error');
-        if (res.success) {
-            // Notificar automáticamente a Operaciones que fue aprobada
-            const paramsNotif = new URLSearchParams({ id_despacho: idDespacho, tipo: 'aprobada' });
-            await fetch(base_url + 'Orden/notificarOperaciones', { method: 'POST', body: paramsNotif });
-            document.getElementById('viewRequisicionUrl').style.display = 'none';
-            if (typeof loadAllNotifications === 'function') loadAllNotifications();
-            tableRequisicion.ajax.reload();
+        
+        try {
+            const response = await fetch(base_url + 'Requisicion/aprobarRequisicion', { 
+                method: 'POST', 
+                body: formData 
+            });
+            const res = await response.json();
+            notifi(res.msg, res.success ? 'success' : 'error');
+            
+            if (res.success) {
+                const paramsNotif = new URLSearchParams({ id_despacho: idDespacho, tipo: 'aprobada' });
+                await fetch(base_url + 'Orden/notificarOperaciones', { 
+                    method: 'POST', 
+                    body: paramsNotif 
+                });
+                
+                const container = document.getElementById('viewRequisicionUrl');
+                if (container) container.style.display = 'none';
+                
+                if (tableRequisicion && typeof tableRequisicion.reload === 'function') {
+                    tableRequisicion.reload();
+                }
+            }
+        } catch (error) {
+            console.error('Error al aprobar:', error);
+            notifi('Error al procesar la aprobación.', 'error');
         }
     }
 }
 
+/**
+ * Notifica a Operaciones que una orden está en proceso.
+ */
 async function fntNotificarEnProcesoReq(idDespacho) {
     const result = await Swal.fire({
         title: 'Notificar a Operaciones',
@@ -640,20 +662,25 @@ async function fntNotificarEnProcesoReq(idDespacho) {
         confirmButtonText: 'Sí, notificar',
         cancelButtonText: 'Cancelar'
     });
+    
     if (!result.isConfirmed) return;
+    
     try {
         const params = new URLSearchParams({ id_despacho: idDespacho });
-        const response = await fetch(base_url + 'Orden/notificarEnProceso', { method: 'POST', body: params });
+        const response = await fetch(base_url + 'Orden/notificarEnProceso', { 
+            method: 'POST', 
+            body: params 
+        });
         const data = await response.json();
         notifi(data.message, data.success ? 'success' : 'error');
     } catch (error) {
+        console.error('Error al notificar:', error);
         notifi('Error al enviar la notificación.', 'error');
     }
 }
 
 /**
  * Prepara y envía los datos para generar el PDF de la requisición.
- * @param {number} idDespacho - El ID del despacho a imprimir.
  */
 async function fntImprimirRequisicion(idDespacho) {
     try {
@@ -664,12 +691,10 @@ async function fntImprimirRequisicion(idDespacho) {
         const result = await response.json();
 
         if (result.success) {
-            // Crear un formulario oculto para enviar los datos por POST
             const form = document.createElement('form');
             form.method = 'POST';
-            // La URL apunta al nuevo script PHP que genera el PDF
             form.action = base_url + 'data/almacen/requisicion.php';
-            form.target = '_blank'; // Abrir en una nueva pestaña
+            form.target = '_blank';
 
             const hiddenField = document.createElement('input');
             hiddenField.type = 'hidden';
@@ -688,4 +713,19 @@ async function fntImprimirRequisicion(idDespacho) {
         console.error('Error en fntImprimirRequisicion:', error);
         notifi('Error de conexión al generar el reporte.', 'error');
     }
+}
+
+/**
+ * Muestra una notificación tipo "toast".
+ */
+function notifi(msg, tipo) {
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: tipo,
+        title: msg,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
 }

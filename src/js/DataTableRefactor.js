@@ -3,6 +3,10 @@
  * Sistema de tablas dinámicas personalizadas para reemplazar DataTables
  */
 
+// =================================================================================
+// CLASE PRINCIPAL - DEFINIDA PRIMERO
+// =================================================================================
+
 class DynamicTable {
     constructor(config) {
         // Configuración básica
@@ -474,7 +478,7 @@ class DynamicTable {
 }
 
 // =================================================================================
-// FUNCIONES DE INICIALIZACIÓN DE TABLAS
+// ESTILOS CSS
 // =================================================================================
 
 function loadDynamicTableStyles() {
@@ -506,6 +510,10 @@ function loadDynamicTableStyles() {
 $(document).ready(function() {
     loadDynamicTableStyles();
 });
+
+// =================================================================================
+// FUNCIONES DE INICIALIZACIÓN DE TABLAS
+// =================================================================================
 
 /**
  * Función para inicializar tabla de usuarios
@@ -727,7 +735,7 @@ function initFlotaDynamicTable(options = {}) {
 }
 
 /**
- * Función para inicializar tabla de productos - CORREGIDA
+ * Función para inicializar tabla de productos
  */
 function initProductosDynamicTable() {
     console.log('Inicializando tabla dinámica de productos...');
@@ -793,7 +801,7 @@ function initProductosDynamicTable() {
 }
 
 /**
- * Función para inicializar tabla de personal - CORREGIDA
+ * Función para inicializar tabla de personal
  */
 function initPersonalDynamicTable() {
     console.log('Inicializando tabla dinámica de personal...');
@@ -894,4 +902,71 @@ function initPersonalDynamicTable() {
     });
     
     return table;
+}
+
+/**
+ * Función para inicializar tabla de requisiciones
+ */
+function initRequisicionesDynamicTable() {
+    console.log('Inicializando tabla dinámica de requisiciones...');
+    if (typeof base_url === 'undefined') {
+        console.error('base_url no está definida.');
+        return null;
+    }
+    
+    const apiUrl = base_url + 'Requisicion/getRequisiciones';
+    console.log('URL de la API requisiciones:', apiUrl);
+    
+    const config = {
+        tableId: 'tableRequisicion',
+        apiUrl: apiUrl,
+        container: '#tableRequisicion_wrapper',
+        pageSize: 10,
+        columns: [
+            { 
+                title: 'ID', 
+                data: 'id_despacho', 
+                width: '60px', 
+                className: 'text-center' 
+            },
+            { 
+                title: 'Fecha', 
+                data: 'fecha_despacho',
+                width: '130px'
+            },
+            { 
+                title: 'Unidad', 
+                data: 'id_unidad',
+                render: (data) => {
+                    return data.id_unidad || 'N/A';
+                }
+            },
+            { 
+                title: 'Tipo', 
+                data: 'tipo_orden',
+                width: '100px',
+                className: 'text-center'
+            },
+            { 
+                title: 'Creador', 
+                render: (data) => {
+                    const nombre = data.creador_nombre || '';
+                    const apellido = data.creador_apellido || '';
+                    return `${nombre} ${apellido}`.trim() || 'N/A';
+                }
+            },
+            { 
+                title: 'Estado', 
+                data: 'estado_orden',
+                className: 'text-center'
+            },
+            { 
+                title: 'Acciones', 
+                className: 'text-center',
+                render: (data) => data.acciones || ''
+            }
+        ]
+    };
+    
+    return new DynamicTable(config);
 }

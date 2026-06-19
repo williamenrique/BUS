@@ -211,22 +211,8 @@
                             <h3 class="card-title"><i class="fas fa-list-alt"></i> Listado de Requisiciones</h3>
                         </div>
                         <div class="card-body">
-                            <table id="tableRequisicion" class="table table-bordered table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Fecha</th>
-                                        <th>Unidad</th>
-                                        <th>Tipo</th>
-                                        <th>Creador</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Contenido se cargará por Ajax -->
-                                </tbody>
-                            </table>
+                            <!-- Contenedor para la tabla dinámica -->
+                            <div id="tableRequisicion_wrapper"></div>
                         </div>
                     </div>
                 </div>
