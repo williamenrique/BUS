@@ -1,7 +1,7 @@
 /**
  * Archivo: function.personal.js
  * Descripción: Lógica de JavaScript para la gestión de Personal.
- *              Incluye DataTable, CRUD con fetch, modales y notificaciones.
+ *              Utiliza DynamicTable en lugar de DataTables tradicional.
  */
 
 let tablePersonal;
@@ -11,82 +11,133 @@ let tablePersonal;
  * Punto de entrada para la inicialización de la página de Personal.
  */
 document.addEventListener('DOMContentLoaded', function () {
-    // Inicializa la DataTable para mostrar el listado de personal
-    tablePersonal = $('#tablePersonal').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "language": {
-            "url": base_url + "src/plugins/js/es_es.json"
-        },
-        "ajax": {
-            "url": base_url + "Personal/getPersonal",
-            "dataSrc": ""
-        },
-        "columns": [
-            { "data": "personal_cedula" },
-            { "data": "personal_nombre" },
-            { "data": "cargo" },
-            { "data": "personal_tlf" },
-            { "data": "personal_email" },
-            { "data": "personal_status", "className": "text-center" },
-            { "data": "acciones", "orderable": false, "className": "text-center" }
-        ],
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]]
-    });
+    //console.log('DOM cargado - Inicializando personal...');
+    
+    // Verificar que estamos en la página de personal
+    const wrapper = document.getElementById('tablePersonal_wrapper');
+    //console.log('Wrapper de tabla encontrado:', wrapper);
+    
+    if (wrapper) {
+        // Inicializar la tabla dinámica de personal
+        inicializarTablaPersonal();
+        
+        // Carga los cargos disponibles en el select del formulario
+        loadCargos();
+        
+        // Configurar eventos del formulario
+        configurarEventosFormulario();
+    } else {
+        console.warn('No se encontró #tablePersonal_wrapper, esta página no es personal');
+    }
+});
 
-    // Carga los cargos disponibles en el select del formulario
-    loadCargos();
+/**
+ * Inicializa la tabla dinámica de personal usando DataTableRefactor
+ */
+function inicializarTablaPersonal() {
+    //console.log('Inicializando tabla de personal dinámica...');
+    
+    // Verificar que el wrapper existe
+    const wrapper = document.getElementById('tablePersonal_wrapper');
+    //console.log('Wrapper encontrado:', wrapper);
+    
+    if (typeof initPersonalDynamicTable !== 'undefined') {
+        //console.log('initPersonalDynamicTable está disponible');
+        tablePersonal = initPersonalDynamicTable();
+        //console.log('Tabla creada:', tablePersonal);
+        if (tablePersonal) {
+            //console.log('Tabla de personal inicializada correctamente.');
+        } else {
+            console.error('Error al inicializar tabla de personal.');
+        }
+    } else {
+        console.error('initPersonalDynamicTable NO está disponible. Verificar carga de DataTableRefactor.js');
+        // Intentar cargar el script dinámicamente
+        cargarDataTableRefactor();
+    }
+}
 
+/**
+ * Carga DataTableRefactor.js dinámicamente si no está disponible
+ */
+function cargarDataTableRefactor() {
+    //console.log('Cargando DataTableRefactor.js dinámicamente...');
+    const script = document.createElement('script');
+    script.src = base_url + 'src/js/DataTableRefactor.js';
+    script.onload = function() {
+        //console.log('DataTableRefactor.js cargado dinámicamente');
+        if (typeof initPersonalDynamicTable !== 'undefined') {
+            tablePersonal = initPersonalDynamicTable();
+            //console.log('Tabla inicializada después de carga dinámica');
+        } else {
+            console.error('initPersonalDynamicTable sigue sin estar disponible');
+        }
+    };
+    script.onerror = function() {
+        console.error('Error al cargar DataTableRefactor.js');
+    };
+    document.head.appendChild(script);
+}
+
+/**
+ * Configura los event listeners para el formulario de personal
+ */
+function configurarEventosFormulario() {
     const formPersonal = document.querySelector("#formPersonal");
     const btnCancel = document.querySelector("#btnCancel");
 
-    // Evento de envío del formulario para crear o actualizar personal
-    formPersonal.onsubmit = async function (e) {
-        e.preventDefault();
+    if (formPersonal) {
+        formPersonal.onsubmit = async function (e) {
+            e.preventDefault();
 
-        const intIdentificacion = document.querySelector('#txtIdentificacion').value;
-        const strNombre = document.querySelector('#txtNombre').value;
-        const strApellido = document.querySelector('#txtApellido').value;
-        const intlistRolId = document.querySelector('#listCargo').value;
+            const intIdentificacion = document.querySelector('#txtIdentificacion').value;
+            const strNombre = document.querySelector('#txtNombre').value;
+            const strApellido = document.querySelector('#txtApellido').value;
+            const intlistRolId = document.querySelector('#listCargo').value;
 
-        // Validación de campos obligatorios
-        if (intIdentificacion.trim() === '' || strNombre.trim() === '' || strApellido.trim() === '' || intlistRolId === '0') {
-            notifi("Cédula, Nombre y Cargo son obligatorios.", "warning");
-            return;
-        }
-
-        try {
-            const formData = new FormData(formPersonal);
-
-            // Convertir a mayúsculas antes de enviar
-            formData.set('txtNombre', formData.get('txtNombre').toUpperCase());
-            formData.set('txtApellido', formData.get('txtApellido').toUpperCase());
-            formData.set('txtDireccion', formData.get('txtDireccion').toUpperCase());
-
-            const url = base_url + 'Personal/setPersonal';
-            // Petición asíncrona para guardar/actualizar
-            const response = await fetch(url, { method: 'POST', body: formData });
-            const data = await response.json();
-
-            if (data.success) {
-                resetForm();
-                notifi(data.message, "success");
-                tablePersonal.ajax.reload(); // Recargar la tabla para mostrar los cambios
-            } else {
-                notifi(data.message, "error");
+            // Validación de campos obligatorios
+            if (intIdentificacion.trim() === '' || strNombre.trim() === '' || strApellido.trim() === '' || intlistRolId === '0') {
+                notifi("Cédula, Nombre y Cargo son obligatorios.", "warning");
+                return;
             }
-        } catch (error) {
-            console.error('Error:', error);
-            notifi("Ocurrió un error en la operación. Intente de nuevo.", "error");
-        }
-    };
+
+            try {
+                const formData = new FormData(formPersonal);
+
+                // Convertir a mayúsculas antes de enviar
+                formData.set('txtNombre', formData.get('txtNombre').toUpperCase());
+                formData.set('txtApellido', formData.get('txtApellido').toUpperCase());
+                formData.set('txtDireccion', formData.get('txtDireccion').toUpperCase());
+
+                const url = base_url + 'Personal/setPersonal';
+                const response = await fetch(url, { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    resetForm();
+                    notifi(data.message, "success");
+                    // Recargar la tabla usando el método reload() del DynamicTable
+                    if (tablePersonal && typeof tablePersonal.reload === 'function') {
+                        tablePersonal.reload();
+                    } else {
+                        // Fallback: recargar la página
+                        window.location.reload();
+                    }
+                } else {
+                    notifi(data.message, "error");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                notifi("Ocurrió un error en la operación. Intente de nuevo.", "error");
+            }
+        };
+    }
 
     // Evento para el botón de cancelar, que resetea el formulario
-    btnCancel.addEventListener('click', resetForm);
-});
+    if (btnCancel) {
+        btnCancel.addEventListener('click', resetForm);
+    }
+}
 
 /**
  * Carga los cargos desde el controlador y los puebla en el select.
@@ -97,7 +148,11 @@ async function loadCargos() {
         const url = base_url + 'Personal/getSelectCargo';
         const response = await fetch(url);
         const data = await response.text();
-        document.querySelector("#listCargo").innerHTML = data; // Inserta el HTML de las opciones
+        const select = document.querySelector("#listCargo");
+        if (select) {
+            select.innerHTML = data;
+            //console.log('Cargos cargados correctamente');
+        }
     } catch (error) {
         console.error("Error al cargar cargos:", error);
     }
@@ -108,12 +163,19 @@ async function loadCargos() {
  * Limpia campos, restaura títulos y oculta el botón de cancelar.
  */
 function resetForm() {
-    document.querySelector("#idPersonal").value = "";
-    document.querySelector("#formTitle").innerHTML = '<i class="fas fa-user-plus"></i> Registrar Nuevo Personal';
-    document.querySelector("#btnText").innerHTML = "Guardar";
-    document.querySelector("#formPersonal").reset();
-    document.querySelector("#btnCancel").style.display = 'none'; // Oculta el botón de cancelar
-    document.querySelector('#txtIdentificacion').removeAttribute('readonly'); // Permite editar la cédula
+    const idPersonal = document.querySelector("#idPersonal");
+    const formTitle = document.querySelector("#formTitle");
+    const btnText = document.querySelector("#btnText");
+    const btnCancel = document.querySelector("#btnCancel");
+    const txtIdentificacion = document.querySelector('#txtIdentificacion');
+    const form = document.querySelector("#formPersonal");
+    
+    if (idPersonal) idPersonal.value = "";
+    if (formTitle) formTitle.innerHTML = '<i class="fas fa-user-plus"></i> Registrar Nuevo Personal';
+    if (btnText) btnText.innerHTML = "Guardar";
+    if (form) form.reset();
+    if (btnCancel) btnCancel.style.display = 'none';
+    if (txtIdentificacion) txtIdentificacion.removeAttribute('readonly');
 }
 
 /**
@@ -174,7 +236,7 @@ async function fntEditPersonal(id_personal) {
             // Llenar el formulario con los datos existentes
             document.querySelector("#idPersonal").value = personal.id_personal;
             document.querySelector("#txtIdentificacion").value = personal.personal_cedula;
-            document.querySelector("#txtIdentificacion").setAttribute('readonly', true); // Cédula no se edita
+            document.querySelector("#txtIdentificacion").setAttribute('readonly', true);
             document.querySelector("#txtNombre").value = personal.personal_nombre;
             document.querySelector("#txtApellido").value = personal.personal_apellido;
             document.querySelector("#listCargo").value = personal.personal_cargo;
@@ -184,7 +246,7 @@ async function fntEditPersonal(id_personal) {
             document.querySelector("#listTagPersonal").value = personal.personal_tag;
             document.querySelector("#listStatus").value = personal.personal_status;
 
-            window.scrollTo({ top: 0, behavior: 'smooth' }); // Mover al inicio de la página para ver el formulario
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
             notifi(result.message, "error");
         }
@@ -220,7 +282,11 @@ function fntDelPersonal(id_personal) {
 
                 if (data.success) {
                     notifi(data.message, "success");
-                    tablePersonal.ajax.reload();
+                    if (tablePersonal && typeof tablePersonal.reload === 'function') {
+                        tablePersonal.reload();
+                    } else {
+                        window.location.reload();
+                    }
                 } else {
                     notifi(data.message, "error");
                 }
@@ -234,7 +300,7 @@ function fntDelPersonal(id_personal) {
 
 /**
  * Cambia el estado de un miembro del personal.
- * Utiliza SweetAlert2 para un flujo de confirmación en dos pasos (seleccionar estado y dar motivo).
+ * Utiliza SweetAlert2 para un flujo de confirmación en dos pasos.
  * @param {number} id_personal - El ID del personal.
  */
 function fntStatusPersonal(id_personal) {
@@ -284,7 +350,11 @@ function fntStatusPersonal(id_personal) {
 
                         if (data.success) {
                             notifi(data.message, "success");
-                            tablePersonal.ajax.reload(); // Recargar la tabla
+                            if (tablePersonal && typeof tablePersonal.reload === 'function') {
+                                tablePersonal.reload();
+                            } else {
+                                window.location.reload();
+                            }
                         } else {
                             notifi(data.message, "error");
                         }
@@ -295,5 +365,22 @@ function fntStatusPersonal(id_personal) {
                 }
             });
         }
+    });
+}
+
+/**
+ * Muestra una notificación tipo "toast".
+ * @param {string} msg - Mensaje a mostrar.
+ * @param {string} tipo - Tipo de notificación (success, error, warning, info).
+ */
+function notifi(msg, tipo) {
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: tipo,
+        title: msg,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
     });
 }

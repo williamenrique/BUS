@@ -99,21 +99,8 @@
                             <h3 class="card-title"><i class="fas fa-list"></i> Listado de Personal</h3>
                         </div>
                         <div class="card-body">
-                            <table id="tablePersonal" class="table table-bordered table-striped table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Cédula</th>
-                                        <th>Nombre Completo</th>
-                                        <th>Cargo</th>
-                                        <th>Teléfono</th>
-                                        <th>Email</th>
-                                        <th class="text-center">Estado</th>
-                                        <th class="text-center">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                </tbody>
-                            </table>
+                            <!-- Contenedor para la tabla dinámica -->
+                            <div id="tablePersonal_wrapper"></div>
                         </div>
                     </div>
                 </div>

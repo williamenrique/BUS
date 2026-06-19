@@ -208,7 +208,7 @@ async function getProducto() {
  * Inicializa la DataTable para mostrar la lista de productos.
  */
 function inicializarDataTable() {
-    console.log('Inicializando tabla de productos dinámica...');
+    //console.log('Inicializando tabla de productos dinámica...');
     if (typeof initProductosDynamicTable !== 'undefined') {
         tableProducto = initProductosDynamicTable();
     } else {
@@ -292,7 +292,7 @@ function fntDelProducto(idProducto) {
  * Inicializa la tabla dinámica para mostrar el inventario de productos.
  */
 function inicializarInventarioTable() {
-    console.log('Inicializando tabla de inventario dinámica...');
+    //console.log('Inicializando tabla de inventario dinámica...');
     if (typeof initInventarioDynamicTable !== 'undefined') {
         tableInventario = initInventarioDynamicTable();
     } else {

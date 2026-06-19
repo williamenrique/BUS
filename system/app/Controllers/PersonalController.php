@@ -72,7 +72,8 @@ class Personal extends Controllers{
             'page_title' => "Pagina Principal",
             'page_name' => "usuarios",
             'page_link' => "personal",
-            'page_functions' => "function.personal.js"
+            'page_functions' => "function.personal.js",
+            'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
         ];
         $this->views->getViews($this, "personal", $data);
     }
@@ -80,44 +81,29 @@ class Personal extends Controllers{
     /*
     desde aqui comienzan los metodos
     */
-
     /**
-     * Obtiene y formatea todo el personal para la DataTable.
+     * Obtiene y formatea todo el personal para la DataTable dinámica.
+     * Devuelve datos CRUDOS sin HTML para que la vista los renderice.
      */
     public function getPersonal() {
         $arrData = $this->model->selectPersonal();
-        // Añadir botón de eliminar
-        $btnDelete = '';
-
-        for ($i = 0; $i < count($arrData); $i++) {
-            $status = '';
-            switch ($arrData[$i]['personal_status']) {
-                case 1:
-                    $status = '<span class="badge badge-success">Activo</span>';
-                    break;
-                case 0:
-                    $status = '<span class="badge badge-danger">Inactivo</span>';
-                    break;
-                case 2:
-                    $status = '<span class="badge badge-info">Vacaciones</span>';
-                    break;
-                case 3:
-                    $status = '<span class="badge badge-warning">Reposo</span>';
-                    break;
-            }
-            // Concatenar nombre y apellido
-            $arrData[$i]['personal_nombre'] = $arrData[$i]['personal_nombre'] . ' ' . $arrData[$i]['personal_apellido'];
-            $arrData[$i]['personal_status'] = '<div class="text-center" onclick="fntStatusPersonal('.$arrData[$i]['id_personal'].')" style="cursor:pointer;">'.$status.'</div>';
-
-            $btnView = '<button class="btn btn-info btn-sm" onClick="fntViewPersonal('.$arrData[$i]['id_personal'].')" title="Ver"><i class="far fa-eye"></i></button>';
-            $btnEdit = '<button class="btn btn-primary btn-sm" onClick="fntEditPersonal('.$arrData[$i]['id_personal'].')" title="Editar"><i class="fas fa-pencil-alt"></i></button>';
-            $btnDelete = '<button class="btn btn-danger btn-sm" onClick="fntDelPersonal('.$arrData[$i]['id_personal'].')" title="Eliminar"><i class="far fa-trash-alt"></i></button>';
-            
-            $arrData[$i]['acciones'] = '<div class="text-center d-flex justify-content-center">' . $btnView . '&nbsp;' . $btnEdit . '&nbsp;' . $btnDelete . '</div>';
+        
+        // Si $arrData es un array simple, lo envolvemos en el formato esperado
+        if (!isset($arrData['success'])) {
+            $arrResponse = [
+                'success' => true,
+                'data' => $arrData ? $arrData : []
+            ];
+        } else {
+            // Si ya tiene el formato, lo dejamos igual
+            $arrResponse = $arrData;
         }
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
 
     /**
      * Obtiene los cargos para poblar un select.
