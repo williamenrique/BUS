@@ -18,17 +18,10 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                <table id="tableDepartamentos" class="table table-bordered table-striped table-hover" style="width:100%">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Nombre</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
+                                <!-- Contenedor para tabla dinámica de departamentos -->
+                                <div id="tableDepartamentos_wrapper">
+                                    <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
+                                </div>
                             </div>
                         </div>
 
@@ -43,17 +36,10 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                <table id="tableRoles" class="table table-bordered table-striped table-hover" style="width:100%">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Nombre</th>
-                                            <th>Estado</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
+                                <!-- Contenedor para tabla dinámica de roles -->
+                                <div id="tableRoles_wrapper">
+                                    <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -149,4 +135,13 @@
     </div>
     <!-- /.content-wrapper -->
 
+<!-- Deshabilitar DataTables CSS -->
+<style>
+    .dataTables_wrapper {
+        display: none;
+    }
+    #tableDepartamentos_wrapper, #tableRoles_wrapper {
+        display: block !important;
+    }
+</style>
 <?= footer($data)?>

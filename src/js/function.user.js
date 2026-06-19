@@ -1,7 +1,6 @@
 $(document).ready(function () {
     let selectedFile = null
 
-    let usuariosTable = null
     let originalData = {}
     // ===== FUNCIONES DE IMAGEN DE PERFIL =====
     // Lógica específica para la página de PERFIL
@@ -267,8 +266,28 @@ $(document).ready(function () {
     // --- FIN: Carga de datos para Select2 ---
 
     // ===== TABLA DE USUARIOS =====
-    if ($('#usuariosTable').length) {
-        initUsuariosTable()
+    if ($('#usuariosTable_wrapper').length) {
+        console.log('Inicializando tabla de usuarios...');
+        
+        // Esperar un momento para asegurar que todos los scripts estén cargados
+        setTimeout(() => {
+            if (typeof initUsuariosTable !== 'undefined') {
+                initUsuariosTable();
+            } else {
+                console.error('initUsuariosTable no está definida. Verificar carga de DataTableRefactor.js');
+                
+                // Intentar cargar la función manualmente después de 1 segundo más
+                setTimeout(() => {
+                    if (typeof initUsuariosTable !== 'undefined') {
+                        initUsuariosTable();
+                    } else {
+                        console.error('initUsuariosTable aún no está disponible');
+                        // Mostrar error al usuario
+                        $('#usuariosTable_wrapper').html('<div class="alert alert-danger">Error al cargar la tabla. Recargar la página.</div>');
+                    }
+                }, 1000);
+            }
+        }, 100);
     }
 
     // ===== PÁGINA DE RECUPERACIÓN DE CUENTAS =====
@@ -277,9 +296,7 @@ $(document).ready(function () {
         setupRequestContainerDelegation();
     }
     window.updateUsuariosTable = function () {
-        if (usuariosTable) {
-            reloadUsuariosTable()
-        }
+        reloadUsuariosTable();
     }
 })
 // ===== FUNCIONES GLOBALES =====
@@ -506,69 +523,31 @@ async function createUser(formData) {
         throw error
     }
 }
-function initUsuariosTable() {
-    // Aseguramos que la tabla tenga las clases correctas para que DataTables funcione.
-    const tableElement = $('#usuariosTable');
-    // 'w-full' (width: 100%) es clave para que sepa a qué ancho adaptarse.
-    // 'responsive' y 'display' son las clases que DataTables busca.
-    tableElement.addClass('display responsive w-full');
+let usuariosDynamicTable = null;
 
-    usuariosTable = $('#usuariosTable').DataTable({
-        ajax: {
-            url: base_url + "User/getUsuarios/",
-            type: "GET",
-            dataSrc: "data"
-        },
-        columns: [
-            { data: "usuario_id" },
-            { data: "personal_cedula" },
-            {
-                data: null,
-                render: function (data) {
-                    return `${data.personal_nombre} ${data.personal_apellido}`
-                }
-            },
-            { data: "usuario_nick" },
-            { data: "personal_email" },
-            { data: "personal_tlf" },
-            { data: "rol_nombre" },
-            { data: "departamento_nombre" },
-            {
-                data: "usuario_status",
-                render: function (data) {
-                    return data == 1
-                        ? '<span class="badge badge-success">Activo</span>'
-                        : '<span class="badge badge-danger">Inactivo</span>'
-                }
-            },
-            {
-                data: null,
-                render: function (data) {
-                    return `
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Acciones de usuario">
-                            <button type="button" class="btn btn-primary btn-edit" data-id="${data.usuario_id}" title="Editar Usuario">
-                                <i class="fas fa-edit"></i>
-                            </button>
-                            <button type="button" class="btn ${data.usuario_status == 1 ? 'btn-danger' : 'btn-success'} btn-status" data-id="${data.usuario_id}" data-status="${data.usuario_status}" title="${data.usuario_status == 1 ? 'Desactivar Usuario' : 'Activar Usuario'}">
-                                ${data.usuario_status == 1 ? '<i class="fas fa-ban"></i>' : '<i class="fas fa-check"></i>'}
-                            </button>
-                        </div>
-                    `
-                },
-                orderable: false
-            }
-        ],
-        language: { url: base_url + 'src/plugins/js/es_es.json' },
-        responsive: true,
-        pageLength: 10,
-        lengthMenu: [5, 10, 25, 50],
-        order: [[0, "desc"]],
-        dom: '<"flex justify-between items-center mb-4"<"text-xl font-bold">f>rt<"flex justify-between items-center mt-4"lip>',
-    })
+function initUsuariosTable() {
+    console.log('Llamando initUsuariosTable...');
+    
+    // Verificar que la función esté disponible
+    if (typeof initUsuariosDynamicTable === 'undefined') {
+        console.error('initUsuariosDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+        $('#usuariosTable_wrapper').html('<div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> Error: Script de tabla no cargado. Recargar página.</div>');
+        return;
+    }
+    
+    try {
+        // Inicializar tabla dinámica personalizada
+        usuariosDynamicTable = initUsuariosDynamicTable();
+        console.log('Tabla inicializada:', usuariosDynamicTable);
+    } catch (error) {
+        console.error('Error al inicializar tabla:', error);
+        $('#usuariosTable_wrapper').html('<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error: ' + error.message + '</div>');
+    }
 }
+
 function reloadUsuariosTable() {
-    if (usuariosTable) {
-        usuariosTable.ajax.reload(null, false)
+    if (usuariosDynamicTable) {
+        usuariosDynamicTable.reload();
     }
 }
 async function editUser(userId) {

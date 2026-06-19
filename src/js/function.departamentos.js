@@ -1,111 +1,147 @@
-let tableDepartamentos;
-let tableRoles;
+let departamentosDynamicTable = null;
+let rolesDynamicTable = null;
 
 document.addEventListener('DOMContentLoaded', function () {
-    tableDepartamentos = $('#tableDepartamentos').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "language": {
-            "url": base_url + "src/plugins/js/es_es.json"
-        },
-        "ajax": {
-            "url": base_url + "User/getDepartamentos", // Apunta a UserController
-            "dataSrc": ""
-        },
-        "columns": [
-            { "data": "departamento_id" },
-            { "data": "departamento_nombre" },
-            { "data": "departamento_status", "className": "text-center" },
-            { "data": "acciones", "orderable": false, "className": "text-center" }
-        ],
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "asc"]]
-    });
+    console.log('Cargando gestión de departamentos y roles...');
+    
+    // Inicializar tablas dinámicas
+    initTablasDepartamentos();
+    
+    // Configurar formularios
+    setupFormularios();
+});
 
+function initTablasDepartamentos() {
+    console.log('Inicializando tablas de departamentos y roles...');
+    
+    // Inicializar tabla de departamentos
+    setTimeout(() => {
+        if (typeof initDepartamentosDynamicTable !== 'undefined') {
+            departamentosDynamicTable = initDepartamentosDynamicTable();
+            console.log('Tabla de departamentos inicializada:', departamentosDynamicTable);
+            setupDepartamentosEventDelegation();
+        } else {
+            console.error('initDepartamentosDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+        }
+    }, 100);
+    
+    // Inicializar tabla de roles
+    setTimeout(() => {
+        if (typeof initRolesDynamicTable !== 'undefined') {
+            rolesDynamicTable = initRolesDynamicTable();
+            console.log('Tabla de roles inicializada:', rolesDynamicTable);
+            setupRolesEventDelegation();
+        } else {
+            console.error('initRolesDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+        }
+    }, 150);
+}
+
+function setupFormularios() {
     // NUEVO DEPARTAMENTO
     const formDepto = document.querySelector("#formDepto");
-    formDepto.onsubmit = async function (e) {
-        e.preventDefault();
+    if (formDepto) {
+        formDepto.onsubmit = async function (e) {
+            e.preventDefault();
 
-        const nombre = document.querySelector('#txtNombreDepto').value;
-        if (nombre.trim() === '') {
-            notifi("El nombre es obligatorio.", "warning");
-            return;
-        }
-
-        try {
-            const formData = new FormData(formDepto);
-            const url = base_url + 'User/setDepartamento'; // Apunta a UserController
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData
-            });
-            const data = await response.json();
-
-            if (data.success) {
-                $('#modalFormDepto').modal('hide');
-                formDepto.reset();
-                notifi(data.message, "success");
-                tableDepartamentos.ajax.reload();
-            } else {
-                notifi(data.message, "error");
+            const nombre = document.querySelector('#txtNombreDepto').value;
+            if (nombre.trim() === '') {
+                notifi("El nombre es obligatorio.", "warning");
+                return;
             }
-        } catch (error) {
-            console.error('Error:', error);
-            notifi("Ocurrió un error en la operación.", "error");
-        }
-    };
 
-    // --- INICIALIZACIÓN DE ROLES ---
-    tableRoles = $('#tableRoles').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "language": { "url": base_url + "src/plugins/js/es_es.json" },
-        "ajax": {
-            "url": base_url + "User/getRolesForTable",
-            "dataSrc": ""
-        },
-        "columns": [
-            { "data": "rol_id" },
-            { "data": "rol_nombre" },
-            { "data": "rol_status", "className": "text-center" },
-            { "data": "acciones", "orderable": false, "className": "text-center" }
-        ],
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "asc"]]
+            try {
+                const formData = new FormData(formDepto);
+                const url = base_url + 'User/setDepartamento';
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    $('#modalFormDepto').modal('hide');
+                    formDepto.reset();
+                    notifi(data.message, "success");
+                    recargarTablaDepartamentos();
+                } else {
+                    notifi(data.message, "error");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                notifi("Ocurrió un error en la operación.", "error");
+            }
+        };
+    }
+
+    // FORMULARIO DE ROLES
+    const formRol = document.querySelector("#formRol");
+    if (formRol) {
+        formRol.onsubmit = async function (e) {
+            e.preventDefault();
+            const nombre = document.querySelector('#txtNombreRol').value;
+            if (nombre.trim() === '') {
+                notifi("El nombre del rol es obligatorio.", "warning");
+                return;
+            }
+            try {
+                const formData = new FormData(formRol);
+                const url = base_url + 'User/setRol';
+                const response = await fetch(url, { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.success) {
+                    closeRolModal();
+                    formRol.reset();
+                    notifi(data.message, "success");
+                    recargarTablaRoles();
+                } else {
+                    notifi(data.message, "error");
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                notifi("Ocurrió un error en la operación.", "error");
+            }
+        };
+    }
+}
+
+function setupDepartamentosEventDelegation() {
+    // Delegación de eventos para botones de departamentos
+    $(document).on('click', '.btn-edit-depto', function () {
+        const deptoId = $(this).data('id');
+        fntEditDepto(deptoId);
     });
 
-    const formRol = document.querySelector("#formRol");
-    formRol.onsubmit = async function (e) {
-        e.preventDefault();
-        const nombre = document.querySelector('#txtNombreRol').value;
-        if (nombre.trim() === '') {
-            notifi("El nombre del rol es obligatorio.", "warning");
-            return;
-        }
-        try {
-            const formData = new FormData(formRol);
-            const url = base_url + 'User/setRol';
-            const response = await fetch(url, { method: 'POST', body: formData });
-            const data = await response.json();
-            if (data.success) {
-                closeRolModal();
-                formRol.reset();
-                notifi(data.message, "success");
-                tableRoles.ajax.reload();
-            } else {
-                notifi(data.message, "error");
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            notifi("Ocurrió un error en la operación.", "error");
-        }
-    };
-});
+    $(document).on('click', '.btn-delete-depto', function () {
+        const deptoId = $(this).data('id');
+        fntDelDepto(deptoId);
+    });
+}
+
+function setupRolesEventDelegation() {
+    // Delegación de eventos para botones de roles
+    $(document).on('click', '.btn-edit-rol', function () {
+        const rolId = $(this).data('id');
+        fntEditRol(rolId);
+    });
+
+    $(document).on('click', '.btn-delete-rol', function () {
+        const rolId = $(this).data('id');
+        fntDelRol(rolId);
+    });
+}
+
+function recargarTablaDepartamentos() {
+    if (departamentosDynamicTable) {
+        departamentosDynamicTable.reload();
+    }
+}
+
+function recargarTablaRoles() {
+    if (rolesDynamicTable) {
+        rolesDynamicTable.reload();
+    }
+}
 
 // --- FUNCIONES PARA DEPARTAMENTOS ---
 function openModal() {
@@ -133,7 +169,7 @@ async function fntEditDepto(iddepto) {
         document.querySelector('#titleModal').innerHTML = "<i class='fas fa-edit mr-2'></i> Actualizar Departamento";
         document.querySelector('#btnActionTextDepto').innerHTML = "<i class='fas fa-save mr-2'></i> Actualizar";
 
-        const url = `${base_url}User/getDepartamento/${iddepto}`; // Apunta a UserController
+        const url = `${base_url}User/getDepartamento/${iddepto}`;
         const response = await fetch(url);
         const result = await response.json();
 
@@ -197,7 +233,7 @@ function fntDelDepto(iddepto) {
                 const data = await response.json();
                 if (data.success) {
                     notifi(data.message, "success");
-                    tableDepartamentos.ajax.reload();
+                    recargarTablaDepartamentos();
                 } else {
                     notifi(data.message, "error");
                 }
@@ -226,7 +262,7 @@ function fntDelRol(idrol) {
                 const data = await response.json();
                 if (data.success) {
                     notifi(data.message, "success");
-                    tableRoles.ajax.reload();
+                    recargarTablaRoles();
                 } else {
                     notifi(data.message, "error");
                 }

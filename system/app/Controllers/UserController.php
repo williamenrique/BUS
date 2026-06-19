@@ -318,7 +318,8 @@ class User extends Controllers{
 			'page_title' => "Pagina Principal",
 			'page_name' => "usuarios",
 			'page_link' => "newuser",//activar el menu desplegable o un lin solo
-			'page_functions' => "function.user.js"
+			'page_functions' => "function.user.js",
+			'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
 		];
 		$this->views->getViews($this, "newuser", $data);
 	}
@@ -644,7 +645,8 @@ class User extends Controllers{
             'page_title' => "Gestión de Departamentos",
             'page_name' => "usuarios",
             'page_link' => "departamentos",
-            'page_functions' => "function.departamentos.js"
+            'page_functions' => "function.departamentos.js",
+            'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
         ];
         $this->views->getViews($this, "departamentos", $data);
     }

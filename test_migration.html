@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Migración Tablas</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .loading {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test de Migración de Tablas Dinámicas</h1>
+    
+    <div id="test-results">
+        <div class="test-result loading">
+            <h3>1. Verificando archivos...</h3>
+            <div id="file-check"></div>
+        </div>
+        
+        <div class="test-result loading">
+            <h3>2. Probando API de Usuarios...</h3>
+            <div id="api-check"></div>
+        </div>
+        
+        <div class="test-result loading">
+            <h3>3. Probando tabla dinámica...</h3>
+            <div id="table-check"></div>
+        </div>
+    </div>
+
+    <script>
+        // URL base simulada
+        const base_url = 'http://localhost/BUS/';
+        
+        async function testFileExists(url) {
+            try {
+                const response = await fetch(url);
+                return response.status !== 404;
+            } catch {
+                return false;
+            }
+        }
+        
+        async function testApi() {
+            try {
+                const response = await fetch(base_url + 'User/getUsuarios/');
+                const data = await response.json();
+                return data.success && Array.isArray(data.data);
+            } catch {
+                return false;
+            }
+        }
+        
+        async function runTests() {
+            // Test 1: Archivos
+            const fileCheck = document.getElementById('file-check');
+            const filesToCheck = [
+                { name: 'DataTableRefactor.js', url: base_url + 'src/js/DataTableRefactor.js' },
+                { name: 'function.user.js', url: base_url + 'src/js/function.user.js' }
+            ];
+            
+            for (const file of filesToCheck) {
+                const exists = await testFileExists(file.url);
+                fileCheck.innerHTML += `<p>${file.name}: ${exists ? '✅ OK' : '❌ No encontrado'}</p>`;
+            }
+            
+            // Test 2: API
+            const apiCheck = document.getElementById('api-check');
+            const apiOk = await testApi();
+            apiCheck.innerHTML = apiOk ? '✅ API funciona correctamente' : '❌ Error en API';
+            
+            // Test 3: Tabla dinámica
+            const tableCheck = document.getElementById('table-check');
+            
+            if (typeof DynamicTable === 'undefined') {
+                tableCheck.innerHTML = '⚠️ Clase DynamicTable no disponible - cargando script...';
+                
+                // Intentar cargar el script
+                const script = document.createElement('script');
+                script.src = base_url + 'src/js/DataTableRefactor.js';
+                script.onload = () => {
+                    if (typeof DynamicTable !== 'undefined') {
+                        tableCheck.innerHTML = '✅ DynamicTable cargado correctamente';
+                        testDynamicTable();
+                    } else {
+                        tableCheck.innerHTML = '❌ Error: DynamicTable no se cargó';
+                    }
+                };
+                script.onerror = () => {
+                    tableCheck.innerHTML = '❌ Error al cargar DataTableRefactor.js';
+                };
+                document.head.appendChild(script);
+            } else {
+                testDynamicTable();
+            }
+        }
+        
+        function testDynamicTable() {
+            const tableCheck = document.getElementById('table-check');
+            
+            try {
+                // Crear una instancia de prueba
+                const testConfig = {
+                    tableId: 'testTable',
+                    apiUrl: base_url + 'User/getUsuarios/',
+                    pageSize: 5,
+                    columns: [
+                        { title: 'ID', data: 'usuario_id' },
+                        { title: 'Nombre', data: 'personal_nombre' }
+                    ]
+                };
+                
+                // Verificar que la clase tenga los métodos esperados
+                const requiredMethods = ['initTable', 'loadData', 'search', 'renderTable', 'reload'];
+                const missingMethods = requiredMethods.filter(method => typeof DynamicTable.prototype[method] === 'undefined');
+                
+                if (missingMethods.length === 0) {
+                    tableCheck.innerHTML = '✅ DynamicTable funciona correctamente';
+                } else {
+                    tableCheck.innerHTML = `❌ Faltan métodos: ${missingMethods.join(', ')}`;
+                }
+            } catch (error) {
+                tableCheck.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        // Ejecutar tests
+        runTests();
+    </script>
+</body>
+</html>

@@ -47,6 +47,14 @@
 
 	<script src="<?= JS ?>function.main.js?v=<?= time() ?>"></script>
 	<script src="<?= JS.$data['page_functions']?>?v=<?= time() ?>"></script>
+	<?php 
+	// Cargar scripts adicionales si existen
+	if (isset($data['page_extra_scripts']) && is_array($data['page_extra_scripts'])) {
+		foreach ($data['page_extra_scripts'] as $extraScript) {
+			echo '<script src="' . JS . $extraScript . '?v=' . time() . '"></script>' . "\n";
+		}
+	}
+	?>
 	<script src="<?= JS ?>function.imprimirQZ.js?v=<?= time() ?>"></script>
 	<script src="<?= JS ?>notifications.js?v=<?= time() ?>"></script>
 </body>

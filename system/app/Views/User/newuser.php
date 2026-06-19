@@ -1,5 +1,14 @@
 <?= head($data)?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" />
+<!-- Deshabilitar DataTables CSS ya que usaremos nuestro sistema -->
+<style>
+    .dataTables_wrapper {
+        display: none;
+    }
+    #usuariosTable_wrapper {
+        display: block !important;
+    }
+</style>
 
 <!-- Estilos personalizados para Select2 -->
 <style>
@@ -113,25 +122,10 @@
                             <h3 class="card-title"><i class="fas fa-users"></i> Listado de Usuarios Registrados</h3>
                         </div>
                         <div class="card-body">
-                            <table id="usuariosTable" class="table table-bordered table-striped table-hover" style="width:100%">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Identificación</th>
-                                        <th>Nombre Completo</th>
-                                        <th>Nick</th>
-                                        <th>Email</th>
-                                        <th>Teléfono</th>
-                                        <th>Rol</th>
-                                        <th>Departamento</th>
-                                        <th>Estado</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <!-- Los datos se cargarán via AJAX -->
-                                </tbody>
-                            </table>
+                            <!-- Contenedor para la tabla dinámica -->
+                            <div id="usuariosTable_wrapper">
+                                <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
+                            </div>
                         </div>
                     </div>
                 </div>
