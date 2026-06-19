@@ -322,6 +322,38 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
 
     $currentPageName = $data['page_name'] ?? '';
     $currentPageLink = $data['page_link'] ?? '';
+    
+    // Obtener la URL actual para mejor comparación
+    $currentUrl = $_SERVER['REQUEST_URI'] ?? '';
+    $currentPath = parse_url($currentUrl, PHP_URL_PATH) ?? '';
+    $currentPath = str_replace('/BUS/', '/', $currentPath); // Normalizar base path
+    
+    // Función auxiliar para comparar URLs
+    $isActivePath = function($menuPath, $currentPath) {
+        if (empty($menuPath)) return false;
+        
+        $menuPath = rtrim($menuPath, '/');
+        $currentPath = rtrim($currentPath, '/');
+        
+        // Si la ruta del menú termina con algo como "/*", verificar si la ruta actual comienza con esa ruta
+        if (substr($menuPath, -2) === '/*') {
+            $basePath = substr($menuPath, 0, -2);
+            return strpos($currentPath, $basePath) === 0;
+        }
+        
+        // Comparación exacta o segmentos finales
+        if ($menuPath === $currentPath) return true;
+        
+        // Comparar solo el último segmento si es relevante
+        $menuParts = explode('/', $menuPath);
+        $currentParts = explode('/', $currentPath);
+        
+        if (end($menuParts) === end($currentParts)) {
+            return true;
+        }
+        
+        return false;
+    };
 
     $menuModel = new MenuModel();
     $menuData = $menuModel->obtenerMenuUsuario($usuarioNick);
@@ -387,13 +419,36 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
             $isParentActive = false;
 
             if ($tieneSubmenus) {
+                // Array para almacenar submenús con sus clases
+                $submenusConClase = [];
+                
                 // Verificar si algún submenú de este menú está activo
                 foreach ($menu['submenus'] as $submenu) {
-                    if ($submenu['submenu_pagina'] === $currentPageLink) {
+                    // Opción 1: Comparar con page_link (compatible con sistema actual)
+                    $isSubmenuActive = ($submenu['submenu_pagina'] === $currentPageLink);
+                    
+                    // Opción 2: Comparar URL completa para mayor precisión
+                    $submenuUrl = $submenu['submenu_url'] ? base_url() . $submenu['submenu_url'] : '#';
+                    $submenuPath = parse_url($submenuUrl, PHP_URL_PATH) ?? '';
+                    $isSubmenuActiveByUrl = $isActivePath($submenuPath, $currentPath);
+                    
+                    // Determinar si el submenú está activo
+                    $submenuActivo = $isSubmenuActive || $isSubmenuActiveByUrl;
+                    
+                    // Si algún submenú está activo, el menú padre también está activo
+                    if ($submenuActivo) {
                         $isParentActive = true;
-                        break;
                     }
+                    
+                    // Agregar clase al submenú
+                    $claseSubmenu = $submenuActivo ? 'active' : '';
+                    $submenusConClase[] = [
+                        'data' => $submenu,
+                        'clase' => $claseSubmenu,
+                        'url' => $submenuUrl
+                    ];
                 }
+                
                 if ($isParentActive) {
                     $claseMenu .= ' menu-open';
                     $claseEnlaceMenu .= ' active';
@@ -409,9 +464,10 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
                         </p>
                       </a>';
                 echo '<ul class="nav nav-treeview">';
-                foreach ($menu['submenus'] as $submenu) {
-                    $claseSubmenu = ($submenu['submenu_pagina'] === $currentPageLink) ? 'active' : '';
-                    $url = $submenu['submenu_url'] ? base_url() . $submenu['submenu_url'] : '#';
+                foreach ($submenusConClase as $submenuItem) {
+                    $submenu = $submenuItem['data'];
+                    $claseSubmenu = $submenuItem['clase'];
+                    $url = $submenuItem['url'];
                     echo '<li class="nav-item">
                             <a href="' . $url . '" class="nav-link ' . $claseSubmenu . '" data-page="' . $submenu['submenu_pagina'] . '">
                                <i class="far fa-circle nav-icon"></i>
@@ -422,12 +478,21 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
                 echo '</ul>';
             } else {
                 // Menú sin submenús
-                if ($menu['menu_link'] === $currentPageName) {
+                // Opción 1: Comparar con page_name (compatible con sistema actual)
+                // Opción 2: Comparar URL completa para mayor precisión
+                $isActiveDirect = ($menu['menu_link'] === $currentPageName);
+                
+                // Opción mejorada: también comparar la URL real
+                $enlace = $menu['menu_link'] ? base_url() . $menu['menu_link'] : '#';
+                $enlacePath = parse_url($enlace, PHP_URL_PATH) ?? '';
+                $isActiveByUrl = $isActivePath($enlacePath, $currentPath);
+                
+                if ($isActiveDirect || $isActiveByUrl) {
                     $claseEnlaceMenu .= ' active';
                 }
+                
                 echo '<li class="' . $claseMenu . '">';
                 // Menú sin submenús
-                $enlace = $menu['menu_link'] ? base_url() . $menu['menu_link'] : '#';
                 echo '<a href="' . $enlace . '" class="' . $claseEnlaceMenu . '" data-page="' . $menu['menu_link'] . '">
                         <i class="nav-icon ' . $menu['menu_icono'] . '"></i>
                         <p>' . $menu['menu_nombre'] . '</p>
