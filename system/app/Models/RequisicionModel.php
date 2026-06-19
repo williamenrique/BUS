@@ -173,7 +173,7 @@ class RequisicionModel extends Mysql {
                 $mechanicName = trim($mechanicInfo['personal_nombre'] . ' ' . $mechanicInfo['personal_apellido']);
             }
 
-            $queryDespacho = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden, origen_despacho) VALUES(?,?,?,?,?,?,?,?,?, 'Requisicion')";
+            $queryDespacho = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden) VALUES(?,?,?,?,?,?,?,?,?)";
             $idDespacho = $this->insert($queryDespacho, [$intUnidad, 'N/A', $mechanicName, 'N/A', $strDate, $intIdUser, $srtObs, 1, 1]);
 
             if ($idDespacho <= 0) {

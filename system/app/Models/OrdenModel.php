@@ -80,7 +80,7 @@ class OrdenModel extends Mysql {
 
 	/**** insertar despacho ****/
 	public function insertDespacho(int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, int $intIdUser, string $srtObs, string $strDate){
-		$queryInsert = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden, origen_despacho) VALUES(?,?,?,?,?,?,?,?,?, 'Requisicion')";
+		$queryInsert = "INSERT INTO table_alm_despacho(id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, estado_orden) VALUES(?,?,?,?,?,?,?,?,?)";
 		$idDespacho = $this->insert($queryInsert,[$intUnidad, $srtOper, $srtMec, $srtDesp, $strDate, $intIdUser, $srtObs, 1, 1]);
 
 		if ($idDespacho > 0) {

@@ -45,9 +45,9 @@
     	const userEstacionId = <?= intval($_SESSION['userData']['usuario_estacion_id'] ?? 0) ?>; // ID de la estación asignada al usuario
 	</script>
 
-	<script src="<?= JS ?>function.main.js"></script>
-	<script src="<?= JS.$data['page_functions']?>"></script>
-	<script src="<?= JS ?>function.imprimirQZ.js"></script>
-	<script src="<?= JS ?>notifications.js"></script>
+	<script src="<?= JS ?>function.main.js?v=<?= time() ?>"></script>
+	<script src="<?= JS.$data['page_functions']?>?v=<?= time() ?>"></script>
+	<script src="<?= JS ?>function.imprimirQZ.js?v=<?= time() ?>"></script>
+	<script src="<?= JS ?>notifications.js?v=<?= time() ?>"></script>
 </body>
 </html>

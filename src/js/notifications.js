@@ -109,7 +109,14 @@ function distributeNotificationsUI(notifications) {
                 icon = 'fa-truck text-success';
             }
 
-            const itemHTML = `<a href="${link}" class="dropdown-item" style="white-space: normal;"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;
+            let itemHTML;
+            if (notif.tipo_notificacion === 'orden_despachada_ops' || 
+                notif.tipo_notificacion === 'orden_en_proceso' || 
+                notif.tipo_notificacion === 'orden_aprobada_ops') {
+                itemHTML = `<span class="dropdown-item" style="white-space: normal; cursor: default;"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></span><div class="dropdown-divider"></div>`;
+            } else {
+                itemHTML = `<a href="${link}" class="dropdown-item" style="white-space: normal;"><i class="fas ${icon} mr-2"></i> ${notif.mensaje}<span class="float-right text-muted text-sm">${notif.fecha_creacion}</span></a><div class="dropdown-divider"></div>`;
+            }
             requisitionListContainer.append(itemHTML);
         });
     } else {

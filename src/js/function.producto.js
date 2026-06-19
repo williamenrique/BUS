@@ -9,7 +9,17 @@ let tableInventario;
 document.addEventListener('DOMContentLoaded', function () {
     // Detecta en qué página estamos para ejecutar el código correspondiente
     if (document.getElementById('tableProducto')) {
-        cargarDatosIniciales();
+        cargarDatosIniciales().then(() => {
+            // Verificar si hay un id_producto en la URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const idProductoUrl = urlParams.get('id_producto');
+            if (idProductoUrl) {
+                // Pequeño retardo para asegurar que Select2 esté inicializado
+                setTimeout(() => {
+                    cargarStockForm(idProductoUrl);
+                }, 300);
+            }
+        });
         configurarEventListeners();
         inicializarDataTable();
     } else if (document.getElementById('tableHistory')) {
@@ -216,7 +226,7 @@ function inicializarDataTable() {
             let stockCell = $(row).find('td:eq(5)');
             const stock = parseFloat(data.cant_producto);
             if (stock <= 0) {
-                stockCell.html(`<span class="stock-badge stock-out">Sin Stock</span>`);
+                stockCell.html(`<a href="javascript:void(0)" onclick="cargarStockForm(${data.id_producto})" class="stock-badge stock-out" style="cursor: pointer; text-decoration: none;" title="Haga clic para agregar stock a este artículo">Sin Stock <i class="fas fa-plus-circle ml-1"></i></a>`);
             } else if (stock < 10) { // Umbral para stock bajo
                 stockCell.html(`<span class="stock-badge stock-low">${stock} ${data.present_producto}</span>`);
             } else {
@@ -714,4 +724,31 @@ function notifi(msg, tipo) {
         timer: 3000,
         timerProgressBar: true
     });
+}
+
+/**
+ * Selecciona un producto en el formulario de agregar stock, hace scroll y enfoca el input de cantidad.
+ * @param {number} idProducto - ID del producto a seleccionar.
+ */
+function cargarStockForm(idProducto) {
+    const select = document.getElementById('listArticuloExistente');
+    if (!select) return;
+
+    // Seleccionar el valor en el Select2
+    $(select).val(idProducto).trigger('change');
+
+    // Desplazamiento suave hacia la tarjeta de agregar stock
+    const formContainer = document.getElementById('formArticuloExistente');
+    if (formContainer) {
+        formContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Enfocar el input de cantidad a agregar
+    setTimeout(() => {
+        const cantInput = document.getElementById('txtCantidadMas');
+        if (cantInput) {
+            cantInput.focus();
+            cantInput.select();
+        }
+    }, 600);
 }

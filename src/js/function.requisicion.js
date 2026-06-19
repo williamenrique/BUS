@@ -475,19 +475,24 @@ async function fntViewRequisicion(idDespacho) {
 
             if (req.articulos && req.articulos.length > 0) {
                 req.articulos.forEach(articulo => {
+                    const isOutOfStock = parseFloat(articulo.stock_actual) < parseFloat(articulo.cant_despacho);
+                    const nameHTML = isOutOfStock
+                        ? `<a href="${base_url}Producto/producto?id_producto=${articulo.id_producto}" class="text-danger font-weight-bold" title="Haga clic para agregar stock a este artículo">${articulo.producto} (${articulo.present_producto}) <i class="fas fa-external-link-alt fa-xs ml-1"></i></a>`
+                        : `${articulo.producto} (${articulo.present_producto})`;
+                    const stockStatus = !isOutOfStock 
+                        ? `<span class="badge badge-success">Hay Stock (Disp: ${articulo.stock_actual})</span>`
+                        : `<span class="badge badge-danger">Sin Stock (Disp: ${articulo.stock_actual})</span>`;
                     const row = `
                         <tr>
-                            <td>
-                                ${articulo.producto} (${articulo.present_producto})
-                                ${articulo.stock_actual < articulo.cant_despacho ? '<span class="badge badge-danger ml-2">Sin Stock</span>' : ''}
-                            </td>
-                            <td class="text-center">${articulo.cant_despacho} (Disp: ${articulo.stock_actual})</td>
+                            <td>${nameHTML}</td>
+                            <td class="text-center">${articulo.cant_despacho}</td>
+                            <td class="text-center">${stockStatus}</td>
                         </tr>
                     `;
                     tablaArticulosBody.insertAdjacentHTML('beforeend', row);
                 });
             } else {
-                tablaArticulosBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay artículos solicitados.</td></tr>';
+                tablaArticulosBody.innerHTML = '<tr><td colspan="3" class="text-center">No hay artículos solicitados.</td></tr>';
             }
 
             // Mostrar el modal
@@ -531,10 +536,23 @@ async function fntLoadRequisicionParaAprobar(idDespacho) {
             tablaBody.innerHTML = '';
             if (req.articulos && req.articulos.length > 0) {
                 req.articulos.forEach(articulo => {
-                    tablaBody.innerHTML += `<tr><td>${articulo.producto}</td><td class="text-center">${articulo.cant_despacho}</td></tr>`;
+                    const isOutOfStock = parseFloat(articulo.stock_actual) < parseFloat(articulo.cant_despacho);
+                    const nameHTML = isOutOfStock
+                        ? `<a href="${base_url}Producto/producto?id_producto=${articulo.id_producto}" class="text-danger font-weight-bold" title="Haga clic para agregar stock a este artículo">${articulo.producto} <i class="fas fa-external-link-alt fa-xs ml-1"></i></a>`
+                        : `${articulo.producto}`;
+                    const stockStatus = !isOutOfStock 
+                        ? `<span class="badge badge-success">Hay Stock (Disp: ${articulo.stock_actual})</span>`
+                        : `<span class="badge badge-danger">Sin Stock (Disp: ${articulo.stock_actual})</span>`;
+                    tablaBody.innerHTML += `
+                        <tr>
+                            <td>${nameHTML}</td>
+                            <td class="text-center">${articulo.cant_despacho}</td>
+                            <td class="text-center">${stockStatus}</td>
+                        </tr>
+                    `;
                 });
             } else {
-                tablaBody.innerHTML = '<tr><td colspan="2" class="text-center">No hay artículos.</td></tr>';
+                tablaBody.innerHTML = '<tr><td colspan="3" class="text-center">No hay artículos.</td></tr>';
             }
 
             // Configurar botones
