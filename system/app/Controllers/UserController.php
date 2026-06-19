@@ -652,18 +652,24 @@ class User extends Controllers{
     }
 
     public function getDepartamentos() {
-        $arrData = $this->model->selectDepartamentos();
-        for ($i=0; $i < count($arrData); $i++) {
-            $status = $arrData[$i]['departamento_status'] == 1 
-                ? '<span class="badge badge-success">Activo</span>' 
-                : '<span class="badge badge-danger">Inactivo</span>';
-            $arrData[$i]['departamento_status'] = $status;
-
-            $btnEdit = '<button class="btn btn-primary btn-sm" onClick="fntEditDepto('.$arrData[$i]['departamento_id'].')" title="Editar"><i class="fas fa-pencil-alt"></i></button>';
-            $btnDelete = '<button class="btn btn-danger btn-sm" onClick="fntDelDepto('.$arrData[$i]['departamento_id'].')" title="Eliminar"><i class="far fa-trash-alt"></i></button>';
-            $arrData[$i]['acciones'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
+        $arrResponse = array('success' => false, 'data' => array());
+        try {
+            if ($this->model->hasError()) {
+                throw new Exception('Error de conexión a la base de datos: ' . $this->model->getError());
+            }
+            $departamentos = $this->model->selectDepartamentos();
+            $arrResponse = [
+                'success' => true,
+                'data' => $departamentos
+            ];
+        } catch (Exception $e) {
+            $arrResponse = [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
         }
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
 
@@ -734,18 +740,24 @@ class User extends Controllers{
 	* CRUD de Roles
 	*****/
     public function getRolesForTable() {
-        $arrData = $this->model->selectRoles();
-        for ($i=0; $i < count($arrData); $i++) {
-            $status = $arrData[$i]['rol_status'] == 1 
-                ? '<span class="badge badge-success">Activo</span>' 
-                : '<span class="badge badge-danger">Inactivo</span>';
-            $arrData[$i]['rol_status'] = $status;
-
-            $btnEdit = '<button class="btn btn-primary btn-sm" onClick="fntEditRol('.$arrData[$i]['rol_id'].')" title="Editar"><i class="fas fa-pencil-alt"></i></button>';
-            $btnDelete = '<button class="btn btn-danger btn-sm" onClick="fntDelRol('.$arrData[$i]['rol_id'].')" title="Eliminar"><i class="far fa-trash-alt"></i></button>';
-            $arrData[$i]['acciones'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
+        $arrResponse = array('success' => false, 'data' => array());
+        try {
+            if ($this->model->hasError()) {
+                throw new Exception('Error de conexión a la base de datos: ' . $this->model->getError());
+            }
+            $roles = $this->model->selectRoles();
+            $arrResponse = [
+                'success' => true,
+                'data' => $roles
+            ];
+        } catch (Exception $e) {
+            $arrResponse = [
+                'success' => false,
+                'message' => $e->getMessage()
+            ];
         }
-        echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
 

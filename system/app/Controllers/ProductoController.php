@@ -330,7 +330,8 @@ class Producto extends Controllers{
             'page_title' => "Pagina Principal",
             'page_name' => "almacen",
             'page_link' => "inventario",
-            'page_functions' => "function.producto.js"
+            'page_functions' => "function.producto.js",
+            'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
         ];
         $this->views->getViews($this, "inventario", $data);
     }
@@ -339,28 +340,20 @@ class Producto extends Controllers{
      * Obtiene la lista de productos para la tabla de inventario.
      */
     public function getInventario() {
+        $arrResponse = array('success' => false, 'data' => array());
         try {
-            // Parámetros de DataTables
-            $draw = intval($_POST['draw'] ?? 0);
-            $start = intval($_POST['start'] ?? 0);
-            $length = intval($_POST['length'] ?? 10);
-            $searchValue = $_POST['search']['value'] ?? '';
-            $orderColumnIndex = $_POST['order'][0]['column'] ?? 0;
-            $orderColumnName = $_POST['columns'][$orderColumnIndex]['data'] ?? 'id_producto';
-            $orderDir = $_POST['order'][0]['dir'] ?? 'asc';
-
-            // Obtener datos con paginación, búsqueda y ordenamiento desde el modelo
-            $inventarioData = $this->model->getInventario($start, $length, $searchValue, $orderColumnName, $orderDir);
-
+            $inventario = $this->model->selectInventarioAll();
             $arrResponse = [
-                "draw" => $draw,
-                "recordsTotal" => $inventarioData['total'],
-                "recordsFiltered" => $inventarioData['total_filtered'],
-                "data" => $inventarioData['data']
+                'success' => true,
+                'data' => $inventario
             ];
         } catch (Exception $e) {
-            $arrResponse = ["error" => "Error al cargar el inventario: " . $e->getMessage()];
+            $arrResponse = [
+                'success' => false,
+                'message' => 'Error al cargar el inventario: ' . $e->getMessage()
+            ];
         }
+        header('Content-Type: application/json');
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }

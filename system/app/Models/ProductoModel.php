@@ -374,4 +374,19 @@ class ProductoModel extends Mysql {
 
         return [ "data" => $data, "total" => $totalRecords, "total_filtered" => $totalFiltered ];
     }
+
+    /**
+     * Obtiene todos los productos de inventario para DataTableRefactor
+     */
+    public function selectInventarioAll() {
+        $sql = "SELECT p.id_producto, p.producto, p.present_producto, prov.empresa_proveedor, rel.cant_producto, u.ubicacion, e.enlace_producto 
+                FROM table_alm_producto p 
+                LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
+                LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
+                LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
+                LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                WHERE p.status_producto = 1
+                ORDER BY p.id_producto DESC";
+        return $this->select_all($sql);
+    }
 }

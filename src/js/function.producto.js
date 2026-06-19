@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
         inicializarDataTable();
     } else if (document.getElementById('tableHistory')) {
         inicializarHistoryTable();
-    } else if (document.getElementById('tableInventario')) {
+    } else if (document.getElementById('tableInventario_wrapper')) {
         inicializarInventarioTable();
     } else if (document.getElementById('formUpdateProducto')) {
         // La lógica para esta página ahora está en function.cleanAlmacen.js
@@ -318,53 +318,23 @@ function fntDelProducto(idProducto) {
 }
 
 /**
- * Inicializa la DataTable para mostrar el inventario de productos.
+ * Inicializa la tabla dinámica para mostrar el inventario de productos.
  */
 function inicializarInventarioTable() {
-    tableInventario = $('#tableInventario').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "language": { "url": base_url + "src/plugins/js/es_es.json" },
-        "ajax": {
-            "url": base_url + "Producto/getInventario",
-            "type": "POST",
-            "dataSrc": "data"
-        },
-        "columns": [
-            { "data": "id_producto", "title": "ID" },
-            { "data": "producto", "title": "Artículo" },
-            { "data": "enlace_producto", "title": "Tipo" },
-            { "data": "empresa_proveedor", "title": "Proveedor" },
-            { "data": "ubicacion", "title": "Ubicación" },
-            { "data": "cant_producto", "title": "Stock", "className": "text-center" }
-        ],
-        "createdRow": function (row, data, dataIndex) {
-            let stockCell = $(row).find('td:eq(5)');
-            const stock = parseFloat(data.cant_producto);
-            const presentacion = data.present_producto || 'Und';
-
-            if (stock <= 0) {
-                stockCell.html(`<span class="stock-badge stock-out">Sin Stock</span>`);
-            } else if (stock < 10) {
-                stockCell.html(`<span class="stock-badge stock-low">${stock} ${presentacion}</span>`);
-            } else {
-                stockCell.html(`<span class="stock-badge stock-high">${stock} ${presentacion}</span>`);
-            }
-        },
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 15,
-        "order": [[0, "desc"]],
-        "dom": 'lfrtip'
-    });
+    console.log('Inicializando tabla de inventario dinámica...');
+    if (typeof initInventarioDynamicTable !== 'undefined') {
+        tableInventario = initInventarioDynamicTable();
+    } else {
+        console.error('initInventarioDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+    }
 }
 
 /**
  * Recarga la tabla de inventario.
  */
 function reloadInventarioTable() {
-    if (tableInventario) {
-        tableInventario.ajax.reload();
+    if (tableInventario && typeof tableInventario.reload === 'function') {
+        tableInventario.reload();
     }
 }
 

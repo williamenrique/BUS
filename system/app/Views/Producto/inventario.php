@@ -37,10 +37,9 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="tableInventario" class="table table-bordered table-striped table-hover" style="width:100%">
-                                    <!-- El contenido de la tabla será cargado por DataTables -->
-                                </table>
+                            <!-- Contenedor para tabla dinámica de inventario -->
+                            <div id="tableInventario_wrapper">
+                                <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
                             </div>
                         </div>
                     </div>
@@ -50,4 +49,13 @@
     </section>
 </div>
 
+<!-- Deshabilitar DataTables CSS -->
+<style>
+    .dataTables_wrapper {
+        display: none;
+    }
+    #tableInventario_wrapper {
+        display: block !important;
+    }
+</style>
 <?= footer($data)?>

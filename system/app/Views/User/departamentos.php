@@ -6,8 +6,8 @@
         <section class="content">
             <div class="container-fluid">
                 <div class="row">
-                    <div class="col-12">
-                        <!-- Columna Departamentos -->
+                    <!-- Columna Departamentos -->
+                    <div class="col-md-6 col-12 mb-4">
                         <div class="card card-primary card-outline">
                             <div class="card-header">
                                 <h3 class="card-title"><i class="fas fa-building"></i> Gestión de Departamentos</h3>
@@ -24,8 +24,10 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Columna Roles -->
+                    <!-- Columna Roles -->
+                    <div class="col-md-6 col-12 mb-4">
                         <div class="card card-primary card-outline">
                             <div class="card-header">
                                 <h3 class="card-title"><i class="fas fa-user-tag"></i> Gestión de Roles</h3>
