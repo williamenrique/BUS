@@ -15,62 +15,11 @@ document.addEventListener('DOMContentLoaded', function () {
     loadSelects();
 
     // Inicializar DataTable
-    tableFlota = $('#tableFlota').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "language": {
-            "url": base_url + "src/plugins/js/es_es.json"
-        },
-        "ajax": {
-            "url": base_url + "Flota/getFlota",
-            "dataSrc": "data"
-        },
-        "columns": [
-            {
-                "data": "id_unidad",
-                "render": function (data, type, row) {
-                    return `<a href="${base_url}flota/historialunidad/${row.id_flota}" class="font-weight-bold" title="Ver historial de la unidad">${data}</a>`;
-                }
-            },
-            { "data": "marca_unidad" },
-            { "data": "modelo_unidad" },
-            { "data": "vim_unidad" },
-            { "data": "status_unidad", "className": "text-center" },
-            { "data": "id_flota", "orderable": false, "className": "text-center" }
-        ],
-        "columnDefs": [
-            {
-                "targets": 4,
-                "render": function (data, type, row) {
-                    const status = statusMap[data] || { text: 'Desconocido', color: 'badge-light' };
-                    return `<span class="badge ${status.color}">${status.text}</span>`;
-                }
-            },
-            {
-                "targets": 5,
-                "render": function (data, type, row) {
-                    return `
-                        <div class="btn-group" role="group">
-                            <button onclick="fntViewUnidad(${data})" class="btn btn-info btn-sm" title="Ver"><i class="fas fa-eye"></i></button>
-                            <button onclick="fntEditUnidad(${data})" class="btn btn-primary btn-sm" title="Editar"><i class="fas fa-pencil-alt"></i></button>
-                            <button onclick="fntStatusUnidad(${data})" class="btn btn-warning btn-sm" title="Cambiar Estado"><i class="fas fa-exchange-alt"></i></button>
-                        </div>
-                    `;
-                }
-            }
-        ],
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]],
-        // --- INICIO: Adición para el reporte de operatividad ---
-        "drawCallback": function (settings) {
-            // Cada vez que la tabla se dibuje, guardamos los datos para los filtros.
-            // 'settings.json.data' contiene todos los datos devueltos por el servidor.
-            allFlotaData = settings.json ? settings.json.data : [];
+    tableFlota = initFlotaDynamicTable({
+        onLoad: function (data) {
+            allFlotaData = data || [];
             setupReportSection();
         }
-        // --- FIN: Adición para el reporte de operatividad ---
     });
 
     // Manejar envío del formulario
@@ -86,7 +35,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(objData => {
                 if (objData.success) {
                     $('#modalFlota').modal('hide');
-                    tableFlota.ajax.reload();
+                    if (tableFlota && typeof tableFlota.reload === 'function') {
+                        tableFlota.reload();
+                    }
                     notifi(objData.message, "success");
                 } else {
                     notifi(objData.message, "error");
@@ -111,7 +62,9 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(objData => {
                 if (objData.success) {
                     $('#modalStatus').modal('hide');
-                    tableFlota.ajax.reload();
+                    if (tableFlota && typeof tableFlota.reload === 'function') {
+                        tableFlota.reload();
+                    }
                     notifi(objData.message, "success");
                 } else {
                     notifi(objData.message, "error");

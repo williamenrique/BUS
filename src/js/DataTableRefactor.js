@@ -12,6 +12,10 @@ class DynamicTable {
         this.container = config.container;
         this.pageSize = config.pageSize || 10;
         
+        // Callbacks
+        this.onLoad = config.onLoad;
+        this.onDraw = config.onDraw;
+        
         // Estado de la tabla
         this.currentPage = 1;
         this.totalPages = 1;
@@ -169,6 +173,9 @@ class DynamicTable {
                 this.calculateTotalPages();
                 this.renderTable();
                 console.log('Tabla renderizada con', this.totalRecords, 'registros');
+                if (typeof this.onLoad === 'function') {
+                    this.onLoad(this.data);
+                }
             } else {
                 console.error('Respuesta sin éxito:', result);
                 this.showError('No se pudieron cargar los datos');
@@ -303,6 +310,9 @@ class DynamicTable {
         // Actualizar información y paginación
         this.updateInfo();
         this.renderPagination();
+        if (typeof this.onDraw === 'function') {
+            this.onDraw(pageData);
+        }
     }
     
     /**
@@ -879,6 +889,83 @@ function initOrdenesDynamicTable() {
                 className: 'text-center',
                 render: (data) => {
                     return `<div class="btn-group">${data.acciones}</div>`;
+                }
+            }
+        ]
+    };
+    
+    return new DynamicTable(config);
+}
+
+/**
+ * Función para inicializar tabla de flota
+ */
+function initFlotaDynamicTable(options = {}) {
+    console.log('Inicializando tabla dinámica de flota...');
+    
+    // Verificar que base_url esté definida
+    if (typeof base_url === 'undefined') {
+        console.error('base_url no está definida. Verificar que esté definida en el header.');
+        return null;
+    }
+    
+    const apiUrl = base_url + 'Flota/getFlota';
+    console.log('URL de la API flota:', apiUrl);
+    
+    const localStatusMap = typeof statusMap !== 'undefined' ? statusMap : {
+        0: { text: 'Desincorporada', color: 'badge-secondary' },
+        1: { text: 'Operativa', color: 'badge-success' },
+        2: { text: 'Inoperativa', color: 'badge-warning' },
+        3: { text: 'Mantenimiento', color: 'badge-info' },
+        4: { text: 'Por Desincorporar', color: 'badge-purple' },
+        5: { text: 'Crítica', color: 'badge-danger' }
+    };
+    
+    const config = {
+        tableId: 'tableFlota',
+        apiUrl: apiUrl,
+        container: '#tableFlota_wrapper',
+        pageSize: 10,
+        onLoad: options.onLoad,
+        onDraw: options.onDraw,
+        columns: [
+            { 
+                title: 'ID Unidad',
+                render: (data) => {
+                    return `<a href="${base_url}flota/historialunidad/${data.id_flota}" class="font-weight-bold" title="Ver historial de la unidad">${data.id_unidad}</a>`;
+                }
+            },
+            { 
+                title: 'Marca',
+                data: 'marca_unidad'
+            },
+            { 
+                title: 'Modelo',
+                data: 'modelo_unidad'
+            },
+            { 
+                title: 'VIN',
+                data: 'vim_unidad'
+            },
+            { 
+                title: 'Estado',
+                className: 'text-center',
+                render: (data) => {
+                    const status = localStatusMap[data.status_unidad] || { text: 'Desconocido', color: 'badge-light' };
+                    return `<span class="badge ${status.color}">${status.text}</span>`;
+                }
+            },
+            { 
+                title: 'Acciones',
+                className: 'text-center',
+                render: (data) => {
+                    return `
+                        <div class="btn-group" role="group">
+                            <button onclick="fntViewUnidad(${data.id_flota})" class="btn btn-info btn-sm" title="Ver"><i class="fas fa-eye"></i></button>
+                            <button onclick="fntEditUnidad(${data.id_flota})" class="btn btn-primary btn-sm" title="Editar"><i class="fas fa-pencil-alt"></i></button>
+                            <button onclick="fntStatusUnidad(${data.id_flota})" class="btn btn-warning btn-sm" title="Cambiar Estado"><i class="fas fa-exchange-alt"></i></button>
+                        </div>
+                    `;
                 }
             }
         ]

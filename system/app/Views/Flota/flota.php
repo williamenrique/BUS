@@ -83,23 +83,23 @@
                                 </div>
                             </div>
 
-                            <!-- Tabla Principal -->
-                            <div class="table-responsive">
-                                <table id="tableFlota" class="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>ID Unidad</th>
-                                            <th>Marca</th>
-                                            <th>Modelo</th>
-                                            <th>VIN</th>
-                                            <th class="text-center">Estado</th>
-                                            <th class="text-center">Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody></tbody>
-                                </table>
+                            <!-- Contenedor para tabla dinámica de flota -->
+                            <div id="tableFlota_wrapper">
+                                <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
                             </div>
                         </div>
+                    </div>
+                </div>
+
+<!-- Deshabilitar DataTables CSS -->
+<style>
+    .dataTables_wrapper {
+        display: none;
+    }
+    #tableFlota_wrapper {
+        display: block !important;
+    }
+</style>
                     </div>
                 </div>
             </div>

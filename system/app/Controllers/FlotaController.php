@@ -72,7 +72,8 @@ class Flota extends Controllers{
             'page_title' => "Pagina Principal",
             'page_name' => "operaciones",
             'page_link' => "flota",
-            'page_functions' => "function.flota.js"
+            'page_functions' => "function.flota.js",
+            'page_extra_scripts' => ["DataTableRefactor.js"] // Agregar script de tablas dinámicas
         ];
         $this->views->getViews($this, "flota", $data);
     }
@@ -96,12 +97,19 @@ class Flota extends Controllers{
      * Obtiene todas las unidades para la DataTable.
      */
     public function getFlota() {
+        $arrResponse = array('success' => false, 'data' => array());
         try {
             $arrData = $this->model->selectFlota();
-            echo json_encode(['data' => $arrData], JSON_UNESCAPED_UNICODE);
+            $arrResponse = [
+                'success' => true,
+                'data' => $arrData
+            ];
         } catch (Exception $e) {
             $this->handleDatabaseError($e->getMessage());
+            $arrResponse['message'] = $e->getMessage();
         }
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
 
