@@ -1,0 +1,8 @@
+Cambio de aceite flota/statusaceite fa fa-oil-can
+Reporte de compras compras/costos fa fa-chart-line
+Despacho orden fa fa-warehouse
+Inventario producto fa fa fa-box
+Requisicion requisicion fa fa-file-invoice-dollar
+Flota flota fa fa-bus
+Historial producto/historial fa fa-history
+Estacion fas fa-gas-pump
