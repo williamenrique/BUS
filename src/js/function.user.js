@@ -267,7 +267,7 @@ $(document).ready(function () {
 
     // ===== TABLA DE USUARIOS =====
     if ($('#usuariosTable_wrapper').length) {
-        console.log('Inicializando tabla de usuarios...');
+        //console.log('Inicializando tabla de usuarios...');
         
         // Esperar un momento para asegurar que todos los scripts estén cargados
         setTimeout(() => {
@@ -526,7 +526,7 @@ async function createUser(formData) {
 let usuariosDynamicTable = null;
 
 function initUsuariosTable() {
-    console.log('Llamando initUsuariosTable...');
+    //console.log('Llamando initUsuariosTable...');
     
     // Verificar que la función esté disponible
     if (typeof initUsuariosDynamicTable === 'undefined') {
@@ -538,7 +538,7 @@ function initUsuariosTable() {
     try {
         // Inicializar tabla dinámica personalizada
         usuariosDynamicTable = initUsuariosDynamicTable();
-        console.log('Tabla inicializada:', usuariosDynamicTable);
+        //console.log('Tabla inicializada:', usuariosDynamicTable);
     } catch (error) {
         console.error('Error al inicializar tabla:', error);
         $('#usuariosTable_wrapper').html('<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Error: ' + error.message + '</div>');

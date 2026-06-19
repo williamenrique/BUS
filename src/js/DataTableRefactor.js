@@ -973,3 +973,80 @@ function initFlotaDynamicTable(options = {}) {
     
     return new DynamicTable(config);
 }
+
+/**
+ * Función para inicializar tabla de productos
+ */
+function initProductosDynamicTable() {
+    console.log('Inicializando tabla dinámica de productos...');
+    
+    // Verificar que base_url esté definida
+    if (typeof base_url === 'undefined') {
+        console.error('base_url no está definida. Verificar que esté definida en el header.');
+        return null;
+    }
+    
+    const apiUrl = base_url + 'Producto/getProductos';
+    console.log('URL de la API productos:', apiUrl);
+    
+    const config = {
+        tableId: 'tableProducto',
+        apiUrl: apiUrl,
+        container: '#tableProducto_wrapper',
+        pageSize: 10,
+        columns: [
+            { 
+                title: 'ID',
+                data: 'id_producto',
+                width: '50px',
+                className: 'text-center'
+            },
+            { 
+                title: 'Artículo',
+                data: 'producto'
+            },
+            { 
+                title: 'Tipo',
+                data: 'enlace_producto'
+            },
+            { 
+                title: 'Proveedor',
+                data: 'empresa_proveedor'
+            },
+            { 
+                title: 'Ubicación',
+                data: 'ubicacion'
+            },
+            { 
+                title: 'Stock',
+                width: '120px',
+                className: 'text-center',
+                render: (data) => {
+                    const stock = parseFloat(data.cant_producto);
+                    const presentacion = data.present_producto || 'Und';
+                    if (stock <= 0) {
+                        return `<a href="javascript:void(0)" onclick="cargarStockForm(${data.id_producto})" class="stock-badge stock-out" style="cursor: pointer; text-decoration: none;" title="Haga clic para agregar stock a este artículo">Sin Stock <i class="fas fa-plus-circle ml-1"></i></a>`;
+                    } else if (stock < 10) {
+                        return `<span class="stock-badge stock-low">${stock} ${presentacion}</span>`;
+                    } else {
+                        return `<span class="stock-badge stock-high">${stock} ${presentacion}</span>`;
+                    }
+                }
+            },
+            { 
+                title: 'Acciones',
+                width: '100px',
+                className: 'text-center',
+                render: (data) => {
+                    return `
+                        <button class="btn btn-danger btn-sm" onClick="fntDelProducto(${data.id_producto})" title="Eliminar">
+                            <i class="far fa-trash-alt"></i>
+                        </button>
+                    `;
+                }
+            }
+        ]
+    };
+    
+    return new DynamicTable(config);
+}

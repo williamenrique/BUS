@@ -32,3 +32,11 @@ Vista:
 
 orden.php
 Inicializador: initOrdenesDynamicTable()
+
+vista:
+flota.php
+
+Personal (Personal/personal.php) — Siguiente prioridad
+Requisiciones (Requisicion/requisicion.php)
+Compras (Compras/costos.php)
+Bienes (Bienes/bienes.php)

@@ -8,7 +8,7 @@ let tableInventario;
 
 document.addEventListener('DOMContentLoaded', function () {
     // Detecta en qué página estamos para ejecutar el código correspondiente
-    if (document.getElementById('tableProducto')) {
+    if (document.getElementById('tableProducto_wrapper')) {
         cargarDatosIniciales().then(() => {
             // Verificar si hay un id_producto en la URL
             const urlParams = new URLSearchParams(window.location.search);
@@ -134,7 +134,9 @@ async function setProducto(e) {
         if (result.success) {
             notifi(result.message, 'success');
             form.reset();
-            tableProducto.ajax.reload();
+            if (tableProducto && typeof tableProducto.reload === 'function') {
+                tableProducto.reload();
+            }
             cargarDatosIniciales(); // Recargar selects por si hay nuevos productos
         } else {
             notifi(result.message, 'error');
@@ -163,7 +165,9 @@ async function updateProducto(e) {
             notifi(result.message, 'success');
             form.reset();
             document.getElementById('txtCantidadActual').value = '';
-            tableProducto.ajax.reload();
+            if (tableProducto && typeof tableProducto.reload === 'function') {
+                tableProducto.reload();
+            }
         } else {
             notifi(result.message, 'error');
         }
@@ -204,49 +208,12 @@ async function getProducto() {
  * Inicializa la DataTable para mostrar la lista de productos.
  */
 function inicializarDataTable() {
-    tableProducto = $('#tableProducto').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
-        "language": { "url": base_url + "src/plugins/js/es_es.json" },
-        "ajax": {
-            "url": base_url + "Producto/getProductos",
-            "dataSrc": "data"
-        },
-        "columns": [
-            { "data": "id_producto" },
-            { "data": "producto" },
-            { "data": "enlace_producto" },
-            { "data": "empresa_proveedor" },
-            { "data": "ubicacion" },
-            { "data": "cant_producto", "className": "text-center" },
-            { "data": null, "defaultContent": "", "orderable": false }
-        ],
-        "createdRow": function (row, data, dataIndex) {
-            // Stock
-            let stockCell = $(row).find('td:eq(5)');
-            const stock = parseFloat(data.cant_producto);
-            if (stock <= 0) {
-                stockCell.html(`<a href="javascript:void(0)" onclick="cargarStockForm(${data.id_producto})" class="stock-badge stock-out" style="cursor: pointer; text-decoration: none;" title="Haga clic para agregar stock a este artículo">Sin Stock <i class="fas fa-plus-circle ml-1"></i></a>`);
-            } else if (stock < 10) { // Umbral para stock bajo
-                stockCell.html(`<span class="stock-badge stock-low">${stock} ${data.present_producto}</span>`);
-            } else {
-                stockCell.html(`<span class="stock-badge stock-high">${stock} ${data.present_producto}</span>`);
-            }
-
-            // Acciones
-            let actionsCell = $(row).find('td:eq(6)');
-            actionsCell.addClass('text-center').html(`
-                <button class="btn btn-danger btn-sm" onClick="fntDelProducto(${data.id_producto})" title="Eliminar">
-                    <i class="far fa-trash-alt"></i>
-                </button>
-            `);
-        },
-        "responsive": true,
-        "bDestroy": true,
-        "iDisplayLength": 10,
-        "order": [[0, "desc"]],
-        "dom": 'lfrtip' // Se revierte al DOM por defecto de DataTables
-    });
+    console.log('Inicializando tabla de productos dinámica...');
+    if (typeof initProductosDynamicTable !== 'undefined') {
+        tableProducto = initProductosDynamicTable();
+    } else {
+        console.error('initProductosDynamicTable no está disponible. Verificar carga de DataTableRefactor.js');
+    }
 }
 
 /**
@@ -280,7 +247,9 @@ async function fntReporteProductosPDF() {
 }
 
 function reloadTable() {
-    tableProducto.ajax.reload();
+    if (tableProducto && typeof tableProducto.reload === 'function') {
+        tableProducto.reload();
+    }
 }
 
 /**
@@ -306,7 +275,9 @@ function fntDelProducto(idProducto) {
                 const res = await response.json();
                 if (res.success) {
                     notifi(res.message, 'success');
-                    tableProducto.ajax.reload();
+                    if (tableProducto && typeof tableProducto.reload === 'function') {
+                        tableProducto.reload();
+                    }
                 } else {
                     notifi(res.message, 'error');
                 }

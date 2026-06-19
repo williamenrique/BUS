@@ -134,23 +134,9 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
-                                <table id="tableProducto" class="table table-bordered table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>ID</th>
-                                            <th>Artículo</th>
-                                            <th>Tipo</th>
-                                            <th>Proveedor</th>
-                                            <th>Ubicación</th>
-                                            <th>Stock</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Data will be loaded by DataTable -->
-                                    </tbody>
-                                </table>
+                            <!-- Contenedor para tabla dinámica de productos -->
+                            <div id="tableProducto_wrapper">
+                                <!-- La tabla se generará dinámicamente por DataTableRefactor.js -->
                             </div>
                         </div>
                     </div>
@@ -161,5 +147,15 @@
     <!-- /.content -->
 </div>
 <!-- /.content-wrapper -->
+
+<!-- Deshabilitar DataTables CSS -->
+<style>
+    .dataTables_wrapper {
+        display: none;
+    }
+    #tableProducto_wrapper {
+        display: block !important;
+    }
+</style>
 
 <?= footer($data)?>
