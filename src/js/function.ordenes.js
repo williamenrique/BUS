@@ -3,25 +3,40 @@ let articulosAgregados = [];
 let tblOrdenes; // Variable para la instancia de DataTable
 
 document.addEventListener('DOMContentLoaded', function () {
-    inicializarComponentes();
+    // Verificar si el usuario es de almacén (solo puede visualizar)
+    const isAlmacen = userDepartment === 'ALMACEN';
+    
+    if (!isAlmacen) {
+        // Usuarios que pueden crear órdenes
+        inicializarComponentes();
+        configurarEventListeners();
+    }
     cargarDatosIniciales();
-    configurarEventListeners();
 });
 
 function setTitleByRole() {
     const titleElement = document.getElementById('form-title');
+    if (!titleElement) return; // Elemento no existe para almacén
+    
     if (userRole === 'JEFE DE TALLER' || userRole === 'JEFE DE PATIO') {
         titleElement.innerHTML = '<i class="fas fa-clipboard-list mr-2"></i> Nueva Requisición';
     } else {
         titleElement.innerHTML = '<i class="fas fa-truck-loading mr-2"></i> Nuevo Despacho';
     }
 }
+
 // Inicializar componentes y plugins
 function inicializarComponentes() {
-    // Establecer fecha actual por defecto
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('txtdate').value = today;
-    document.getElementById('fechaDespacho').textContent = formatFecha(today);
+    // Verificar si los elementos existen antes de inicializarlos
+    const fechaInput = document.getElementById('txtdate');
+    const fechaDespacho = document.getElementById('fechaDespacho');
+    
+    if (fechaInput && fechaDespacho) {
+        // Establecer fecha actual por defecto
+        const today = new Date().toISOString().split('T')[0];
+        fechaInput.value = today;
+        fechaDespacho.textContent = formatFecha(today);
+    }
 }
 
 // Cargar datos iniciales
@@ -33,15 +48,23 @@ async function cargarDatosIniciales() {
         const result = await response.json();
         if (result.success) {
             const { flota, operadores, mecanicos, despachadores, articulos } = result.data;
-            populateSelect('listUnidad', flota, 'id_flota', item => `${item.id_unidad} - ${item.modelo_unidad}`, 'Seleccione una unidad'); // Mantiene el ID de flota
-            populateSelect('listOperador', operadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un operador'); // Cambiado a id_personal
-            populateSelect('listMecanico', mecanicos, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un mecánico'); // Cambiado a id_personal
-            populateSelect('listDespachador', despachadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un despachador'); // Cambiado a id_personal
-            populateSelect('listArticulo', articulos, 'id_producto', item => `${item.producto} (Stock: ${item.cant_producto})`, 'Seleccione un artículo', item => ({ 'data-stock': item.cant_producto }));
+            
+            // Solo poblar selects si los elementos existen
+            if (document.getElementById('listUnidad')) {
+                populateSelect('listUnidad', flota, 'id_flota', item => `${item.id_unidad} - ${item.modelo_unidad}`, 'Seleccione una unidad');
+                populateSelect('listOperador', operadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un operador');
+                populateSelect('listMecanico', mecanicos, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un mecánico');
+                populateSelect('listDespachador', despachadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un despachador');
+                populateSelect('listArticulo', articulos, 'id_producto', item => `${item.producto} (Stock: ${item.cant_producto})`, 'Seleccione un artículo', item => ({ 'data-stock': item.cant_producto }));
+            }
 
             inicializarDataTable(); // Llamamos a inicializar la tabla de órdenes
             await actualizarProgresoOrdenes();
-            setTitleByRole(); // Ajustar el título del formulario según el rol
+            
+            // Solo ajustar título si el elemento existe
+            if (document.getElementById('form-title')) {
+                setTitleByRole();
+            }
         } else {
             notifi(result.message, 'error');
         }
@@ -52,66 +75,99 @@ async function cargarDatosIniciales() {
 }
 
 function configurarEventListeners() {
-    // Evento para cambio de fecha
-    document.getElementById('txtdate').addEventListener('change', function () {
-        const fecha = this.value;
-        document.getElementById('fechaDespacho').textContent = formatFecha(fecha);
-        document.getElementById('strDate').value = fecha;
-    });
+    // Solo configurar eventos si los elementos existen
+    const fechaInput = document.getElementById('txtdate');
+    const fechaDespacho = document.getElementById('fechaDespacho');
+    
+    if (fechaInput && fechaDespacho) {
+        // Evento para cambio de fecha
+        fechaInput.addEventListener('change', function () {
+            const fecha = this.value;
+            fechaDespacho.textContent = formatFecha(fecha);
+            document.getElementById('strDate').value = fecha;
+        });
+    }
 
     // Evento para validación de cantidad en tiempo real
-    document.getElementById('txtCant').addEventListener('input', validarCantidad);
+    const cantidadInput = document.getElementById('txtCant');
+    if (cantidadInput) {
+        cantidadInput.addEventListener('input', validarCantidad);
+    }
 
     // Evento para eliminar filas de la tabla
-    document.getElementById('lista').addEventListener('click', function (e) {
-        if (e.target.closest('.eliminarRow')) {
-            const fila = e.target.closest('tr');
-            const idArticulo = fila.querySelector('input[name="cod[]"]').value;
+    const listaArticulos = document.getElementById('lista');
+    if (listaArticulos) {
+        listaArticulos.addEventListener('click', function (e) {
+            if (e.target.closest('.eliminarRow')) {
+                const fila = e.target.closest('tr');
+                const idArticulo = fila.querySelector('input[name="cod[]"]').value;
 
-            // Eliminar de la lista de artículos agregados
-            articulosAgregados = articulosAgregados.filter(art => art.id != idArticulo);
+                // Eliminar de la lista de artículos agregados
+                articulosAgregados = articulosAgregados.filter(art => art.id != idArticulo);
 
-            fila.remove();
-            actualizarEstadoBotonGenerar();
-            actualizarResumenOrden();
-        }
-    });
+                fila.remove();
+                actualizarEstadoBotonGenerar();
+                actualizarResumenOrden();
+            }
+        });
+    }
 
     // Delegación de eventos para los selects que se cargan dinámicamente
-    // Usamos jQuery para escuchar los eventos de select2
-    $('#listUnidad').on('select2:select', function (e) {
-        const idUnidad = e.params.data.id;
-        if (idUnidad > 0) fntGetUnidad(idUnidad);
-    });
+    if ($('#listUnidad').length) {
+        $('#listUnidad').on('select2:select', function (e) {
+            const idUnidad = e.params.data.id;
+            if (idUnidad > 0) fntGetUnidad(idUnidad);
+        });
+    }
 
-    $('#listOperador').on('select2:select', function (e) {
-        const nombre = e.params.data.id > 0 ? e.params.data.text.split(' - ')[1].trim() : 'No seleccionado';
-        document.querySelector("#operador").textContent = nombre;
-    });
+    if ($('#listOperador').length) {
+        $('#listOperador').on('select2:select', function (e) {
+            const nombre = e.params.data.id > 0 ? e.params.data.text.split(' - ')[1].trim() : 'No seleccionado';
+            const operadorElement = document.querySelector("#operador");
+            if (operadorElement) operadorElement.textContent = nombre;
+        });
+    }
 
-    $('#listMecanico').on('select2:select', function (e) {
-        const nombre = e.params.data.id > 0 ? e.params.data.text.split(' - ')[1].trim() : 'No seleccionado';
-        document.querySelector("#mecanico").textContent = nombre;
-    });
+    if ($('#listMecanico').length) {
+        $('#listMecanico').on('select2:select', function (e) {
+            const nombre = e.params.data.id > 0 ? e.params.data.text.split(' - ')[1].trim() : 'No seleccionado';
+            const mecanicoElement = document.querySelector("#mecanico");
+            if (mecanicoElement) mecanicoElement.textContent = nombre;
+        });
+    }
 
-    $('#listDespachador').on('select2:select', function (e) {
-        const nombre = e.params.data.id !== "0" ? e.params.data.text.split(' - ')[1].trim() : 'No seleccionado';
-        document.querySelector("#despachador").textContent = nombre;
-    });
+    if ($('#listDespachador').length) {
+        $('#listDespachador').on('select2:select', function (e) {
+            const nombre = e.params.data.id !== "0" ? e.params.data.text.split(' - ')[1].trim() : 'No seleccionado';
+            const despachadorElement = document.querySelector("#despachador");
+            if (despachadorElement) despachadorElement.textContent = nombre;
+        });
+    }
 
-    $('#listArticulo').on('select2:select', function (e) {
-        const idArticulo = e.params.data.id;
-        if (idArticulo > 0) fntGetArt(idArticulo);
-    });
+    if ($('#listArticulo').length) {
+        $('#listArticulo').on('select2:select', function (e) {
+            const idArticulo = e.params.data.id;
+            if (idArticulo > 0) fntGetArt(idArticulo);
+        });
+    }
 
     // Evento para agregar artículo
-    document.getElementById('btnAgrega').addEventListener('click', agregarArticulo);
+    const btnAgrega = document.getElementById('btnAgrega');
+    if (btnAgrega) {
+        btnAgrega.addEventListener('click', agregarArticulo);
+    }
 
     // Evento para enviar formulario
-    document.getElementById('formDespacho').addEventListener('submit', enviarFormulario);
+    const formDespacho = document.getElementById('formDespacho');
+    if (formDespacho) {
+        formDespacho.addEventListener('submit', enviarFormulario);
+    }
 
     // Evento para búsqueda
-    document.getElementById('formBuscarDesp').addEventListener('submit', buscarOrdenes);
+    const formBuscarDesp = document.getElementById('formBuscarDesp');
+    if (formBuscarDesp) {
+        formBuscarDesp.addEventListener('submit', buscarOrdenes);
+    }
 }
 
 // Formatear fecha
@@ -184,7 +240,8 @@ function populateSelect(selectId, data, valueField, textFieldFn, defaultOptionTe
             // Usamos un setTimeout para asegurar que el campo de búsqueda esté listo antes de enfocarlo.
             // Esto resuelve conflictos de foco y permite la navegación con teclado.
             setTimeout(function () {
-                document.querySelector('.select2-search__field').focus();
+                const searchField = document.querySelector('.select2-search__field');
+                if (searchField) searchField.focus();
             }, 50); // Un pequeño retraso es suficiente
             // --- FIN DE LA MODIFICACIÓN ---
         });
@@ -220,9 +277,12 @@ async function fntGetArt(idArt) {
 // Validar cantidad en tiempo real
 function validarCantidad() {
     const cantidadInput = document.getElementById('txtCant');
+    const validationElement = document.getElementById('stockValidation');
+    
+    if (!cantidadInput || !validationElement) return false;
+    
     const cantidad = parseInt(cantidadInput.value);
     const stockDisponible = parseInt(document.getElementById('cantDispo').value);
-    const validationElement = document.getElementById('stockValidation');
 
     if (isNaN(cantidad) || cantidad <= 0) {
         validationElement.textContent = 'Cantidad no válida';
@@ -247,8 +307,13 @@ function validarCantidad() {
 // Agregar artículo a la lista
 function agregarArticulo() {
     const select = document.getElementById('listArticulo');
-    const selectedOption = select.options[select.selectedIndex];
     const cantidadInput = document.getElementById('txtCant');
+    const stockValidation = document.getElementById('stockValidation');
+    const lista = document.getElementById("lista");
+    
+    if (!select || !cantidadInput || !stockValidation || !lista) return;
+    
+    const selectedOption = select.options[select.selectedIndex];
     const cantidad = parseInt(cantidadInput.value);
 
     if (selectedOption.value == "0" || isNaN(cantidad) || cantidad <= 0) {
@@ -302,9 +367,9 @@ function agregarArticulo() {
         </tr>
     `;
 
-    document.getElementById("lista").insertAdjacentHTML('beforeend', item);
+    lista.insertAdjacentHTML('beforeend', item);
     cantidadInput.value = "";
-    document.getElementById('stockValidation').style.display = 'none';
+    stockValidation.style.display = 'none';
 
     actualizarEstadoBotonGenerar();
     actualizarResumenOrden();
@@ -313,14 +378,20 @@ function agregarArticulo() {
 // Actualizar estado del botón de generar
 function actualizarEstadoBotonGenerar() {
     const btnGenerar = document.getElementById('btnGenerar');
+    if (!btnGenerar) return;
     btnGenerar.disabled = articulosAgregados.length === 0;
 }
 
 // Actualizar resumen de la orden
 function actualizarResumenOrden() {
-    document.getElementById('totalArticulos').textContent = articulosAgregados.length;
-    const totalUnidades = articulosAgregados.reduce((total, art) => total + art.cantidad, 0);
-    document.getElementById('totalUnidades').textContent = totalUnidades;
+    const totalArticulos = document.getElementById('totalArticulos');
+    const totalUnidades = document.getElementById('totalUnidades');
+    
+    if (!totalArticulos || !totalUnidades) return;
+    
+    totalArticulos.textContent = articulosAgregados.length;
+    const totalCantidad = articulosAgregados.reduce((total, art) => total + art.cantidad, 0);
+    totalUnidades.textContent = totalCantidad;
 }
 
 // ========== GESTIÓN DE FORMULARIOS ==========
