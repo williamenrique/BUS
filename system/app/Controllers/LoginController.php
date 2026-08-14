@@ -117,12 +117,12 @@ class Login extends Controllers{
 	 * forzar la session activa para cerrarla si ya existe 
 	 */
     public function forceLogout() {
-        // Recibe el userId por POST (puede venir como JSON o FormData)
-        $userNick = $_POST['userId'] ?? null;
+        // Recibe el userNick por POST (puede venir como JSON o FormData)
+        $userNick = $_POST['userNick'] ?? null; // Changed from 'userId' to 'userNick' as per JS
         if (!$userNick) {
             // Si no viene por POST, intenta obtenerlo por JSON
             $data = json_decode(file_get_contents('php://input'), true);
-            $userNick = $data['userId'] ?? null;
+            $userNick = $data['userNick'] ?? null; // Changed from 'userId' to 'userNick'
         }
         if ($userNick) {
             $activeSession = $this->model->getActiveSession(NULL, $userNick);
@@ -192,6 +192,67 @@ class Login extends Controllers{
      * Elimina un directorio de forma recursiva dentro de una carpeta base segura.
      * Esta acción solo está permitida para administradores.
      */
+        /**
+     * Lista el contenido de un directorio dentro de la raíz del proyecto.
+     * Usado por el explorador de archivos de accion.php (carga perezosa).
+     */
+    public function listDirectory() {
+        $arrResponse = ['success' => false, 'message' => 'No se pudo listar el directorio.'];
+
+        try {
+            $relativePath = $_GET['path'] ?? '';
+            $baseDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR;
+            $baseReal = realpath($baseDir);
+
+            $cleanPath = str_replace('\\', '/', $relativePath);
+            $cleanPath = preg_replace('/\.{2,}\//', '', $cleanPath);
+            $cleanPath = trim($cleanPath, '/');
+
+            $fullPath = $baseDir . $cleanPath;
+            $realPath = realpath($fullPath);
+
+            if ($realPath === false || strpos($realPath, $baseReal) !== 0) {
+                throw new Exception('Ruta no válida. Intento de acceso fuera del directorio permitido.');
+            }
+            if (!is_dir($realPath)) {
+                throw new Exception('La ruta no es un directorio: ' . htmlspecialchars($cleanPath));
+            }
+
+            $ignored = ['.', '..', '.git', 'node_modules', 'vendor'];
+            $items = scandir($realPath);
+            $folders = [];
+            $files = [];
+            foreach ($items as $item) {
+                if (in_array($item, $ignored)) continue;
+                $full = $realPath . DIRECTORY_SEPARATOR . $item;
+                $rel = str_replace('\\', '/', str_replace($baseDir, '', $full));
+                if (is_dir($full)) {
+                    $folders[$item] = $rel;
+                } else {
+                    $files[$item] = $rel;
+                }
+            }
+            ksort($folders);
+            ksort($files);
+
+            $result = [];
+            foreach ($folders as $name => $rel) {
+                $result[] = ['type' => 'folder', 'name' => $name, 'path' => $rel];
+            }
+            foreach ($files as $name => $rel) {
+                $result[] = ['type' => 'file', 'name' => $name, 'path' => $rel];
+            }
+
+            $arrResponse = ['success' => true, 'data' => $result];
+        } catch (Exception $e) {
+            $arrResponse['message'] = $e->getMessage();
+        }
+
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
     public function deleteDirectory() {
         $arrResponse = ['success' => false, 'message' => 'Acción no permitida.'];
 
@@ -206,7 +267,7 @@ class Login extends Controllers{
             }
 
             // 2. Medida de seguridad: Definir el directorio base permitido para borrado.
-            $baseDir = '';
+            $baseDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR;
             // $baseDir = 'storage/';
 
             // 3. Limpieza y validación de la ruta para evitar Path Traversal.
@@ -304,6 +365,12 @@ class Login extends Controllers{
             $sqlContent .= "-- Generado el: " . date('Y-m-d H:i:s') . "\n";
             $sqlContent .= "-- --------------------------------------------------------\n\n";
 
+            // Si se solicita exportación vacía (solo estructura), omitimos el volcado de datos.
+            $emptyExport = isset($_GET['empty']) && $_GET['empty'] == '1';
+            if ($emptyExport) {
+                $sqlContent .= "-- NOTA: Exportación de estructura únicamente (sin datos).\n\n";
+            }
+
             foreach ($validTables as $table) {
                 // Estructura de la tabla
                 $structure = $this->model->getTableStructure($table);
@@ -313,27 +380,29 @@ class Login extends Controllers{
                     $sqlContent .= $structure['Create Table'] . ";\n\n";
                 }
 
-                // Datos de la tabla
-                $data = $this->model->getTableData($table);
-                if (!empty($data)) {
-                    $sqlContent .= "--\n-- Volcado de datos para la tabla `{$table}`\n--\n\n";
+                // Datos de la tabla (solo si no es exportación vacía)
+                if (!$emptyExport) {
+                    $data = $this->model->getTableData($table);
+                    if (!empty($data)) {
+                        $sqlContent .= "--\n-- Volcado de datos para la tabla `{$table}`\n--\n\n";
 
-                    // --- INICIO DE LA OPTIMIZACIÓN ---
-                    // Se agrupan todas las filas en una sola sentencia INSERT
-                    $columns = array_keys($data[0]);
-                    $sqlContent .= "INSERT INTO `{$table}` (`" . implode('`, `', $columns) . "`) VALUES\n";
+                        // --- INICIO DE LA OPTIMIZACIÓN ---
+                        // Se agrupan todas las filas en una sola sentencia INSERT
+                        $columns = array_keys($data[0]);
+                        $sqlContent .= "INSERT INTO `{$table}` (`" . implode('`, `', $columns) . "`) VALUES\n";
 
-                    $valueStrings = [];
-                    foreach ($data as $row) {
-                        $values = array_map(function($value) {
-                            if ($value === null) return 'NULL';
-                            // Escapar apóstrofes y barras invertidas
-                            return "'" . addslashes($value) . "'";
-                        }, array_values($row));
-                        $valueStrings[] = "(" . implode(', ', $values) . ")";
+                        $valueStrings = [];
+                        foreach ($data as $row) {
+                            $values = array_map(function($value) {
+                                if ($value === null) return 'NULL';
+                                // Escapar apóstrofes y barras invertidas
+                                return "'" . addslashes($value) . "'";
+                            }, array_values($row));
+                            $valueStrings[] = "(" . implode(', ', $values) . ")";
+                        }
+                        $sqlContent .= implode(",\n", $valueStrings) . ";\n\n";
+                        // --- FIN DE LA OPTIMIZACIÓN ---
                     }
-                    $sqlContent .= implode(",\n", $valueStrings) . ";\n\n";
-                    // --- FIN DE LA OPTIMIZACIÓN ---
                 }
             }
 
@@ -422,8 +491,7 @@ class Login extends Controllers{
                 throw new Exception('La ruta del archivo no puede estar vacía.');
             }
 
-            $baseDir = '';
-            // $baseDir = 'storage/';
+            $baseDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR; // Raíz del proyecto (c:\xampp\htdocs\BUS\)
 
             // Limpieza y validación de la ruta para evitar Path Traversal.
             $cleanPath = str_replace('\\', '/', $relativePath);
@@ -477,34 +545,26 @@ class Login extends Controllers{
             }
 
             // Definimos el directorio base como la raíz del proyecto para la validación.
-            $baseDir = $_SERVER['DOCUMENT_ROOT'] . '/Busyaracuy_update/';
-            $prohibitedDirs = ['/etc', '/var', '/bin', '/sbin', '/usr', '/boot', '/root', '/sys'];
-
-
+            $baseDir = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR; // Raíz del proyecto (c:\xampp\htdocs\BUS\)
+            $baseReal = realpath($baseDir);
 
             // Limpieza y validación de la ruta antigua
             $cleanOldPath = str_replace('\\', '/', $oldRelativePath);
             $cleanOldPath = preg_replace('/\.{2,}\//', '', $cleanOldPath);
-            $fullOldPath = $cleanOldPath; // La ruta ya es relativa a la raíz del proyecto
+            $cleanOldPath = trim($cleanOldPath, '/');
+            $fullOldPath = $baseDir . $cleanOldPath; // Ruta absoluta dentro de la raíz del proyecto
 
             // Limpieza y validación de la ruta nueva
             $cleanNewPath = str_replace('\\', '/', $newRelativePath);
             $cleanNewPath = preg_replace('/\.{2,}\//', '', $cleanNewPath);
-            $fullNewPath = $cleanNewPath; // La ruta ya es relativa a la raíz del proyecto
-            
-            // Verificación de directorios prohibidos
-            foreach ($prohibitedDirs as $dir) {
-                if (strpos($fullOldPath, $dir) === 0 || strpos($fullNewPath, $dir) === 0) {
-                    throw new Exception('Acceso denegado. No se permite acceder a directorios del sistema.');
-                }
-            }
-
+            $cleanNewPath = trim($cleanNewPath, '/');
+            $fullNewPath = $baseDir . $cleanNewPath; // Ruta absoluta dentro de la raíz del proyecto
 
             // Verificación de seguridad: Asegurarse de que la ruta real no salga del directorio del proyecto.
-            if (strpos(realpath($fullOldPath), realpath($baseDir)) !== 0) {
+            $realOldPath = realpath($fullOldPath);
+            if ($realOldPath === false || strpos($realOldPath, $baseReal) !== 0) {
                 throw new Exception('Ruta no válida. Intento de acceso fuera del directorio permitido.');
             }
-
 
             if (!file_exists($fullOldPath)) {
                 throw new Exception('El archivo o directorio a renombrar no existe: ' . htmlspecialchars($fullOldPath));
