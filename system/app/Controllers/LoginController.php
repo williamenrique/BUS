@@ -67,6 +67,7 @@ class Login extends Controllers{
                 $this->jsonResponse(false, 'El usuario o el password es incorrecto');
                 return;
             }
+            /*
             // --- INICIO DE LA MODIFICACIÓN ---
             // Verificar si ya existe una sesión activa para este usuario.
             $activeSession = $this->model->getActiveSession($requestUser['usuario_id'], null);
@@ -77,6 +78,7 @@ class Login extends Controllers{
                 return;
             }
             // --- FIN DE LA MODIFICACIÓN ---
+            */
             if ($requestUser['usuario_status'] != 1) {
                 $this->jsonResponse(false, 'El usuario está inactivo');
                 return;
