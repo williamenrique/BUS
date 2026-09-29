@@ -1,6 +1,6 @@
 <?php
 header('Access-Control-Allow-Origin: *');
-class Bienes extends Controllers{
+class BienesTaller extends Controllers{
     private $db; //para inicializar la base de datos
     public function __construct(){
         if (session_status() === PHP_SESSION_NONE) {
@@ -37,13 +37,13 @@ class Bienes extends Controllers{
     /**inicio de manejo de errores en cada controlador debe estar */
 	private function handleDatabaseError($error) {
         // Log del error
-        error_log("Error de BD en controlador User: " . $error);
+        error_log("Error de BD en controlador BienesTaller: " . $error);
         // Puedes elegir cómo manejar el error:
         // 1. Redirigir a una página de error
         // 2. Mostrar un mensaje JSON (para APIs)
         // 3. Guardar en variable para mostrar en vista
         // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',
@@ -61,7 +61,7 @@ class Bienes extends Controllers{
         return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 	/**fin de manejo de errores en cada controlador debe estar*/
-    public function bienes(){
+    public function bienesTaller(){
 
         // Validar nuevamente la sesión antes de mostrar el home
         if (!$this->validateSession()) {
@@ -69,14 +69,14 @@ class Bienes extends Controllers{
             exit();
         }
         $data = [
-            'page_tag' => "BIENES SSMLTY",
+            'page_tag' => "BIENES TALLER SSMLTY",
             'page_title' => "Pagina Principal",
-            'page_name' => "bienes",
-            'page_link' => "bienes",
-            'page_functions' => "function.bienes.js"
+            'page_name' => "bienes_taller",
+            'page_link' => "bienes_taller",
+            'page_functions' => "function.bienes_taller.js"
         ];
         $data['departamentos'] = $this->model->getDepartamentos(); // Añadido para pasar los departamentos a la vista
-        $this->views->getViews($this, "bienes", $data);
+        $this->views->getViews($this, "bienes_taller", $data);
     }
 
     // Método para obtener datos iniciales para los formularios
@@ -94,17 +94,17 @@ class Bienes extends Controllers{
         die();
     }
 
-    // Método para obtener todos los bienes
-    public function getBienes() {
+    // Método para obtener todos los bienes de taller
+    public function getBienesTaller() {
         try {
-            $arrData = $this->model->selectBienes();
+            $arrData = $this->model->selectBienesTaller();
             // Bucle para agregar los botones de acción a cada registro
             for ($i=0; $i < count($arrData); $i++) {
                 $btnEdit = '';
                 $btnDelete = '';
                 // Botones de acción con el estilo de Bootstrap/AdminLTE
-                $btnEdit = '<button class="btn btn-primary btn-sm" onClick="fntEditBien('.$arrData[$i]['id_bien'].')" title="Editar"><i class="fas fa-pencil-alt"></i></button>';
-                $btnDelete = '<button class="btn btn-danger btn-sm" onClick="fntDelBien('.$arrData[$i]['id_bien'].')" title="Eliminar"><i class="far fa-trash-alt"></i></button>';
+                $btnEdit = '<button class="btn btn-primary btn-sm" onClick="fntEditBienTaller('.$arrData[$i]['id_bien_taller'].')" title="Editar"><i class="fas fa-pencil-alt"></i></button>';
+                $btnDelete = '<button class="btn btn-danger btn-sm" onClick="fntDelBienTaller('.$arrData[$i]['id_bien_taller'].')" title="Eliminar"><i class="far fa-trash-alt"></i></button>';
                 $arrData[$i]['acciones'] = '<div class="text-center">' . $btnEdit . ' ' . $btnDelete . '</div>';
             }
             echo json_encode($arrData, JSON_UNESCAPED_UNICODE);
@@ -115,11 +115,11 @@ class Bienes extends Controllers{
     }
 
     // Método para obtener un bien específico
-    public function getBien($id_bien) {
+    public function getBienTaller($id_bien_taller) {
         try {
-            $id_bien = intval($id_bien);
-            if ($id_bien > 0) {
-                $arrData = $this->model->selectBien($id_bien);
+            $id_bien_taller = intval($id_bien_taller);
+            if ($id_bien_taller > 0) {
+                $arrData = $this->model->selectBienTaller($id_bien_taller);
                 if (empty($arrData)) {
                     $arrResponse = ['success' => false, 'message' => 'Datos no encontrados.'];
                 } else {
@@ -151,11 +151,11 @@ class Bienes extends Controllers{
         die();
     }
 
-    // Método para insertar o actualizar un bien
-    public function setBien() {
+    // Método para insertar o actualizar un bien de taller
+    public function setBienTaller() {
         if ($_POST) {
             try {
-                $id_bien = intval($_POST['id_bien'] ?? 0);
+                $id_bien_taller = intval($_POST['id_bien_taller'] ?? 0);
                 $data = [
                     'bien_depatamento_id' => strClean($_POST['departamento']),
                     'grupo_id' => strClean($_POST['grupo']),
@@ -167,22 +167,22 @@ class Bienes extends Controllers{
                     'user_id' => $_SESSION['idUser']
                 ];
 
-                if ($id_bien == 0) {
+                if ($id_bien_taller == 0) {
                     // Crear bien
-                    $request_bien = $this->model->insertBien($data);
+                    $request_bien = $this->model->insertBienTaller($data);
                     $option = 1;
                 } else {
                     // Actualizar bien
-                    $data['id_bien'] = $id_bien;
-                    $request_bien = $this->model->updateBien($data);
+                    $data['id_bien_taller'] = $id_bien_taller;
+                    $request_bien = $this->model->updateBienTaller($data);
                     $option = 2;
                 }
 
                 if ($request_bien > 0) {
                     if ($option == 1) {
-                        $arrResponse = ['success' => true, 'msg' => 'Bien guardado correctamente.'];
+                        $arrResponse = ['success' => true, 'msg' => 'Bien de taller guardado correctamente.'];
                     } else {
-                        $arrResponse = ['success' => true, 'msg' => 'Bien actualizado correctamente.'];
+                        $arrResponse = ['success' => true, 'msg' => 'Bien de taller actualizado correctamente.'];
                     }
                 } else {
                     $arrResponse = ['success' => false, 'message' => 'No es posible almacenar los datos.'];
@@ -195,16 +195,16 @@ class Bienes extends Controllers{
         die();
     }
 
-    // Método para eliminar un bien
-    public function delBien() {
+    // Método para eliminar un bien de taller
+    public function delBienTaller() {
         if ($_POST) {
             try {
-                $id_bien = intval($_POST['id_bien']);
-                $requestDelete = $this->model->deleteBien($id_bien);
+                $id_bien_taller = intval($_POST['id_bien_taller']);
+                $requestDelete = $this->model->deleteBienTaller($id_bien_taller);
                 if ($requestDelete) {
-                    $arrResponse = ['success' => true, 'message' => 'Se ha eliminado el bien', 'status' => true];
+                    $arrResponse = ['success' => true, 'message' => 'Se ha eliminado el bien de taller', 'status' => true];
                 } else {
-                    $arrResponse = ['success' => false, 'message' => 'Error al eliminar el bien.', 'status' => false];
+                    $arrResponse = ['success' => false, 'message' => 'Error al eliminar el bien de taller.', 'status' => false];
                 }
             } catch (Exception $e) {
                 $arrResponse = ['success' => false, 'message' => 'Error en el proceso: ' . $e->getMessage()];
@@ -217,9 +217,9 @@ class Bienes extends Controllers{
     // Método para generar el PDF general
     public function generarPdfGeneral() {
         try {
-            $bienes = $this->model->getAllBienesOrdenados();
+            $bienes = $this->model->getAllBienesTallerOrdenados();
             if (empty($bienes)) {
-                $arrResponse = ['success' => false, 'message' => 'No hay bienes para mostrar en el reporte.'];
+                $arrResponse = ['success' => false, 'message' => 'No hay bienes de taller para mostrar en el reporte.'];
             } else {
                 // Agrupar bienes por departamento
                 $bienesAgrupados = [];
@@ -253,11 +253,11 @@ class Bienes extends Controllers{
                 throw new Exception("ID de departamento no válido.");
             }
 
-            $bienes = $this->model->selectBienesPorDepartamento($idDepto);
+            $bienes = $this->model->selectBienesTallerPorDepartamento($idDepto);
             $deptoInfo = $this->model->getDepartamento($idDepto);
 
             if (empty($bienes)) {
-                $arrResponse = ['success' => false, 'message' => 'No se encontraron bienes para este departamento.'];
+                $arrResponse = ['success' => false, 'message' => 'No se encontraron bienes de taller para este departamento.'];
             } else {
                 // Enviar los bienes como un solo grupo bajo el nombre del departamento
                 $bienesAgrupados[$deptoInfo['departamento_bien']] = $bienes;
@@ -281,10 +281,10 @@ class Bienes extends Controllers{
                 throw new Exception("Debe proporcionar un término de búsqueda.");
             }
 
-            $bienes = $this->model->selectBienesPorBusqueda($termino);
+            $bienes = $this->model->selectBienesTallerPorBusqueda($termino);
 
             if (empty($bienes)) {
-                $arrResponse = ['success' => false, 'message' => 'No se encontraron bienes que coincidan con "' . htmlspecialchars($termino) . '".'];
+                $arrResponse = ['success' => false, 'message' => 'No se encontraron bienes de taller que coincidan con "' . htmlspecialchars($termino) . '".'];
             } else {
                 // Para el PDF, los agrupamos bajo un título genérico.
                 $bienesAgrupados['Resultados de la Búsqueda'] = $bienes;

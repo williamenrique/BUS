@@ -35,8 +35,8 @@
                             <div class="row mt-3">
                                 <div class="col-md-12">
                                     <div class="input-group">
-                                        <input type="text" id="txtBusquedaBien" class="form-control"
-                                            placeholder="Buscar bien por descripción, grupo, etc...">
+                                        <input type="text" id="txtBusquedaBienTaller" class="form-control"
+                                            placeholder="Buscar bien de taller por descripción, grupo, etc...">
                                         <div class="input-group-append">
                                             <button class="btn btn-primary" type="button" id="btnExportarBusqueda">
                                                 <i class="fas fa-file-pdf"></i> Exportar Búsqueda
@@ -50,19 +50,19 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Gestión de Inventario de Bienes</h3>
+                            <h3 class="card-title">Gestión de Inventario de Bienes de Taller</h3>
                             <div class="card-tools">
                                 <button type="button" class="btn btn-success" onclick="openModalQR();">
                                     <i class="fas fa-qrcode mr-2"></i> Generar QR
                                 </button>
                                 <button type="button" class="btn btn-primary" onclick="openModal();">
-                                    <i class="fas fa-plus-circle mr-2"></i> Nuevo Bien
+                                    <i class="fas fa-plus-circle mr-2"></i> Nuevo Bien de Taller
                                 </button>
                             </div>
                         </div>
                         <!-- /.card-header -->
                         <div class="card-body">
-                            <table id="tableBienes" class="table table-bordered table-striped">
+                            <table id="tableBienesTaller" class="table table-bordered table-striped">
                                 <thead>
                                     <tr>
                                         <th>ID</th>
@@ -89,19 +89,20 @@
 </div>
 <!-- /.content-wrapper -->
 
-<!-- Modal para agregar/editar bien -->
-<div class="modal fade" id="modalFormBien" tabindex="-1" role="dialog" aria-labelledby="titleModal" aria-hidden="true">
+<!-- Modal para agregar/editar bien de taller -->
+<div class="modal fade" id="modalFormBienTaller" tabindex="-1" role="dialog" aria-labelledby="titleModal"
+    aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="titleModal">Nuevo Bien</h5>
+                <h5 class="modal-title" id="titleModal">Nuevo Bien de Taller</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <form id="formBien" name="formBien">
-                    <input type="hidden" id="id_bien" name="id_bien" value="">
+                <form id="formBienTaller" name="formBienTaller">
+                    <input type="hidden" id="id_bien_taller" name="id_bien_taller" value="">
                     <div class="form-group">
                         <label for="descripcion">Descripción</label>
                         <textarea id="descripcion" name="descripcion" rows="2" class="form-control"></textarea>
@@ -156,8 +157,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                <button type="submit" form="formBien" class="btn btn-primary"><i class="fas fa-save mr-2"></i><span
-                        id="btnActionText">Guardar</span></button>
+                <button type="submit" form="formBienTaller" class="btn btn-primary"><i
+                        class="fas fa-save mr-2"></i><span id="btnActionText">Guardar</span></button>
             </div>
         </div>
     </div>
@@ -187,12 +188,12 @@
                 </div>
                 <div id="qrResult" class="text-center mt-4 d-none">
                     <div id="qrcode" class="d-inline-block p-2 bg-white rounded"></div>
-                    <p class="mt-2 text-muted">Escanea este código para ver los bienes del departamento.</p>
+                    <p class="mt-2 text-muted">Escanea este código para ver los bienes de taller del departamento.</p>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
-                <button type="button" class="btn btn-success" onclick="generarQR()">
+                <button type="button" class="btn btn-success" onclick="generarQR();">
                     <i class="fas fa-qrcode mr-2"></i>Generar QR
                 </button>
             </div>
