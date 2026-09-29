@@ -13,6 +13,7 @@ let movimientosTable = null;
 let selectedRow = null;
 
 let allFleetSummary = [];
+let filteredFleetSummary = [];
 let selectedFleetGroups = new Set();
 
 let currentFlotaStatus = null;
@@ -624,9 +625,9 @@ function getEstadoBadge(estado) {
  * Toggle de selección de un grupo de flota desde el checkbox de la tabla
  */
 function toggleFleetGroup(index, checkbox) {
-    if (!allFleetSummary || !allFleetSummary[index]) return;
+    if (!filteredFleetSummary || !filteredFleetSummary[index]) return;
 
-    const item = allFleetSummary[index];
+    const item = filteredFleetSummary[index];
     const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
 
     if (checkbox.checked) {
@@ -867,7 +868,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const fleetElements = {
         tbodyFleetSummary: document.getElementById('tbodyFleetSummary'),
-        btnGenerarPdfFlota: document.getElementById('btnGenerarPdfFlota')
+        btnGenerarPdfFlota: document.getElementById('btnGenerarPdfFlota'),
+        fleetSearch: document.getElementById('fleetSearch')
     };
 
     // Fechas por defecto
@@ -884,6 +886,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Botón generar PDF flota
     if (fleetElements.btnGenerarPdfFlota) {
         fleetElements.btnGenerarPdfFlota.addEventListener('click', generarPdfFlota);
+    }
+
+    // Buscador de flota
+    if (fleetElements.fleetSearch) {
+        fleetElements.fleetSearch.addEventListener('input', function () {
+            filtrarResumenFlota();
+        });
     }
 
     // Carga inicial
@@ -1536,10 +1545,24 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (data.success && data.data) {
                     allFleetSummary = data.data;
+                    filteredFleetSummary = [...allFleetSummary];
                     renderFleetSummaryTable();
                 }
             })
             .catch(err => console.error('Error resumen flota:', err));
+    }
+
+    function filtrarResumenFlota() {
+        const query = fleetElements.fleetSearch?.value?.toLowerCase().trim() || '';
+        if (!query) {
+            filteredFleetSummary = [...allFleetSummary];
+        } else {
+            filteredFleetSummary = allFleetSummary.filter(item => {
+                const searchStr = `${item.marca_modelo || ''} ${item.transmision || ''} ${item.combustible || ''}`.toLowerCase();
+                return searchStr.includes(query);
+            });
+        }
+        renderFleetSummaryTable();
     }
 
     function renderFleetSummaryTable() {
@@ -1549,7 +1572,7 @@ document.addEventListener('DOMContentLoaded', function () {
         // Limpiar selecciones previas al recargar
         selectedFleetGroups.clear();
 
-        allFleetSummary.forEach((item, index) => {
+        filteredFleetSummary.forEach((item, index) => {
             const tr = document.createElement('tr');
             const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
             const isSelected = selectedFleetGroups.has(key);
@@ -1677,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', function () {
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' },
-            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6">>rtip',
             responsive: true,
             autoWidth: false
         });
