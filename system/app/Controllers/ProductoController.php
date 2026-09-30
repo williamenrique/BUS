@@ -1,27 +1,24 @@
 <?php
 header('Access-Control-Allow-Origin: *');
 class Producto extends Controllers{
-    private $db; //para inicializar la base de datos
+    private $db;
     public function __construct(){
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        // Validar sesión de manera más robusta
         if (!$this->validateSession()) {
             header("Location:".base_url().'login');
             exit();
         }
-        //invocar para que se ejecute el metodo de la herencia
         parent::__construct();
-        $this->model = new ProductoModel(); // Usar el modelo autocargado
-
+        $this->model = new ProductoModel();
     }
-    /*manejo de sesiones activas*/
-	function getActiveSession(){
-		$reuest = $this->model->getActiveSession($_SESSION['idUser']);
-	}
+
+    function getActiveSession(){
+        $request = $this->model->getActiveSession($_SESSION['idUser']);
+    }
+
     public function validateSession() {
-        // Verificar si la sesión está iniciada y es válida
         if (empty($_SESSION['login']) || empty($_SESSION['idUser'])) {
             return false;
         }
@@ -34,17 +31,10 @@ class Producto extends Controllers{
         }
         return true;
     }
-    /*fin manejo de sesiones activas*/
-    /**inicio de manejo de errores en cada controlador debe estar */
-	private function handleDatabaseError($error) {
-        // Log del error
-        error_log("Error de BD en controlador User: " . $error);
-        // Puedes elegir cómo manejar el error:
-        // 1. Redirigir a una página de error
-        // 2. Mostrar un mensaje JSON (para APIs)
-        // 3. Guardar en variable para mostrar en vista
-        // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+
+    private function handleDatabaseError($error) {
+        error_log("Error de BD en controlador Producto: " . $error);
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',
@@ -54,38 +44,122 @@ class Producto extends Controllers{
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
             die();
         } else {
-            // Para vistas HTML, podrías guardar el error para mostrarlo
             $_SESSION['error_message'] = "Error de base de datos: " . $error;
         }
     }
+
     private function isAjaxRequest() {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
-	/**fin de manejo de errores en cada controlador debe estar*/
+
+    /**
+     * Determina el ID de institución a partir del parámetro.
+     */
+    private function resolverInstitucion($institucion = 'actual') {
+        return ($institucion === 'taller') ? 2 : 1;
+    }
+
     /**************************************************/
-    /**************** TODO: GESTIÓN DE PRODUCTOS ******/
+    /********* VISTAS *********************************/
     /**************************************************/
 
     /**
-     * Muestra la vista principal para la gestión de productos.
+     * Vista de productos (SSLMTY).
+     * URL: producto/producto
      */
-    public function producto(){
+    public function producto($institucion = 'actual'){
+        $idInstitucion = $this->resolverInstitucion($institucion);
+        $nombreInstitucion = $this->model->getNombreInstitucion($idInstitucion);
+        $this->model->setInstitucion($idInstitucion);
+
         $data = [
             'page_tag' => "GESTION PRODUCTOS",
-            'page_title' => "Pagina Principal",
+            'page_title' => "Productos - " . $nombreInstitucion,
             'page_name' => "almacen",
-            'page_link' => "producto",
-            'page_functions' => "function.producto.js"
+            'page_link' => ($idInstitucion === 2) ? "producto_taller" : "producto",
+            'page_functions' => "function.producto.js",
+            'id_institucion' => $idInstitucion,
+            'nombre_institucion' => $nombreInstitucion,
+            'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "producto", $data);
     }
 
     /**
-     * Obtiene los datos iniciales para los selects de los formularios.
+     * Wrapper para Taller: producto/productoTaller
      */
+    public function productoTaller() {
+        $this->producto('taller');
+    }
+
+    /**
+     * Vista de historial (SSLMTY).
+     * URL: producto/historial
+     */
+    public function historial($institucion = 'actual') {
+        $idInstitucion = $this->resolverInstitucion($institucion);
+        $nombreInstitucion = $this->model->getNombreInstitucion($idInstitucion);
+        $this->model->setInstitucion($idInstitucion);
+
+        $data = [
+            'page_tag' => "Historial de Productos",
+            'page_title' => "Historial - " . $nombreInstitucion,
+            'page_name' => "almacen",
+            'page_link' => ($idInstitucion === 2) ? "historial_taller" : "historial",
+            'page_functions' => "function.producto.js",
+            'id_institucion' => $idInstitucion,
+            'nombre_institucion' => $nombreInstitucion,
+            'es_taller' => ($idInstitucion === 2)
+        ];
+        $this->views->getViews($this, "historial", $data);
+    }
+
+    /**
+     * Wrapper para Taller: producto/historialTaller
+     */
+    public function historialTaller() {
+        $this->historial('taller');
+    }
+
+    /**
+     * Vista de inventario (SSLMTY).
+     * URL: producto/inventario
+     */
+    public function inventario($institucion = 'actual'){
+        $idInstitucion = $this->resolverInstitucion($institucion);
+        $nombreInstitucion = $this->model->getNombreInstitucion($idInstitucion);
+        $this->model->setInstitucion($idInstitucion);
+
+        $data = [
+            'page_tag' => "INVENTARIO",
+            'page_title' => "Inventario - " . $nombreInstitucion,
+            'page_name' => "almacen",
+            'page_link' => ($idInstitucion === 2) ? "inventario_taller" : "inventario",
+            'page_functions' => "function.producto.js",
+            'id_institucion' => $idInstitucion,
+            'nombre_institucion' => $nombreInstitucion,
+            'es_taller' => ($idInstitucion === 2)
+        ];
+        $this->views->getViews($this, "inventario", $data);
+    }
+
+    /**
+     * Wrapper para Taller: producto/inventarioTaller
+     */
+    public function inventarioTaller() {
+        $this->inventario('taller');
+    }
+
+    /**************************************************/
+    /********* API: PRODUCTOS *************************/
+    /**************************************************/
+
     public function getInitialData() {
         $arrResponse = ['success' => false, 'message' => 'No se pudieron cargar los datos iniciales.'];
         try {
+            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $data = [
                 'enlaces' => $this->model->selectEnlace(),
                 'proveedores' => $this->model->selectProvee(),
@@ -101,16 +175,15 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Registra un nuevo producto en la base de datos.
-     * Recibe los datos del producto por POST.
-     */
     public function setProducto(){
         $arrResponse = ['success' => false, 'message' => 'Error al registrar el producto.'];
         try {
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 throw new Exception('Método no permitido');
             }
+
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
 
             $srtArticlo = ucwords(strClean($_POST['txtArticulo']));
             $intModelo = intval($_POST['listEnlace']);
@@ -129,7 +202,7 @@ class Producto extends Controllers{
             if ($request > 0) {
                 $arrResponse = ['success' => true, 'message' => 'Producto guardado correctamente con ID: ' . $request];
             } else {
-                $arrResponse = ['success' => false, 'message' => '¡Atención! El producto ya existe.'];
+                $arrResponse = ['success' => false, 'message' => '¡Atención! El producto ya existe en esta institución.'];
             }
         } catch (Exception $e) {
             $arrResponse['message'] = $e->getMessage();
@@ -138,13 +211,11 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Obtiene la lista de todos los productos para la DataTable.
-     * @return string JSON con la lista de productos.
-     */
     public function getProductos(){
         try {
-            // Parámetros de DataTables
+            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $draw = intval($_POST['draw'] ?? 0);
             $start = intval($_POST['start'] ?? 0);
             $length = intval($_POST['length'] ?? 10);
@@ -153,17 +224,13 @@ class Producto extends Controllers{
             $orderColumnName = $_POST['columns'][$orderColumnIndex]['data'] ?? 'id_producto';
             $orderDir = $_POST['order'][0]['dir'] ?? 'desc';
 
-            // Obtener datos con paginación, búsqueda y ordenamiento desde el modelo
             $productosData = $this->model->getProductosServerSide($start, $length, $searchValue, $orderColumnName, $orderDir);
-            $arrData = $productosData['data'];
-            $totalRecords = $productosData['total'];
-            $totalFiltered = $productosData['total_filtered'];
 
             $arrResponse = [
                 "draw" => $draw,
-                "recordsTotal" => $totalRecords,
-                "recordsFiltered" => $totalFiltered,
-                "data" => $arrData
+                "recordsTotal" => $productosData['total'],
+                "recordsFiltered" => $productosData['total_filtered'],
+                "data" => $productosData['data']
             ];
         } catch (Exception $e) {
             $arrResponse = ["error" => "Error al cargar productos: " . $e->getMessage()];
@@ -173,14 +240,12 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Obtiene los datos de un producto específico por su ID.
-     * @param int $idProducto El ID del producto a consultar.
-     * @return string JSON con los datos del producto.
-     */
     public function getProducto(int $idProducto){
         $arrResponse = ['success' => false, 'message' => 'Producto no encontrado.'];
         try {
+            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $idProducto = intval($idProducto);
             if ($idProducto > 0) {
                 $arrData = $this->model->selectProducto($idProducto);
@@ -195,16 +260,16 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Actualiza la cantidad de stock de un producto existente.
-     * Recibe los datos por POST.
-     */
     public function updateProducto(){
         $arrResponse = ['success' => false, 'message' => 'Error al actualizar el stock.'];
         try {
             if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 throw new Exception('Método no permitido');
             }
+
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $idProducto = intval($_POST['listArticuloExistente']);
             $cantActual = floatval($_POST['txtCantidadActual']);
             $cantNueva = floatval($_POST['txtCantidadMas']);
@@ -213,9 +278,8 @@ class Producto extends Controllers{
                 throw new Exception('Debe seleccionar un producto y agregar una cantidad.');
             }
             $total = $cantActual + $cantNueva;
-            $request = $this->model->upCantProducto($idProducto, $total);
+            $this->model->upCantProducto($idProducto, $total);
             $arrResponse = ['success' => true, 'message' => 'Stock actualizado correctamente.'];
-
         } catch (Exception $e) {
             $arrResponse['message'] = $e->getMessage();
         }
@@ -223,16 +287,15 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Realiza una eliminación lógica de un producto.
-     * Recibe el ID del producto por POST.
-     */
     public function delProducto() {
         $arrResponse = ['success' => false, 'message' => 'Error al eliminar el producto.'];
         try {
             if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['id_producto'])) {
                 throw new Exception('Datos incorrectos.');
             }
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $idProducto = intval($_POST['id_producto']);
             $request = $this->model->delProducto($idProducto);
             if ($request) {
@@ -248,30 +311,15 @@ class Producto extends Controllers{
     }
 
     /**************************************************/
-    /************** TODO: HISTORIAL DE PRODUCTOS ******/
+    /********* API: HISTORIAL *************************/
     /**************************************************/
 
-    /**
-     * Muestra la vista para el historial de movimientos de productos.
-     */
-    public function historial() {
-        $data = [
-            'page_tag' => "Historial de Productos",
-            'page_title' => "Historial de Productos",
-            'page_name' => "almacen",
-            'page_link' => "historial",
-            'page_functions' => "function.producto.js"
-        ];
-        $this->views->getViews($this, "historial", $data);
-    }
-
-    /**
-     * Obtiene el resumen del historial de todos los productos para la tabla.
-     * @return string JSON con el resumen del historial.
-     */
     public function getHistorySummary() {
         $arrResponse = ['success' => false, 'data' => [], 'message' => 'No se encontró historial.'];
         try {
+            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $arrData = $this->model->getHistorySummary();
             if (!empty($arrData)) {
                 $arrResponse = ['success' => true, 'data' => $arrData];
@@ -283,13 +331,12 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Obtiene el resumen del historial de productos filtrado por rango de fechas.
-     * @return string JSON con el resumen del historial filtrado.
-     */
     public function getHistorySummaryByDateRange() {
         $arrResponse = ['success' => false, 'data' => [], 'message' => 'No se encontró historial en el rango especificado.'];
         try {
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $fechaInicio = $_POST['fechaInicio'] ?? null;
             $fechaFin = $_POST['fechaFin'] ?? null;
 
@@ -308,24 +355,20 @@ class Producto extends Controllers{
         die();
     }
 
-    /**
-     * Obtiene el historial detallado de un producto específico para el timeline.
-     * @param int $idProducto El ID del producto.
-     * @return string JSON con el historial detallado.
-     */
     public function getDetailHistory($idProducto) {
         try {
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $idProducto = intval($idProducto);
             if ($idProducto <= 0) {
                 throw new Exception('ID de producto no válido.');
             }
 
-            // Obtener la página solicitada del cuerpo de la solicitud POST
             $postData = json_decode(file_get_contents('php://input'), true);
             $page = isset($postData['page']) ? intval($postData['page']) : 1;
-            $perPage = 5; // 5 eventos por página
+            $perPage = 5;
 
-            // Obtener los datos paginados desde el modelo
             $historialData = $this->model->getDetailHistoryPaginated($idProducto, $page, $perPage);
 
             $arrResponse = [
@@ -333,7 +376,6 @@ class Producto extends Controllers{
                 'data' => $historialData['items'],
                 'pagination' => $historialData['pagination']
             ];
-
         } catch (Exception $e) {
             $arrResponse = ['success' => false, 'message' => 'Error al obtener el historial: ' . $e->getMessage()];
         }
@@ -343,29 +385,14 @@ class Producto extends Controllers{
     }
 
     /**************************************************/
-    /*********** TODO: vista de inventario*******/
+    /********* API: INVENTARIO ************************/
     /**************************************************/
 
-    /**
-     * Muestra la vista principal para inventario de productos.
-     */
-    public function inventario(){
-        $data = [
-            'page_tag' => "GESTION PRODUCTOS",
-            'page_title' => "Pagina Principal",
-            'page_name' => "almacen",
-            'page_link' => "inventario",
-            'page_functions' => "function.producto.js"
-        ];
-        $this->views->getViews($this, "inventario", $data);
-    }
-
-    /**
-     * Obtiene la lista de productos para la tabla de inventario.
-     */
     public function getInventario() {
         try {
-            // Parámetros de DataTables
+            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            $this->model->setInstitucion($idInstitucion);
+
             $draw = intval($_POST['draw'] ?? 0);
             $start = intval($_POST['start'] ?? 0);
             $length = intval($_POST['length'] ?? 10);
@@ -374,7 +401,6 @@ class Producto extends Controllers{
             $orderColumnName = $_POST['columns'][$orderColumnIndex]['data'] ?? 'id_producto';
             $orderDir = $_POST['order'][0]['dir'] ?? 'asc';
 
-            // Obtener datos con paginación, búsqueda y ordenamiento desde el modelo
             $inventarioData = $this->model->getInventario($start, $length, $searchValue, $orderColumnName, $orderDir);
 
             $arrResponse = [
@@ -389,5 +415,4 @@ class Producto extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
-    
 }

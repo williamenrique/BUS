@@ -1,72 +1,70 @@
 /**
  * Archivo: function.compras.js
- * Descripción: Contiene toda la lógica de JavaScript para el módulo de Compras.
- *              Gestiona las tablas de compras pendientes y costeadas, la asignación de costos,
- *              la anulación y la generación de reportes en PDF, utilizando Bootstrap y AdminLTE.
- * Autor: Gemini Code Assist
- * Fecha: [Fecha Actual]
+ * Descripción: Lógica del módulo de Compras con multi-institución.
+ *              Envía id_institucion en cada AJAX y pasa el nombre de la institución a los PDFs.
  */
 
 let tableComprasPendientes;
 let tableComprasCosteadas;
-let detalleCosteadoData = {}; // Para almacenar datos del modal para el PDF
+let detalleCosteadoData = {};
+
+// Institución activa leída del hidden input
+const idInstitucionCompras = document.getElementById('id_institucion')?.value || 1;
+const nombreInstitucionCompras = document.getElementById('nombre_institucion')?.value || '';
 
 /**
- * Punto de entrada principal. Se ejecuta cuando el DOM está completamente cargado.
- * Configura todos los event listeners para los formularios y botones de la página.
+ * Punto de entrada.
  */
 document.addEventListener('DOMContentLoaded', function () {
-    // Listener para el envío del formulario de costos (asociado directamente al modal)
+    // Listener para el formulario de costos
     $('#formAsignarCosto').on('submit', guardarCosto);
 
-    // Listener para el formulario de reporte
+    // Formulario de reporte
     const formReporte = document.getElementById('formReporteCompras');
     if (formReporte) {
         formReporte.addEventListener('submit', generarReporte);
-        // Establecer fechas por defecto (mes actual)
         const today = new Date();
         document.getElementById('fechaInicio').value = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
         document.getElementById('fechaFin').value = today.toISOString().split('T')[0];
 
-        // Inicializar la leyenda del conteo
         document.getElementById('conteoReporte').innerHTML = '<i class="fas fa-info-circle mr-1"></i> Seleccione una unidad para ver las órdenes disponibles.';
     }
 
-    // Listener para el formulario de reporte diario
+    // Formulario de reporte diario (si existe)
     const formReporteDiario = document.getElementById('formReporteComprasDiarias');
     if (formReporteDiario) {
         formReporteDiario.addEventListener('submit', generarReporteDiario);
     }
 
-    // Listeners para el filtro de la tabla de costeadas
+    // Filtros costeadas
     const formFiltroCosteadas = document.getElementById('formFiltroCosteadas');
     if (formFiltroCosteadas) {
         formFiltroCosteadas.addEventListener('submit', function (e) {
             e.preventDefault();
-            inicializarTablaCosteadas(document.getElementById('fechaInicioCosteadas').value, document.getElementById('fechaFinCosteadas').value);
+            inicializarTablaCosteadas(
+                document.getElementById('fechaInicioCosteadas').value,
+                document.getElementById('fechaFinCosteadas').value
+            );
         });
         document.getElementById('btnLimpiarFiltroCosteadas').addEventListener('click', limpiarFiltroCosteadas);
         document.getElementById('btnExportarPdfCosteadas').addEventListener('click', generarPDFCosteadasFiltrado);
     }
 
-    // Listener para el botón de generar PDF de costo individual
+    // PDF costo individual
     const btnPdfCosto = document.getElementById('btnGenerarPdfCosto');
     if (btnPdfCosto) {
         btnPdfCosto.addEventListener('click', generarPDFCostoIndividual);
     }
 
-    // Listener para el botón de anular costo
+    // Anular costo
     const btnAnularCosto = document.getElementById('btnAnularCosto');
     if (btnAnularCosto) {
         btnAnularCosto.addEventListener('click', fntAnularCosto);
     }
 
-    // Lógica para las pestañas usando eventos de Bootstrap
+    // Cambio de pestaña
     $('a[data-toggle="pill"]').on('shown.bs.tab', function (e) {
-        // El target es la pestaña que se acaba de mostrar
         const targetTab = $(e.target).attr("href");
-
-        // Si la pestaña mostrada es la de "Costeados" y la tabla aún no se ha inicializado
         if (targetTab === '#costeados' && !$.fn.DataTable.isDataTable('#tableComprasCosteadas')) {
             inicializarTablaCosteadas();
         }
@@ -78,14 +76,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
 /**
  * Carga las unidades de la flota en el select del formulario de reportes.
- * Utiliza Select2 para hacer el selector buscable y más amigable.
+ * Filtra por la institución activa.
  */
 async function cargarUnidadesReporte() {
     const selectUnidad = document.getElementById('listUnidadReporte');
     if (!selectUnidad) return;
 
     try {
-        const response = await fetch(base_url + "Compras/getFlota");
+        const response = await fetch(base_url + "Compras/getFlota?id_institucion=" + idInstitucionCompras);
         const result = await response.json();
         if (result.status) {
             selectUnidad.innerHTML = '<option value="">Seleccione una unidad</option>';
@@ -94,15 +92,13 @@ async function cargarUnidadesReporte() {
                 selectUnidad.insertAdjacentHTML('beforeend', option);
             });
 
-            // Inicializar Select2 para hacer el selector buscable
             $(selectUnidad).select2({
                 placeholder: "Buscar y seleccionar una unidad",
                 allowClear: true,
-                theme: 'bootstrap4' // Integración con Bootstrap 4
+                theme: 'bootstrap4'
             });
 
-            // Listeners para los filtros del reporte (se adjuntan después de inicializar Select2)
-            $(selectUnidad).on('change', actualizarConteoReporte); // Usar jQuery para consistencia
+            $(selectUnidad).on('change', actualizarConteoReporte);
             $('#fechaInicio, #fechaFin').on('change', actualizarConteoReporte);
         }
     } catch (error) {
@@ -111,9 +107,7 @@ async function cargarUnidadesReporte() {
 }
 
 /**
- * Actualiza dinámicamente el conteo de órdenes disponibles para un reporte
- * basado en la unidad y el rango de fechas seleccionados. Habilita o deshabilita
- * el botón de generar reporte según si se encuentran órdenes.
+ * Actualiza el conteo de órdenes disponibles para el reporte.
  */
 async function actualizarConteoReporte() {
     const selectUnidad = document.getElementById('listUnidadReporte');
@@ -122,14 +116,12 @@ async function actualizarConteoReporte() {
     const conteoDiv = document.getElementById('conteoReporte');
     const btnGenerar = document.getElementById('btnGenerarReporte');
 
-    // Resetear si no hay unidad seleccionada
     if (selectUnidad.value === "" || selectUnidad.value === "0") {
         conteoDiv.innerHTML = '<i class="fas fa-info-circle mr-1"></i> Seleccione una unidad para ver las órdenes disponibles.';
         btnGenerar.disabled = true;
         return;
     }
 
-    // Validar que ambas fechas estén presentes si una lo está
     if (!fechaInicio || !fechaFin) {
         conteoDiv.innerHTML = '<i class="fas fa-info-circle mr-1"></i> Seleccione un rango de fechas.';
         btnGenerar.disabled = true;
@@ -141,6 +133,7 @@ async function actualizarConteoReporte() {
         formData.append('idFlota', selectUnidad.value);
         formData.append('fechaInicio', fechaInicio);
         formData.append('fechaFin', fechaFin);
+        formData.append('id_institucion', idInstitucionCompras);
 
         const response = await fetch(base_url + 'Compras/getConteoOrdenesCosteadas', { method: 'POST', body: formData });
         const result = await response.json();
@@ -162,38 +155,39 @@ async function actualizarConteoReporte() {
 }
 
 /**
- * Inicializa o reinicializa la DataTable para las compras costeadas.
- * Permite filtrar los datos por un rango de fechas.
- * @param {string} [fechaInicio=''] - La fecha de inicio para el filtro.
- * @param {string} [fechaFin=''] - La fecha de fin para el filtro.
+ * Inicializa la DataTable de Compras Costeadas.
  */
 function inicializarTablaCosteadas(fechaInicio = '', fechaFin = '') {
-    // Si la tabla ya es una DataTable, la destruimos para poder re-inicializarla con nuevos parámetros
     if ($.fn.DataTable.isDataTable('#tableComprasCosteadas')) {
         $('#tableComprasCosteadas').DataTable().destroy();
     }
 
     tableComprasCosteadas = $('#tableComprasCosteadas').DataTable({
         "aProcessing": true,
-        "aServerSide": true, // Cambiado a true para procesamiento del lado del servidor
+        "aServerSide": true,
         "language": { "url": `${base_url}src/plugins/js/es_es.json` },
         "ajax": {
             "url": base_url + "Compras/getComprasCosteadas",
             "type": "POST",
-            "data": function (d) { // Enviamos las fechas como data adicional
+            "data": function (d) {
                 d.fechaInicio = fechaInicio;
                 d.fechaFin = fechaFin;
+                d.id_institucion = idInstitucionCompras;
             }
         },
         "columns": [
-            { "data": "id_despacho" },
+            { "data": "numero_orden" },
             { "data": "fecha_despacho" },
             { "data": "id_unidad", "render": function (data, type, row) { return `${row.id_unidad} - ${row.modelo_unidad}`; } },
             { "data": "articulos_costeados", "className": "text-center" },
             { "data": "total_divisa", "render": function (data) { return `$. ${parseFloat(data).toFixed(2)}`; } },
             { "data": "total_bs", "render": function (data) { return `Bs. ${parseFloat(data).toFixed(2)}`; } },
             { "data": "acciones" }
-        ], "responsive": true, "bDestroy": true, "iDisplayLength": 10, "order": [[0, "desc"]],
+        ],
+        "responsive": true,
+        "bDestroy": true,
+        "iDisplayLength": 10,
+        "order": [[0, "desc"]],
         "dom": '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
             '<"row"<"col-sm-12"tr>>' +
             '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
@@ -204,28 +198,27 @@ function inicializarTablaCosteadas(fechaInicio = '', fechaFin = '') {
 }
 
 /**
- * Limpia los filtros de fecha de la tabla de costeadas y la recarga
- * para mostrar todos los registros.
+ * Limpia filtros de costeadas.
  */
 function limpiarFiltroCosteadas() {
     document.getElementById('formFiltroCosteadas').reset();
-    inicializarTablaCosteadas(); // Recargamos la tabla sin filtros
+    inicializarTablaCosteadas();
 }
 
 /**
- * Inicializa la DataTable para las compras pendientes de costeo.
+ * Inicializa la DataTable de Compras Pendientes.
  */
 function inicializarTablaCompras() {
     tableComprasPendientes = $('#tableComprasPendientes').DataTable({
         "aProcessing": true,
-        "aServerSide": false, // Cambiaremos a true si implementamos paginación del lado del servidor
+        "aServerSide": false,
         "language": { "url": `${base_url}src/plugins/js/es_es.json` },
         "ajax": {
-            "url": base_url + "Compras/getComprasPendientes",
+            "url": base_url + "Compras/getComprasPendientes?id_institucion=" + idInstitucionCompras,
             "dataSrc": ""
         },
         "columns": [
-            { "data": "id_despacho" },
+            { "data": "numero_orden" },
             { "data": "fecha_despacho" },
             { "data": "id_unidad", "render": function (data, type, row) { return `${row.id_unidad} - ${row.modelo_unidad}`; } },
             {
@@ -241,10 +234,8 @@ function inicializarTablaCompras() {
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]],
-        "dom": "lfrtip", // Usar el DOM por defecto de DataTables para Bootstrap
-        // Callback para modificar el contenido después de que se dibuja la fila
+        "dom": "lfrtip",
         "fnRowCallback": function (nRow, aData, iDisplayIndex, iDisplayIndexFull) {
-            // Encontrar el botón de asignar costo y añadirle la clase de estilo
             const btnAsignar = $(nRow).find('button[onclick^="fntAsignarCosto"]');
             btnAsignar.addClass('btn-primary');
         }
@@ -252,17 +243,15 @@ function inicializarTablaCompras() {
 }
 
 /**
- * Cierra el modal de asignación de costos y resetea su formulario.
+ * Cierra el modal de asignar costo.
  */
 function closeModalCosto() {
     $('#modalAsignarCosto').modal('hide');
-    $('#formAsignarCosto')[0].reset(); // Usar jQuery para resetear el formulario
+    $('#formAsignarCosto')[0].reset();
 }
 
 /**
- * Abre el modal para asignar costos a un despacho específico.
- * Carga la información del despacho y la lista de artículos pendientes.
- * @param {HTMLElement} button - El botón que disparó el evento.
+ * Abre el modal para asignar costos.
  */
 async function fntAsignarCosto(button) {
     const idDespacho = button.getAttribute('data-iddespacho');
@@ -273,20 +262,18 @@ async function fntAsignarCosto(button) {
     document.getElementById('idDespacho').value = idDespacho;
 
     try {
-        const response = await fetch(base_url + "Compras/getArticulosPorDespacho/" + idDespacho);
+        const response = await fetch(base_url + "Compras/getArticulosPorDespacho/" + idDespacho + "?id_institucion=" + idInstitucionCompras);
         if (!response.ok) throw new Error('Error en la petición: ' + response.statusText);
 
         const objData = await response.json();
         if (objData.status) {
             const { info, articulos } = objData.data;
 
-            // Llenar info general del despacho
             document.getElementById('infoUnidad').textContent = `${info.id_unidad} - ${info.modelo_unidad}`;
             document.getElementById('infoFecha').textContent = info.fecha_despacho;
 
-            // Llenar la tabla de artículos
             const tablaBody = document.getElementById('tablaArticulosCosto');
-            tablaBody.innerHTML = ''; // Limpiar tabla
+            tablaBody.innerHTML = '';
 
             articulos.forEach(articulo => {
                 const row = `
@@ -304,7 +291,6 @@ async function fntAsignarCosto(button) {
                 tablaBody.insertAdjacentHTML('beforeend', row);
             });
 
-            // Añadir listeners a los nuevos inputs
             document.querySelectorAll('.monto-divisa, #tasaDia').forEach(input => {
                 input.addEventListener('input', calcularMontos);
             });
@@ -320,30 +306,22 @@ async function fntAsignarCosto(button) {
 }
 
 /**
- * Calcula y actualiza los montos en Bolívares en tiempo real mientras el usuario
- * introduce la tasa del día y los montos en divisas.
+ * Calcula los montos en Bs en tiempo real.
  */
 function calcularMontos() {
     const tasa = parseFloat(document.getElementById('tasaDia').value) || 0;
     document.querySelectorAll('#tablaArticulosCosto tr').forEach(row => {
         const divisaInput = row.querySelector('.monto-divisa');
         const bsInput = row.querySelector('.monto-bs');
-
-        // Obtener la cantidad del atributo data-cantidad para mayor robustez
         const cantidad = parseFloat(row.dataset.cantidad) || 0;
-
-        // El valor que el usuario ingresa ahora es el precio UNITARIO
         const precioUnitarioDivisa = parseFloat(divisaInput.value) || 0;
-
-        // Calcular el monto total en divisas y luego en bolívares
         const montoTotalDivisa = precioUnitarioDivisa * cantidad;
         bsInput.value = (tasa * montoTotalDivisa).toFixed(2);
     });
 }
 
 /**
- * Procesa y guarda los costos asignados a los artículos de un despacho.
- * @param {Event} e - El evento de envío del formulario.
+ * Guarda el costo.
  */
 async function guardarCosto(e) {
     e.preventDefault();
@@ -366,7 +344,6 @@ async function guardarCosto(e) {
 
             articulosData.push({
                 id: row.dataset.idPendiente,
-                // Enviamos el monto TOTAL al backend, como se esperaba originalmente.
                 monto: montoTotal.toFixed(2)
             });
         }
@@ -381,6 +358,8 @@ async function guardarCosto(e) {
 
     try {
         const formData = new FormData(form);
+        formData.append('id_institucion', idInstitucionCompras);
+
         const response = await fetch(base_url + 'Compras/setCosto', {
             method: 'POST',
             body: formData
@@ -404,32 +383,26 @@ async function guardarCosto(e) {
 }
 
 /**
- * Obtiene y muestra los detalles de un despacho ya costeado en un modal.
- * @param {number} idDespacho - El ID del despacho a consultar.
+ * Ver detalle de un despacho costeado.
  */
 async function fntVerDetalleCosto(idDespacho) {
     try {
-        const response = await fetch(base_url + "Compras/getDetalleCosteado/" + idDespacho);
+        const response = await fetch(base_url + "Compras/getDetalleCosteado/" + idDespacho + "?id_institucion=" + idInstitucionCompras);
         if (!response.ok) throw new Error('Error en la petición: ' + response.statusText);
 
         const objData = await response.json();
         if (objData.status) {
             const { info, articulos } = objData.data;
 
-            // Almacenar datos para la generación del PDF
             detalleCosteadoData = { info, articulos };
 
-            // Asignar el ID del despacho al botón de anular
             document.getElementById('btnAnularCosto').dataset.iddespacho = info.id_despacho;
-
-            // Llenar título e info general
-            document.getElementById('titleModalDetalle').innerHTML = `Detalles del Despacho Costeado #${info.id_despacho}`;
+            document.getElementById('titleModalDetalle').innerHTML = `Detalles del Despacho Costeado #${info.numero_orden}`;
             document.getElementById('detalleInfoUnidad').textContent = `${info.id_unidad} - ${info.modelo_unidad}`;
             document.getElementById('detalleInfoFecha').textContent = info.fecha_despacho;
 
-            // Llenar tabla de artículos
             const tablaBody = document.getElementById('tablaDetalleCostos');
-            tablaBody.innerHTML = ''; // Limpiar tabla
+            tablaBody.innerHTML = '';
 
             articulos.forEach(articulo => {
                 const row = `
@@ -445,7 +418,6 @@ async function fntVerDetalleCosto(idDespacho) {
             });
 
             $('#modalVerDetalle').modal('show');
-
         } else {
             Swal.fire("Error", objData.msg, "error");
         }
@@ -456,23 +428,21 @@ async function fntVerDetalleCosto(idDespacho) {
 }
 
 /**
- * Cierra el modal que muestra los detalles de un despacho costeado.
+ * Cierra el modal de detalle.
  */
 function cerrarModalDetalle() {
     $('#modalVerDetalle').modal('hide');
 }
 
 /**
- * Inicia el proceso para anular el costeo de un despacho.
- * Muestra una confirmación y, si se acepta, envía la solicitud al servidor.
- * @param {Event} event - El evento del clic en el botón de anular.
+ * Anula el costeo.
  */
 async function fntAnularCosto(event) {
     const idDespacho = event.currentTarget.dataset.iddespacho;
 
     const result = await Swal.fire({
         title: '¿Está seguro?',
-        text: `Esta acción anulará el costeo del despacho #${idDespacho} y lo devolverá a la lista de pendientes. No se puede deshacer.`,
+        text: `Esta acción anulará el costeo del despacho #${idDespacho} y lo devolverá a la lista de pendientes.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
@@ -483,20 +453,21 @@ async function fntAnularCosto(event) {
 
     if (result.isConfirmed) {
         try {
+            const formData = new FormData();
+            formData.append('id_institucion', idInstitucionCompras);
+
             const response = await fetch(`${base_url}Compras/anularCosto/${idDespacho}`, {
-                method: 'POST'
+                method: 'POST',
+                body: formData
             });
 
-            if (!response.ok) {
-                throw new Error('Error en la respuesta del servidor.');
-            }
+            if (!response.ok) throw new Error('Error en la respuesta del servidor.');
 
             const res = await response.json();
 
             if (res.status) {
                 notifi(res.msg, 'success');
                 cerrarModalDetalle();
-                // Recargar ambas tablas para reflejar los cambios
                 tableComprasCosteadas.ajax.reload();
                 tableComprasPendientes.ajax.reload();
             } else {
@@ -510,8 +481,7 @@ async function fntAnularCosto(event) {
 }
 
 /**
- * Genera el reporte en PDF para un rango de fechas y una unidad específica.
- * @param {Event} e - El evento de envío del formulario.
+ * Genera el reporte PDF por unidad.
  */
 async function generarReporte(e) {
     e.preventDefault();
@@ -524,6 +494,8 @@ async function generarReporte(e) {
 
     try {
         const formData = new FormData(form);
+        formData.append('id_institucion', idInstitucionCompras);
+
         const response = await fetch(base_url + 'Compras/generarReporteCompras', {
             method: 'POST',
             body: formData
@@ -545,8 +517,7 @@ async function generarReporte(e) {
 }
 
 /**
- * Crea un formulario oculto y lo envía para generar el PDF de compras por unidad.
- * @param {Array} reporteData - Los datos del reporte a enviar.
+ * Envía los datos al script del PDF.
  */
 function fntGenerarPDFCompras(reporteData) {
     const form = document.createElement('form');
@@ -554,11 +525,17 @@ function fntGenerarPDFCompras(reporteData) {
     form.action = base_url + "data/compra/reporte_compra.php";
     form.target = '_blank';
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'reporteData';
-    input.value = JSON.stringify(reporteData);
-    form.appendChild(input);
+    const inputData = document.createElement('input');
+    inputData.type = 'hidden';
+    inputData.name = 'reporteData';
+    inputData.value = JSON.stringify(reporteData);
+    form.appendChild(inputData);
+
+    const inputInst = document.createElement('input');
+    inputInst.type = 'hidden';
+    inputInst.name = 'nombreInstitucion';
+    inputInst.value = nombreInstitucionCompras;
+    form.appendChild(inputInst);
 
     document.body.appendChild(form);
     form.submit();
@@ -566,8 +543,7 @@ function fntGenerarPDFCompras(reporteData) {
 }
 
 /**
- * Obtiene los datos filtrados de la tabla de costeadas y los prepara
- * para ser enviados al script de generación de PDF.
+ * Genera PDF de costeadas filtradas.
  */
 async function generarPDFCosteadasFiltrado() {
     const btn = document.getElementById('btnExportarPdfCosteadas');
@@ -579,13 +555,13 @@ async function generarPDFCosteadasFiltrado() {
     try {
         const fechaInicio = document.getElementById('fechaInicioCosteadas').value;
         const fechaFin = document.getElementById('fechaFinCosteadas').value;
-        // Obtenemos el valor del campo de búsqueda de DataTables
         const searchValue = $('#tableComprasCosteadas').DataTable().search();
 
         const formData = new FormData();
         formData.append('fechaInicio', fechaInicio);
         formData.append('fechaFin', fechaFin);
         formData.append('searchValue', searchValue);
+        formData.append('id_institucion', idInstitucionCompras);
 
         const response = await fetch(base_url + 'Compras/generarReporteCosteadas', {
             method: 'POST',
@@ -608,12 +584,7 @@ async function generarPDFCosteadasFiltrado() {
 }
 
 /**
- * Crea un formulario oculto para enviar los datos filtrados y los parámetros de filtro
- * al script PHP que genera el PDF de costeadas.
- * @param {Array} reporteData - Los datos del reporte.
- * @param {string} fechaInicio - La fecha de inicio del filtro.
- * @param {string} fechaFin - La fecha de fin del filtro.
- * @param {string} searchValue - El término de búsqueda aplicado.
+ * Envía los datos del PDF costeadas.
  */
 function fntGenerarPDFCosteadas(reporteData, fechaInicio, fechaFin, searchValue) {
     const form = document.createElement('form');
@@ -621,12 +592,17 @@ function fntGenerarPDFCosteadas(reporteData, fechaInicio, fechaFin, searchValue)
     form.action = base_url + "data/compra/reporte_costeadas_filtrado.php";
     form.target = '_blank';
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'reporteData';
-    // Enviamos los datos del reporte y también los filtros para mostrarlos en la leyenda del PDF
-    input.value = JSON.stringify({ data: reporteData, fechaInicio, fechaFin, searchValue });
-    form.appendChild(input);
+    const inputData = document.createElement('input');
+    inputData.type = 'hidden';
+    inputData.name = 'reporteData';
+    inputData.value = JSON.stringify({ data: reporteData, fechaInicio, fechaFin, searchValue });
+    form.appendChild(inputData);
+
+    const inputInst = document.createElement('input');
+    inputInst.type = 'hidden';
+    inputInst.name = 'nombreInstitucion';
+    inputInst.value = nombreInstitucionCompras;
+    form.appendChild(inputInst);
 
     document.body.appendChild(form);
     form.submit();
@@ -634,8 +610,7 @@ function fntGenerarPDFCosteadas(reporteData, fechaInicio, fechaFin, searchValue)
 }
 
 /**
- * Genera un PDF con el detalle de un único despacho costeado, utilizando
- * los datos almacenados en la variable global `detalleCosteadoData`.
+ * PDF del costo individual (modal).
  */
 function generarPDFCostoIndividual() {
     if (!detalleCosteadoData || !detalleCosteadoData.info) {
@@ -648,13 +623,43 @@ function generarPDFCostoIndividual() {
     form.action = base_url + "data/compra/reporte_costeada.php";
     form.target = '_blank';
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'reporteData';
-    input.value = JSON.stringify(detalleCosteadoData); // Usamos los datos ya cargados en el modal
-    form.appendChild(input);
+    const inputData = document.createElement('input');
+    inputData.type = 'hidden';
+    inputData.name = 'reporteData';
+    inputData.value = JSON.stringify(detalleCosteadoData);
+    form.appendChild(inputData);
+
+    const inputInst = document.createElement('input');
+    inputInst.type = 'hidden';
+    inputInst.name = 'nombreInstitucion';
+    inputInst.value = nombreInstitucionCompras;
+    form.appendChild(inputInst);
 
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
+}
+
+/**
+ * Reporte diario (si existe el form).
+ */
+async function generarReporteDiario(e) {
+    e.preventDefault();
+    // Mantener la lógica existente si la usas
+    // ...
+}
+
+/**
+ * Notificación toast.
+ */
+function notifi(message, tipo) {
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: tipo,
+        title: message,
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+    });
 }

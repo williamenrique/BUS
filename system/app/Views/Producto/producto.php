@@ -1,25 +1,29 @@
 <?= head($data)?>
 
+<!-- ID de institución y nombre para JS -->
+<input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
+
 <!-- Content Wrapper. Contains page content -->
 <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1><i class="fas fa-box-open"></i> <?= $data['page_title'] ?></h1>
+                    <h1><i class="fas fa-box-open"></i> <?= $data['page_title'] ?>
+                        <span class="badge badge-info ml-2"><?= $data['nombre_institucion'] ?></span>
+                    </h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Home</a></li>
-                        <li class="breadcrumb-item active">Productos</li>
+                        <li class="breadcrumb-item active"><?= $data['nombre_institucion'] ?></li>
                     </ol>
                 </div>
             </div>
-        </div><!-- /.container-fluid -->
+        </div>
     </section>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
             <div class="row">
@@ -78,7 +82,6 @@
                                             <input class="form-check-input" type="radio" name="optionsPresentacion" value="JUEGO" id="radioJuego">
                                             <label class="form-check-label" for="radioJuego">Juego</label>
                                         </div>
-                                        <!-- Agrega más si es necesario -->
                                     </div>
                                 </div>
                                 <div class="card-footer text-center">
@@ -122,7 +125,7 @@
                     <div class="card">
                         <div class="card-header">
                             <div class="d-flex justify-content-between align-items-center">
-                                <h3 class="card-title">Inventario de Productos</h3>
+                                <h3 class="card-title">Inventario de Productos - <?= $data['nombre_institucion'] ?></h3>
                                 <div class="card-tools">
                                     <button onclick="fntReporteProductosPDF()" class="btn btn-danger btn-sm">
                                         <i class="fas fa-file-pdf"></i> Generar PDF
@@ -147,9 +150,7 @@
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <!-- Data will be loaded by DataTable -->
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
@@ -158,8 +159,6 @@
             </div>
         </div>
     </section>
-    <!-- /.content -->
 </div>
-<!-- /.content-wrapper -->
 
 <?= footer($data)?>

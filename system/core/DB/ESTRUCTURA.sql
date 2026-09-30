@@ -4,6 +4,11 @@
 -- SO del servidor:              Win64
 -- HeidiSQL Versión:             12.21.0.7344
 -- --------------------------------------------------------
+-- BASE DE DATOS: busyaracuydata
+-- =====================================================================
+-- SCRIPT COMPLETO CON SOPORTE MULTI-INSTITUCIÓN Y MENÚS REDISEÑADOS
+-- Fecha: 2026-09-30
+-- =====================================================================
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET NAMES utf8 */;
@@ -14,10 +19,30 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- =====================================================================
+-- TABLA DE INSTITUCIONES (NUEVA)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS `table_instituciones` (
+  `id_institucion` INT(11) NOT NULL AUTO_INCREMENT,
+  `nombre` VARCHAR(255) NOT NULL,
+  `rif` VARCHAR(20) DEFAULT NULL,
+  `status` TINYINT(1) NOT NULL DEFAULT 1,
+  `fecha_creacion` TIMESTAMP NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id_institucion`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+
+-- Datos iniciales de instituciones
+INSERT INTO `table_instituciones` (`id_institucion`, `nombre`, `status`) VALUES
+(1, 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY', 1),
+(2, 'TALLER', 1)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
 
 
-
--- Volcando estructura para tabla busyaracuydata.table_alm_despacho
+-- =====================================================================
+-- TABLA: table_alm_despacho
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_despacho` (
   `id_despacho` int(11) NOT NULL AUTO_INCREMENT,
   `id_flota` int(11) NOT NULL,
@@ -40,18 +65,20 @@ CREATE TABLE IF NOT EXISTS `table_alm_despacho` (
   CONSTRAINT `table_alm_despacho_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6289 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_enlace_producto
+-- =====================================================================
+-- TABLA: table_alm_enlace_producto
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_enlace_producto` (
   `id_enlace_producto` int(11) NOT NULL AUTO_INCREMENT,
   `enlace_producto` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`id_enlace_producto`)
 ) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_historial_cambio
+-- =====================================================================
+-- TABLA: table_alm_historial_cambio
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_historial_cambio` (
   `id_historial_cambio` int(11) NOT NULL AUTO_INCREMENT,
   `obs` text CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
@@ -63,9 +90,10 @@ CREATE TABLE IF NOT EXISTS `table_alm_historial_cambio` (
   CONSTRAINT `table_alm_historial_cambio_ibfk_1` FOREIGN KEY (`id_user`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=159 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_producto
+-- =====================================================================
+-- TABLA: table_alm_producto
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_producto` (
   `id_producto` int(11) NOT NULL AUTO_INCREMENT,
   `id_enlace_producto` int(11) NOT NULL,
@@ -81,9 +109,10 @@ CREATE TABLE IF NOT EXISTS `table_alm_producto` (
   CONSTRAINT `table_alm_producto_ibfk_2` FOREIGN KEY (`id_ubicacion`) REFERENCES `table_alm_ubicacion` (`id_ubicacion`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1164 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_relacion_despacho
+-- =====================================================================
+-- TABLA: table_alm_relacion_despacho
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_relacion_despacho` (
   `id_despacho` int(11) NOT NULL,
   `id_producto` int(11) NOT NULL,
@@ -94,9 +123,10 @@ CREATE TABLE IF NOT EXISTS `table_alm_relacion_despacho` (
   CONSTRAINT `table_alm_relacion_despacho_ibfk_2` FOREIGN KEY (`id_producto`) REFERENCES `table_alm_producto` (`id_producto`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_relacion_producto
+-- =====================================================================
+-- TABLA: table_alm_relacion_producto
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_relacion_producto` (
   `id_producto` int(11) NOT NULL,
   `id_proveedor` int(11) NOT NULL,
@@ -107,9 +137,10 @@ CREATE TABLE IF NOT EXISTS `table_alm_relacion_producto` (
   CONSTRAINT `table_alm_relacion_producto_ibfk_2` FOREIGN KEY (`id_proveedor`) REFERENCES `table_proveedor` (`id_proveedor`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_requisicion
+-- =====================================================================
+-- TABLA: table_alm_requisicion
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_requisicion` (
   `id_requisicion` int(11) NOT NULL AUTO_INCREMENT,
   `id_despacho_fk` int(11) NOT NULL COMMENT 'Enlace al registro en table_alm_despacho',
@@ -128,9 +159,10 @@ CREATE TABLE IF NOT EXISTS `table_alm_requisicion` (
   CONSTRAINT `fk_req_usuario` FOREIGN KEY (`user_id_creador`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_requisicion_detalle
+-- =====================================================================
+-- TABLA: table_alm_requisicion_detalle
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_requisicion_detalle` (
   `id_detalle_req` int(11) NOT NULL AUTO_INCREMENT,
   `id_requisicion_fk` int(11) NOT NULL,
@@ -143,18 +175,20 @@ CREATE TABLE IF NOT EXISTS `table_alm_requisicion_detalle` (
   CONSTRAINT `fk_detreq_req` FOREIGN KEY (`id_requisicion_fk`) REFERENCES `table_alm_requisicion` (`id_requisicion`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_alm_ubicacion
+-- =====================================================================
+-- TABLA: table_alm_ubicacion
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_alm_ubicacion` (
   `id_ubicacion` int(11) NOT NULL AUTO_INCREMENT,
   `ubicacion` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`id_ubicacion`)
 ) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_bienes_departamentos
+-- =====================================================================
+-- TABLA: table_bienes_departamentos
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_bienes_departamentos` (
   `depatamento_bien_id` varchar(10) NOT NULL DEFAULT '',
   `departamento_bien` varchar(100) NOT NULL DEFAULT '0',
@@ -162,9 +196,10 @@ CREATE TABLE IF NOT EXISTS `table_bienes_departamentos` (
   PRIMARY KEY (`depatamento_bien_id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_bienes_grupo
+-- =====================================================================
+-- TABLA: table_bienes_grupo
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_bienes_grupo` (
   `id_grupo` varchar(50) NOT NULL DEFAULT '',
   `grupo` varchar(50) DEFAULT NULL,
@@ -172,9 +207,10 @@ CREATE TABLE IF NOT EXISTS `table_bienes_grupo` (
   PRIMARY KEY (`id_grupo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_bienes_inventario
+-- =====================================================================
+-- TABLA: table_bienes_inventario
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_bienes_inventario` (
   `id_bien` int(11) NOT NULL AUTO_INCREMENT,
   `bien_depatamento_id` varchar(50) NOT NULL DEFAULT '',
@@ -195,9 +231,10 @@ CREATE TABLE IF NOT EXISTS `table_bienes_inventario` (
   CONSTRAINT `table_bienes_inventario_ibfk_1` FOREIGN KEY (`bien_depatamento_id`) REFERENCES `table_bienes_departamentos` (`depatamento_bien_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=656 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_bienes_qr_departamento
+-- =====================================================================
+-- TABLA: table_bienes_qr_departamento
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_bienes_qr_departamento` (
   `id_qr` int(11) NOT NULL AUTO_INCREMENT,
   `bien_depatamento_id` varchar(10) NOT NULL,
@@ -209,18 +246,20 @@ CREATE TABLE IF NOT EXISTS `table_bienes_qr_departamento` (
   CONSTRAINT `table_bienes_qr_departamento_ibfk_1` FOREIGN KEY (`bien_depatamento_id`) REFERENCES `table_bienes_departamentos` (`depatamento_bien_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_bienes_seccion
+-- =====================================================================
+-- TABLA: table_bienes_seccion
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_bienes_seccion` (
   `seccion_id` varchar(50) DEFAULT NULL,
   `seccion` varchar(50) DEFAULT NULL,
   `seccion_status` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_bienes_subgrupo
+-- =====================================================================
+-- TABLA: table_bienes_subgrupo
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_bienes_subgrupo` (
   `subgrupo_id` varchar(50) NOT NULL DEFAULT '',
   `subgrupo` varchar(50) DEFAULT NULL,
@@ -229,9 +268,10 @@ CREATE TABLE IF NOT EXISTS `table_bienes_subgrupo` (
   PRIMARY KEY (`subgrupo_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_compras_costos
+-- =====================================================================
+-- TABLA: table_compras_costos
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_compras_costos` (
   `id_costo` int(11) NOT NULL AUTO_INCREMENT,
   `id_compra_pendiente` int(11) NOT NULL,
@@ -247,9 +287,10 @@ CREATE TABLE IF NOT EXISTS `table_compras_costos` (
   CONSTRAINT `fk_costo_usuario` FOREIGN KEY (`id_usuario_costeo`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_compras_pendientes
+-- =====================================================================
+-- TABLA: table_compras_pendientes
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_compras_pendientes` (
   `id_compra_pendiente` int(11) NOT NULL AUTO_INCREMENT,
   `id_despacho` int(11) NOT NULL,
@@ -267,9 +308,10 @@ CREATE TABLE IF NOT EXISTS `table_compras_pendientes` (
   CONSTRAINT `fk_pendiente_producto` FOREIGN KEY (`id_producto`) REFERENCES `table_alm_producto` (`id_producto`)
 ) ENGINE=InnoDB AUTO_INCREMENT=11186 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_departamentos
+-- =====================================================================
+-- TABLA: table_departamentos
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_departamentos` (
   `departamento_id` int(11) NOT NULL AUTO_INCREMENT,
   `departamento_nombre` varchar(100) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
@@ -278,9 +320,10 @@ CREATE TABLE IF NOT EXISTS `table_departamentos` (
   PRIMARY KEY (`departamento_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_es_cierre
+-- =====================================================================
+-- TABLA: table_es_cierre
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_es_cierre` (
   `id_cierre` int(11) NOT NULL AUTO_INCREMENT,
   `id_user` int(11) DEFAULT NULL,
@@ -298,9 +341,10 @@ CREATE TABLE IF NOT EXISTS `table_es_cierre` (
   CONSTRAINT `table_es_cierre_ibfk_1` FOREIGN KEY (`id_estacion`) REFERENCES `table_es_estacion` (`id_estacion`)
 ) ENGINE=InnoDB AUTO_INCREMENT=466 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_es_estacion
+-- =====================================================================
+-- TABLA: table_es_estacion
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_es_estacion` (
   `id_estacion` int(11) NOT NULL AUTO_INCREMENT,
   `estacion` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci DEFAULT NULL,
@@ -308,9 +352,10 @@ CREATE TABLE IF NOT EXISTS `table_es_estacion` (
   PRIMARY KEY (`id_estacion`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_es_tasa_dia
+-- =====================================================================
+-- TABLA: table_es_tasa_dia
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_es_tasa_dia` (
   `id_tasa_dia` int(11) NOT NULL AUTO_INCREMENT,
   `tasa_dia` varchar(10) DEFAULT NULL,
@@ -318,9 +363,10 @@ CREATE TABLE IF NOT EXISTS `table_es_tasa_dia` (
   PRIMARY KEY (`id_tasa_dia`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_es_tipos_pago
+-- =====================================================================
+-- TABLA: table_es_tipos_pago
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_es_tipos_pago` (
   `id_tipo_pago` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
@@ -329,9 +375,10 @@ CREATE TABLE IF NOT EXISTS `table_es_tipos_pago` (
   PRIMARY KEY (`id_tipo_pago`)
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_es_tipos_vehiculo
+-- =====================================================================
+-- TABLA: table_es_tipos_vehiculo
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_es_tipos_vehiculo` (
   `id_tipo_vehiculo` int(11) NOT NULL AUTO_INCREMENT,
   `nombre` varchar(50) CHARACTER SET latin1 COLLATE latin1_swedish_ci NOT NULL,
@@ -340,9 +387,10 @@ CREATE TABLE IF NOT EXISTS `table_es_tipos_vehiculo` (
   PRIMARY KEY (`id_tipo_vehiculo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_es_venta
+-- =====================================================================
+-- TABLA: table_es_venta
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_es_venta` (
   `id_venta` int(11) DEFAULT NULL,
   `id_user` int(11) DEFAULT NULL,
@@ -364,9 +412,10 @@ CREATE TABLE IF NOT EXISTS `table_es_venta` (
   CONSTRAINT `table_es_venta_ibfk_3` FOREIGN KEY (`id_tipo_vehiculo`) REFERENCES `table_es_tipos_vehiculo` (`id_tipo_vehiculo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota
+-- =====================================================================
+-- TABLA: table_flota (CON id_institucion)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota` (
   `id_flota` int(11) NOT NULL AUTO_INCREMENT,
   `id_unidad` varchar(20) DEFAULT NULL,
@@ -378,16 +427,21 @@ CREATE TABLE IF NOT EXISTS `table_flota` (
   `tipo_combustible` varchar(20) DEFAULT NULL,
   `transmision` varchar(15) DEFAULT NULL,
   `status_unidad` int(11) DEFAULT NULL,
+  `id_institucion` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id_flota`),
   KEY `id_marca` (`id_marca`),
   KEY `id_modelo` (`id_modelo`),
+  KEY `idx_flota_institucion` (`id_institucion`),
+  KEY `idx_flota_institucion_status` (`id_institucion`, `status_unidad`),
   CONSTRAINT `table_flota_ibfk_1` FOREIGN KEY (`id_marca`) REFERENCES `table_flota_marca` (`id_marca`),
-  CONSTRAINT `table_flota_ibfk_2` FOREIGN KEY (`id_modelo`) REFERENCES `table_flota_modelo` (`id_modelo`)
+  CONSTRAINT `table_flota_ibfk_2` FOREIGN KEY (`id_modelo`) REFERENCES `table_flota_modelo` (`id_modelo`),
+  CONSTRAINT `fk_flota_institucion` FOREIGN KEY (`id_institucion`) REFERENCES `table_instituciones` (`id_institucion`)
 ) ENGINE=InnoDB AUTO_INCREMENT=161 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota_aceite_historial
+-- =====================================================================
+-- TABLA: table_flota_aceite_historial (CON id_institucion)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota_aceite_historial` (
   `id_aceite_historial` int(11) NOT NULL AUTO_INCREMENT,
   `id_flota` int(11) NOT NULL,
@@ -397,28 +451,34 @@ CREATE TABLE IF NOT EXISTS `table_flota_aceite_historial` (
   `kilometraje_proximo_cambio` int(11) NOT NULL COMMENT 'Kilometraje estimado para el siguiente cambio',
   `usuario_id` int(11) NOT NULL,
   `observaciones` text DEFAULT NULL,
+  `id_institucion` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id_aceite_historial`),
   KEY `fk_aceite_flota` (`id_flota`),
+  KEY `idx_aceite_institucion` (`id_institucion`),
   CONSTRAINT `fk_aceite_flota` FOREIGN KEY (`id_flota`) REFERENCES `table_flota` (`id_flota`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=629 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota_kilometraje
+-- =====================================================================
+-- TABLA: table_flota_kilometraje (CON id_institucion)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota_kilometraje` (
   `id_kilometraje` int(11) NOT NULL AUTO_INCREMENT,
   `id_flota` int(11) NOT NULL,
   `kilometraje_actual` int(11) NOT NULL,
   `fecha_actualizacion` datetime NOT NULL DEFAULT current_timestamp(),
   `usuario_id` int(11) NOT NULL,
+  `id_institucion` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id_kilometraje`),
   KEY `fk_kilometraje_flota` (`id_flota`),
+  KEY `idx_km_institucion` (`id_institucion`),
   CONSTRAINT `fk_kilometraje_flota` FOREIGN KEY (`id_flota`) REFERENCES `table_flota` (`id_flota`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4110 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota_mantenimiento
+-- =====================================================================
+-- TABLA: table_flota_mantenimiento (CON id_institucion)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota_mantenimiento` (
   `id_unidad_mantenimiento` int(11) NOT NULL AUTO_INCREMENT,
   `id_flota` int(11) NOT NULL,
@@ -436,34 +496,39 @@ CREATE TABLE IF NOT EXISTS `table_flota_mantenimiento` (
   `fecha_salida` varchar(25) DEFAULT NULL,
   `status_mantenimiento` char(1) DEFAULT NULL,
   `usuario_id` int(11) NOT NULL,
+  `id_institucion` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id_unidad_mantenimiento`),
   KEY `fk_table_flota_mantenimiento_table_flota1_idx` (`id_flota`),
   KEY `fk_table_flota_mantenimiento_table_usuarios1_idx` (`usuario_id`),
+  KEY `idx_mant_institucion` (`id_institucion`),
   CONSTRAINT `fk_table_flota_mantenimiento_table_flota1` FOREIGN KEY (`id_flota`) REFERENCES `table_flota` (`id_flota`),
   CONSTRAINT `fk_table_flota_mantenimiento_table_usuarios1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=152 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota_marca
+-- =====================================================================
+-- TABLA: table_flota_marca
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota_marca` (
   `id_marca` int(11) NOT NULL AUTO_INCREMENT,
   `marca_unidad` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`id_marca`)
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota_modelo
+-- =====================================================================
+-- TABLA: table_flota_modelo
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota_modelo` (
   `id_modelo` int(11) NOT NULL AUTO_INCREMENT,
   `modelo_unidad` varchar(20) DEFAULT NULL,
   PRIMARY KEY (`id_modelo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_flota_status
+-- =====================================================================
+-- TABLA: table_flota_status (CON id_institucion)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_flota_status` (
   `idCambioStatus` int(11) NOT NULL AUTO_INCREMENT,
   `id_flota` int(11) NOT NULL,
@@ -471,88 +536,86 @@ CREATE TABLE IF NOT EXISTS `table_flota_status` (
   `textCambio` mediumtext DEFAULT NULL,
   `fechaCambio` timestamp NULL DEFAULT NULL,
   `usuario_id` int(11) NOT NULL,
+  `id_institucion` int(11) NOT NULL DEFAULT 1,
   PRIMARY KEY (`idCambioStatus`),
   KEY `fk_table_flota_status_table_flota1_idx` (`id_flota`),
   KEY `fk_table_flota_status_table_usuarios1_idx` (`usuario_id`),
+  KEY `idx_status_institucion` (`id_institucion`),
   CONSTRAINT `fk_table_flota_status_table_flota1` FOREIGN KEY (`id_flota`) REFERENCES `table_flota` (`id_flota`),
   CONSTRAINT `fk_table_flota_status_table_usuarios1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=306 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_departamento_menu
+-- =====================================================================
+-- TABLA: table_men_departamento_menu (REDISEÑADA)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_men_departamento_menu` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `departamento_id` int(11) NOT NULL,
   `menu_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_dep_menu` (`departamento_id`, `menu_id`),
   KEY `departamento_id` (`departamento_id`),
   KEY `menu_id` (`menu_id`),
   CONSTRAINT `table_men_departamento_menu_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `table_departamentos` (`departamento_id`) ON DELETE CASCADE,
   CONSTRAINT `table_men_departamento_menu_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_menu
+-- =====================================================================
+-- TABLA: table_men_menu (REDISEÑADA — ÁRBOL)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_men_menu` (
-  `menu_id` int(11) NOT NULL AUTO_INCREMENT,
-  `menu_nombre` varchar(100) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
-  `menu_icono` varchar(50) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  `menu_link` varchar(255) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  `menu_es_desplegable` tinyint(1) DEFAULT 0,
-  `menu_orden` int(11) DEFAULT 0,
-  `menu_estado` tinyint(1) DEFAULT 1,
-  PRIMARY KEY (`menu_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+  `menu_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `menu_padre_id` INT(11) DEFAULT NULL COMMENT 'NULL si es raíz; FK a menu_id',
+  `menu_nombre` VARCHAR(100) NOT NULL,
+  `menu_icono` VARCHAR(50) DEFAULT NULL COMMENT 'Clase FontAwesome',
+  `menu_ruta` VARCHAR(255) DEFAULT NULL COMMENT 'URL relativa (ej: flota/taller)',
+  `menu_orden` INT(11) DEFAULT 0,
+  `menu_estado` TINYINT(1) DEFAULT 1,
+  `menu_scope` VARCHAR(50) DEFAULT 'general' COMMENT 'Contexto: general, sslMty, taller',
+  `menu_es_desplegable` TINYINT(1) DEFAULT 0 COMMENT 'Autocalculado',
+  PRIMARY KEY (`menu_id`),
+  KEY `idx_padre` (`menu_padre_id`),
+  KEY `idx_scope` (`menu_scope`),
+  KEY `idx_estado` (`menu_estado`),
+  CONSTRAINT `fk_menu_padre` FOREIGN KEY (`menu_padre_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_submenu
-CREATE TABLE IF NOT EXISTS `table_men_submenu` (
-  `submenu_id` int(11) NOT NULL AUTO_INCREMENT,
-  `menu_id` int(11) NOT NULL,
-  `submenu_nombre` varchar(100) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
-  `submenu_link` varchar(255) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  `submenu_orden` int(11) DEFAULT 0,
-  `submenu_estado` tinyint(1) DEFAULT 1,
-  `submenu_pagina` varchar(255) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  PRIMARY KEY (`submenu_id`),
-  KEY `menu_id` (`menu_id`),
-  CONSTRAINT `table_men_submenu_ibfk_1` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+-- =====================================================================
+-- TABLA: table_men_rutas (NUEVA)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS `table_men_rutas` (
+  `ruta_id` INT(11) NOT NULL AUTO_INCREMENT,
+  `menu_id` INT(11) NOT NULL,
+  `patron` VARCHAR(255) NOT NULL COMMENT 'Ej: flota, flota/taller, flota/taller/*',
+  `activa` TINYINT(1) DEFAULT 1,
+  PRIMARY KEY (`ruta_id`),
+  KEY `idx_menu` (`menu_id`),
+  CONSTRAINT `fk_ruta_menu` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_usuario_menu
+-- =====================================================================
+-- TABLA: table_men_usuario_menu (REDISEÑADA)
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_men_usuario_menu` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `usuario_id` int(11) NOT NULL,
   `menu_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_usuario_menu` (`usuario_id`, `menu_id`),
   KEY `usuario_id` (`usuario_id`),
   KEY `menu_id` (`menu_id`),
   CONSTRAINT `table_men_usuario_menu_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`) ON DELETE CASCADE,
   CONSTRAINT `table_men_usuario_menu_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=212 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_usuario_submenu
-CREATE TABLE IF NOT EXISTS `table_men_usuario_submenu` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `usuario_id` int(11) NOT NULL,
-  `submenu_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `submenu_id` (`submenu_id`),
-  CONSTRAINT `table_men_usuario_submenu_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`) ON DELETE CASCADE,
-  CONSTRAINT `table_men_usuario_submenu_ibfk_2` FOREIGN KEY (`submenu_id`) REFERENCES `table_men_submenu` (`submenu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=335 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
-
--- La exportación de datos fue deseleccionada.
-
--- Volcando estructura para tabla busyaracuydata.table_notificaciones
+-- =====================================================================
+-- TABLA: table_notificaciones
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_notificaciones` (
   `id_notificacion` int(11) NOT NULL,
   `tipo_notificacion` varchar(50) NOT NULL COMMENT 'Ej: requisicion, recuperacion_pass',
@@ -562,9 +625,10 @@ CREATE TABLE IF NOT EXISTS `table_notificaciones` (
   `fecha_creacion` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_per_cambio_status_personal
+-- =====================================================================
+-- TABLA: table_per_cambio_status_personal
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_per_cambio_status_personal` (
   `id_cambioPersonal` int(11) NOT NULL AUTO_INCREMENT,
   `id_personal` int(11) NOT NULL,
@@ -574,9 +638,10 @@ CREATE TABLE IF NOT EXISTS `table_per_cambio_status_personal` (
   PRIMARY KEY (`id_cambioPersonal`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_per_cargo
+-- =====================================================================
+-- TABLA: table_per_cargo
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_per_cargo` (
   `id_cargo` int(11) NOT NULL AUTO_INCREMENT,
   `cargo` varchar(45) DEFAULT NULL,
@@ -584,9 +649,10 @@ CREATE TABLE IF NOT EXISTS `table_per_cargo` (
   PRIMARY KEY (`id_cargo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_per_roles
+-- =====================================================================
+-- TABLA: table_per_roles
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_per_roles` (
   `rol_id` int(11) NOT NULL AUTO_INCREMENT,
   `rol_nombre` varchar(50) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
@@ -596,9 +662,10 @@ CREATE TABLE IF NOT EXISTS `table_per_roles` (
   PRIMARY KEY (`rol_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_personal
+-- =====================================================================
+-- TABLA: table_personal
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_personal` (
   `id_personal` int(11) NOT NULL AUTO_INCREMENT,
   `personal_cedula` varchar(15) DEFAULT NULL,
@@ -615,9 +682,10 @@ CREATE TABLE IF NOT EXISTS `table_personal` (
   CONSTRAINT `table_personal_ibfk_1` FOREIGN KEY (`personal_cargo`) REFERENCES `table_per_cargo` (`id_cargo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=261 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_proveedor
+-- =====================================================================
+-- TABLA: table_proveedor
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_proveedor` (
   `id_proveedor` int(11) NOT NULL AUTO_INCREMENT,
   `rif_proveedor` varchar(15) DEFAULT NULL,
@@ -629,9 +697,10 @@ CREATE TABLE IF NOT EXISTS `table_proveedor` (
   PRIMARY KEY (`id_proveedor`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_recovery_requests
+-- =====================================================================
+-- TABLA: table_recovery_requests
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_recovery_requests` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `user_id` int(11) NOT NULL,
@@ -643,9 +712,10 @@ CREATE TABLE IF NOT EXISTS `table_recovery_requests` (
   CONSTRAINT `fk_recovery_user` FOREIGN KEY (`user_id`) REFERENCES `table_usuarios` (`usuario_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_usuario_sessions
+-- =====================================================================
+-- TABLA: table_usuario_sessions
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_usuario_sessions` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `session_id` varchar(255) NOT NULL,
@@ -659,9 +729,10 @@ CREATE TABLE IF NOT EXISTS `table_usuario_sessions` (
   CONSTRAINT `table_usuario_sessions_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=157 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_usuarios
+-- =====================================================================
+-- TABLA: table_usuarios
+-- =====================================================================
 CREATE TABLE IF NOT EXISTS `table_usuarios` (
   `usuario_id` int(11) NOT NULL AUTO_INCREMENT,
   `usuario_nick` varchar(50) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
@@ -682,7 +753,8 @@ CREATE TABLE IF NOT EXISTS `table_usuarios` (
   CONSTRAINT `table_usuarios_ibfk_2` FOREIGN KEY (`usuario_departamento_id`) REFERENCES `table_departamentos` (`departamento_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
--- La exportación de datos fue deseleccionada.
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
 /*!40101 SET SQL_MODE=IFNULL(@OLD_SQL_MODE, '') */;

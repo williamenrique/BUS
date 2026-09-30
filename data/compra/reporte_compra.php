@@ -16,13 +16,20 @@ if (json_last_error() !== JSON_ERROR_NONE || empty($reporteData)) {
     exit;
 }
 
+// Nombre de la institución (enviado desde el JS)
+$nombreInstitucion = !empty($_POST['nombreInstitucion']) 
+    ? htmlspecialchars($_POST['nombreInstitucion'], ENT_QUOTES, 'UTF-8') 
+    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+
+// Título del reporte (va al header)
+$tituloReporte = 'REPORTE DE COMPRAS POR UNIDAD';
+
 // Calcular totales generales antes de construir el HTML
 $grandTotalArticulos = 0;
 $grandTotalDivisa = 0;
 $grandTotalBs = 0;
 
 foreach ($reporteData as $despacho) {
-    // Sumar la cantidad de cada artículo para obtener el total de unidades
     foreach ($despacho['articulos'] as $articulo) {
         $grandTotalArticulos += floatval($articulo['cant_despacho']);
     }
@@ -49,22 +56,24 @@ $html = '
     <title>Reporte de Compras por Unidad</title>
     ' . $cssCommon . '
     <style>
-        .report-title {
+        .unidad-label {
             text-align: center;
-            font-size: 16px;
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 20px;
             font-weight: bold;
-            margin-bottom: 40px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 25px; /* Aumentamos el margen para más espacio */
-            page-break-inside: avoid; /* Evita que la tabla se corte entre páginas */
+            margin-bottom: 25px;
+            page-break-inside: avoid;
         }
         th, td {
             border: 1px solid #ccc;
             padding: 5px;
             text-align: left;
+            font-size: 10px;
         }
         thead {
             background-color: #f2f2f2;
@@ -72,12 +81,12 @@ $html = '
         .text-right { text-align: right; }
         .text-center { text-align: center; }
         .despacho-header {
-            background-color: #d9edf7; /* Color azul claro del otro reporte */
+            background-color: #d9edf7;
             font-weight: bold;
             font-size: 11px;
         }
         .despacho-footer {
-            background-color: #cce5ff; /* Color azul más oscuro del otro reporte */
+            background-color: #cce5ff;
             font-weight: bold;
         }
     </style>
@@ -85,8 +94,8 @@ $html = '
 <body>
     ' . $headerHtml . '
     ' . $footerHtml . '
-        
-    <div class="report-title">REPORTE DE COMPRAS POR UNIDAD: ' . $unidad . '</div>
+
+    <div class="unidad-label">Unidad: ' . $unidad . '</div>
 
     <!-- Tabla de Resumen General -->
     <table style="margin-bottom: 30px;">
@@ -111,11 +120,12 @@ $html = '
 ';
 
 foreach ($reporteData as $despacho) {
+    $numeroOrden = $despacho['numero_orden'] ?? $despacho['id_despacho'];
     $html .= '
     <table>
         <thead>
             <tr class="despacho-header">
-                <th>Despacho: #' . htmlspecialchars($despacho['id_despacho']) . '</th>
+                <th>Orden: #' . htmlspecialchars($numeroOrden) . '</th>
                 <th class="text-center">Fecha: ' . htmlspecialchars($despacho['fecha_despacho']) . '</th>
                 <th colspan="2" class="text-right">Tasa del Día: ' . number_format($despacho['tasa_dia'], 2, ',', '.') . ' Bs</th>
             </tr>

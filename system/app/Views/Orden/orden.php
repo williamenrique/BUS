@@ -1,32 +1,35 @@
 <?= head($data)?>
 
-<!-- Content Wrapper. Contains page content -->
+<!-- ID de institución y nombre para JS -->
+<input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
+
 <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1><i class="fas fa-dolly-flatbed"></i> <?= $data['page_title'] ?></h1>
+                    <h1><i class="fas fa-dolly-flatbed"></i> <?= $data['page_title'] ?>
+                        <span class="badge badge-info ml-2"><?= $data['nombre_institucion'] ?></span>
+                    </h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <li class="breadcrumb-item active"><?= $data['page_name'] ?></li>
+                        <li class="breadcrumb-item active"><?= $data['nombre_institucion'] ?></li>
                     </ol>
                 </div>
             </div>
-        </div><!-- /.container-fluid -->
+        </div>
     </section>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
             <!-- Progress bar -->
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="font-weight-bold">Progreso de órdenes este mes</span>
+                        <span class="font-weight-bold">Progreso de órdenes este mes - <?= $data['nombre_institucion'] ?></span>
                         <span id="progressPercentage" class="font-weight-bold">0%</span>
                     </div>
                     <div class="progress">
@@ -39,9 +42,7 @@
             </div>
 
             <div class="row">
-                <!-- Main Form Section -->
                 <div class="col-lg-8">
-                    <!-- Order Form Card -->
                     <div class="card card-primary card-outline">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-plus-circle"></i> Crear Nueva Orden</h3>
@@ -49,7 +50,6 @@
                         <div class="card-body">
                             <form id="formDespacho">
                                 <input type="hidden" id="idDespacho" name="idDespacho" value="">
-                                <!-- Basic Information Section -->
                                 <h5><i class="fas fa-info-circle text-primary"></i> Información Básica</h5>
                                 <hr>
                                 <div class="row">
@@ -77,7 +77,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Personnel Section -->
                                 <h5 class="mt-4"><i class="fas fa-users text-success"></i> Personal Asignado</h5>
                                 <hr>
                                 <div class="row">
@@ -101,7 +100,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Articles Section -->
                                 <h5 class="mt-4"><i class="fas fa-boxes text-purple"></i> Artículos a Despachar</h5>
                                 <hr>
                                 <div class="row">
@@ -142,10 +140,9 @@
                                     </tbody>
                                 </table>
 
-                                <!-- Observations Section -->
                                 <div class="form-group mt-4">
                                     <label for="txtObs"><i class="fas fa-sticky-note"></i> Observaciones</label>
-                                    <textarea id="txtObs" name="txtObs" rows="3" class="form-control" placeholder="Escribe aquí cualquier observación adicional..."></textarea>
+                                    <textarea id="txtObs" name="txtObs" rows="3" class="form-control" placeholder="Observaciones..."></textarea>
                                 </div>
 
                                 <div class="text-right">
@@ -156,10 +153,9 @@
                         </div>
                     </div>
 
-                    <!-- Orders List Section -->
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas</h3>
+                            <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas - <?= $data['nombre_institucion'] ?></h3>
                             <button id="btnImprimirLote" class="btn btn-warning btn-sm float-right" disabled><i class="fas fa-print"></i> Imprimir Seleccionados (0/2)</button>
                         </div>
                         <div class="card-body">
@@ -176,36 +172,24 @@
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="boxInvoce">
-                                        <!-- DataTables will populate this -->
-                                    </tbody>
+                                    <tbody id="boxInvoce"></tbody>
                                 </table>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Sidebar Section -->
                 <div class="col-lg-4">
-                    <!-- Order Summary Card -->
                     <div class="card card-info">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-clipboard-list"></i> Resumen de la Orden</h3>
                         </div>
                         <div class="card-body">
                             <ul class="list-group list-group-unbordered mb-3">
-                                <li class="list-group-item">
-                                    <b>Fecha</b> <a class="float-right" id="fechaDespacho">No seleccionada</a>
-                                </li>
-                                <li class="list-group-item">
-                                    <b>Operador</b> <a class="float-right" id="operador">No seleccionado</a>
-                                </li>
-                                <li class="list-group-item">
-                                    <b>Mecánico</b> <a class="float-right" id="mecanico">No seleccionado</a>
-                                </li>
-                                <li class="list-group-item">
-                                    <b>Despachador</b> <a class="float-right" id="despachador">No seleccionado</a>
-                                </li>
+                                <li class="list-group-item"><b>Fecha</b> <a class="float-right" id="fechaDespacho">No seleccionada</a></li>
+                                <li class="list-group-item"><b>Operador</b> <a class="float-right" id="operador">No seleccionado</a></li>
+                                <li class="list-group-item"><b>Mecánico</b> <a class="float-right" id="mecanico">No seleccionado</a></li>
+                                <li class="list-group-item"><b>Despachador</b> <a class="float-right" id="despachador">No seleccionado</a></li>
                             </ul>
                             <hr>
                             <strong><i class="fas fa-boxes"></i> Totales</strong>
@@ -216,7 +200,6 @@
                         </div>
                     </div>
 
-                    <!-- Search Card -->
                     <div class="card card-indigo">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-search"></i> Buscar Órdenes</h3>
@@ -241,18 +224,13 @@
                                 </div>
                                 <button type="submit" class="btn btn-indigo btn-block"><i class="fas fa-search"></i> Buscar</button>
                             </form>
-                            <!-- Search Results Container -->
-                            <div id="searchResultsContainer" class="mt-3">
-                                <!-- Search results will be inserted here -->
-                            </div>
+                            <div id="searchResultsContainer" class="mt-3"></div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </section>
-    <!-- /.content -->
 </div>
-<!-- /.content-wrapper -->
 
 <?= footer($data)?>

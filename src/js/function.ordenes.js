@@ -1,34 +1,36 @@
 // Variables globales
 let articulosAgregados = [];
 
+// Institución activa
+const idInstitucionOrden = document.getElementById('id_institucion')?.value || 1;
+
 document.addEventListener('DOMContentLoaded', function () {
     inicializarComponentes();
     cargarDatosIniciales();
     configurarEventListeners();
 });
-// Inicializar componentes y plugins
+
 function inicializarComponentes() {
-    // Establecer fecha actual por defecto
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('txtdate').value = today;
     document.getElementById('fechaDespacho').textContent = formatFecha(today);
 }
-// Cargar datos iniciales
+
 async function cargarDatosIniciales() {
     try {
-        const response = await fetch(base_url + 'Orden/getInitialData');
+        const response = await fetch(base_url + 'Orden/getInitialData?id_institucion=' + idInstitucionOrden);
         if (!response.ok) throw new Error('Error al cargar datos iniciales.');
 
         const result = await response.json();
         if (result.success) {
             const { flota, operadores, mecanicos, despachadores, articulos } = result.data;
-            populateSelect('listUnidad', flota, 'id_flota', item => `${item.id_unidad} - ${item.modelo_unidad}`, 'Seleccione una unidad'); // Mantiene el ID de flota
-            populateSelect('listOperador', operadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un operador'); // Cambiado a id_personal
-            populateSelect('listMecanico', mecanicos, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un mecánico'); // Cambiado a id_personal
-            populateSelect('listDespachador', despachadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un despachador'); // Cambiado a id_personal
+            populateSelect('listUnidad', flota, 'id_flota', item => `${item.id_unidad} - ${item.modelo_unidad}`, 'Seleccione una unidad');
+            populateSelect('listOperador', operadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un operador');
+            populateSelect('listMecanico', mecanicos, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un mecánico');
+            populateSelect('listDespachador', despachadores, 'id_personal', item => `${item.personal_cedula} - ${item.personal_nombre}`, 'Seleccione un despachador');
             populateSelect('listArticulo', articulos, 'id_producto', item => `${item.producto} (Stock: ${item.cant_producto})`, 'Seleccione un artículo', item => ({ 'data-stock': item.cant_producto }));
 
-            inicializarDataTable(); // Llamamos a inicializar la tabla de órdenes
+            inicializarDataTable();
             await actualizarProgresoOrdenes();
         } else {
             notifi(result.message, 'error');
@@ -40,33 +42,25 @@ async function cargarDatosIniciales() {
 }
 
 function configurarEventListeners() {
-    // Evento para cambio de fecha
     document.getElementById('txtdate').addEventListener('change', function () {
         const fecha = this.value;
         document.getElementById('fechaDespacho').textContent = formatFecha(fecha);
         document.getElementById('strDate').value = fecha;
     });
 
-    // Evento para validación de cantidad en tiempo real
     document.getElementById('txtCant').addEventListener('input', validarCantidad);
 
-    // Evento para eliminar filas de la tabla
     document.getElementById('lista').addEventListener('click', function (e) {
         if (e.target.closest('.eliminarRow')) {
             const fila = e.target.closest('tr');
             const idArticulo = fila.querySelector('input[name="cod[]"]').value;
-
-            // Eliminar de la lista de artículos agregados
             articulosAgregados = articulosAgregados.filter(art => art.id != idArticulo);
-
             fila.remove();
             actualizarEstadoBotonGenerar();
             actualizarResumenOrden();
         }
     });
 
-    // Delegación de eventos para los selects que se cargan dinámicamente
-    // Usamos jQuery para escuchar los eventos de select2
     $('#listUnidad').on('select2:select', function (e) {
         const idUnidad = e.params.data.id;
         if (idUnidad > 0) fntGetUnidad(idUnidad);
@@ -92,50 +86,33 @@ function configurarEventListeners() {
         if (idArticulo > 0) fntGetArt(idArticulo);
     });
 
-    // Evento para agregar artículo
     document.getElementById('btnAgrega').addEventListener('click', agregarArticulo);
-
-    // Evento para enviar formulario
     document.getElementById('formDespacho').addEventListener('submit', enviarFormulario);
-
-    // Evento para búsqueda
     document.getElementById('formBuscarDesp').addEventListener('submit', buscarOrdenes);
-
-    // Evento para el botón de imprimir lote
     document.getElementById('btnImprimirLote').addEventListener('click', fntImprimirLote);
 
-    // Delegación de eventos para los checkboxes de la tabla
     $('#tblOrdenes tbody').on('change', '.select-orden', function () {
         const checkboxes = document.querySelectorAll('.select-orden:checked');
         const btn = document.getElementById('btnImprimirLote');
-
-        // Actualizar texto del botón
         btn.innerHTML = `<i class="fas fa-print"></i> Imprimir Seleccionados (${checkboxes.length}/2)`;
-
-        // Habilitar solo si hay exactamente 2 seleccionados
         if (checkboxes.length === 2) {
             btn.disabled = false;
-            // Deshabilitar el resto de checkboxes no seleccionados
             document.querySelectorAll('.select-orden:not(:checked)').forEach(cb => cb.disabled = true);
         } else {
             btn.disabled = true;
-            // Habilitar todos los checkboxes si hay menos de 2
             document.querySelectorAll('.select-orden').forEach(cb => cb.disabled = false);
         }
     });
 }
 
-// Formatear fecha
 function formatFecha(fecha) {
     const [year, month, day] = fecha.split('-');
     return `${day}/${month}/${year}`;
 }
 
-
-// Obtener datos de una unidad específica
 async function fntGetUnidad(idUnidad) {
     try {
-        const response = await fetch(base_url + 'Orden/getUnidad/' + idUnidad);
+        const response = await fetch(base_url + 'Orden/getUnidad/' + idUnidad + '?id_institucion=' + idInstitucionOrden);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
 
         const objData = await response.json();
@@ -153,7 +130,6 @@ async function fntGetUnidad(idUnidad) {
     }
 }
 
-// Función genérica para poblar un select desde un array de datos JSON
 function populateSelect(selectId, data, valueField, textFieldFn, defaultOptionText, dataAttributesFn) {
     const select = document.getElementById(selectId);
     if (!select) return;
@@ -166,7 +142,7 @@ function populateSelect(selectId, data, valueField, textFieldFn, defaultOptionTe
             option.value = item[valueField];
             option.textContent = textFieldFn(item);
 
-            if (selectId === 'listArticulo') { // Si es el select de artículos
+            if (selectId === 'listArticulo') {
                 option.setAttribute('data-stock', item.cant_producto);
             }
 
@@ -179,37 +155,30 @@ function populateSelect(selectId, data, valueField, textFieldFn, defaultOptionTe
             select.appendChild(option);
         });
 
-        // Asegurarse de que Select2 se aplique después de que el DOM se actualice
         const select2Instance = $(select).select2({
             placeholder: defaultOptionText,
             language: "es",
             theme: "bootstrap4",
-            // containerCssClass: "form-control" // Esta línea puede causar problemas de estilo, la eliminamos por ahora.
         }).on('select2:open', function (e) {
-            // --- INICIO DE LA MODIFICACIÓN ---
-            // Aplicar altura máxima y scroll al desplegable cuando se abre
             $('.select2-results__options').css({
                 'max-height': '250px',
                 'overflow-y': 'auto'
             });
-            // Usamos un setTimeout para asegurar que el campo de búsqueda esté listo antes de enfocarlo.
             setTimeout(function () {
                 document.querySelector('.select2-search__field').focus();
-            }, 10); // Un pequeño retraso es suficiente.
-            // --- FIN DE LA MODIFICACIÓN ---
+            }, 10);
         });
 
-        // Forzar la altura y el borde para que coincida con Bootstrap
         select2Instance.next('.select2-container').find('.select2-selection').css({
-            'min-height': 'calc(2.25rem + 2px)', // Altura estándar de Bootstrap 4 form-control
-            'border': '1px solid #ced4da' // Borde estándar de Bootstrap 4 form-control
+            'min-height': 'calc(2.25rem + 2px)',
+            'border': '1px solid #ced4da'
         });
     }
 }
-// Obtener datos de un artículo específico
+
 async function fntGetArt(idArt) {
     try {
-        const response = await fetch(base_url + 'Orden/getArt/' + idArt);
+        const response = await fetch(base_url + 'Orden/getArt/' + idArt + '?id_institucion=' + idInstitucionOrden);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
 
         const objData = await response.json();
@@ -227,7 +196,6 @@ async function fntGetArt(idArt) {
     }
 }
 
-// Validar cantidad en tiempo real
 function validarCantidad() {
     const cantidadInput = document.getElementById('txtCant');
     const cantidad = parseInt(cantidadInput.value);
@@ -254,7 +222,6 @@ function validarCantidad() {
     return true;
 }
 
-// Agregar artículo a la lista
 function agregarArticulo() {
     const select = document.getElementById('listArticulo');
     const selectedOption = select.options[select.selectedIndex];
@@ -271,25 +238,21 @@ function agregarArticulo() {
         return;
     }
 
-    // Verificar si el artículo ya fue agregado
     if (articulosAgregados.some(art => art.id == selectedOption.value)) {
         notifi("Este artículo ya fue agregado a la orden", 'warning');
         return;
     }
 
-    // Agregar a la lista de artículos
     articulosAgregados.push({
         id: selectedOption.value,
         nombre: selectedOption.text,
         cantidad: cantidad
     });
 
-    // Limpiar mensaje de tabla vacía si existe
     if (document.querySelector('#lista tr td[colspan]')) {
         document.querySelector('#lista').innerHTML = '';
     }
 
-    // Agregar fila a la tabla
     const item = `
         <tr class="articulo-item">
             <td>
@@ -320,26 +283,20 @@ function agregarArticulo() {
     actualizarResumenOrden();
 }
 
-// Actualizar estado del botón de generar
 function actualizarEstadoBotonGenerar() {
     const btnGenerar = document.getElementById('btnGenerar');
     btnGenerar.disabled = articulosAgregados.length === 0;
 }
 
-// Actualizar resumen de la orden
 function actualizarResumenOrden() {
     document.getElementById('totalArticulos').textContent = articulosAgregados.length;
     const totalUnidades = articulosAgregados.reduce((total, art) => total + art.cantidad, 0);
     document.getElementById('totalUnidades').textContent = totalUnidades;
 }
 
-// ========== GESTIÓN DE FORMULARIOS ==========
-
-// Enviar formulario de orden
 async function enviarFormulario(e) {
     e.preventDefault();
 
-    // Validar campos obligatorios
     const unidad = document.getElementById('listUnidad').value;
     const operador = document.getElementById('listOperador').value;
     const mecanico = document.getElementById('listMecanico').value;
@@ -357,7 +314,6 @@ async function enviarFormulario(e) {
         return;
     }
 
-    // Mostrar loading
     const btnGenerar = document.getElementById('btnGenerar');
     const originalText = btnGenerar.innerHTML;
     btnGenerar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ' + (idDespacho ? 'Actualizando...' : 'Procesando...');
@@ -365,6 +321,8 @@ async function enviarFormulario(e) {
 
     try {
         const formData = new FormData(document.getElementById('formDespacho'));
+        formData.append('id_institucion', idInstitucionOrden);
+
         const response = await fetch(base_url + 'Orden/setOrdenD', {
             method: 'POST',
             body: formData
@@ -374,21 +332,18 @@ async function enviarFormulario(e) {
 
         if (objData.success) {
             notifi(objData.message, 'success');
-            // Resetear formulario
             document.getElementById('formDespacho').reset();
-            document.getElementById('idDespacho').value = ''; // Limpiar ID
-            document.getElementById('btnGenerar').innerHTML = '<i class="fas fa-paper-plane"></i> Generar Orden'; // Restaurar texto
+            document.getElementById('idDespacho').value = '';
+            document.getElementById('btnGenerar').innerHTML = '<i class="fas fa-paper-plane"></i> Generar Orden';
             document.getElementById('lista').innerHTML = '';
             articulosAgregados = [];
 
-            // Limpiar los selects de Select2
             $('#listUnidad').val('0').trigger('change');
             $('#listOperador').val('0').trigger('change');
             $('#listMecanico').val('0').trigger('change');
             $('#listDespachador').val('0').trigger('change');
             $('#listArticulo').val('0').trigger('change');
 
-            // Restablecer información mostrada
             document.querySelector("#id_unidad").textContent = '-';
             document.querySelector("#vim_unidad").textContent = '-';
             document.querySelector("#marca_unidad").textContent = '-';
@@ -399,18 +354,15 @@ async function enviarFormulario(e) {
             document.querySelector("#totalArticulos").textContent = '0';
             document.querySelector("#totalUnidades").textContent = '0';
 
-            // Recargar la tabla de órdenes y la barra de progreso
             if ($.fn.DataTable.isDataTable('#tblOrdenes')) {
                 $('#tblOrdenes').DataTable().ajax.reload();
             }
             await actualizarProgresoOrdenes();
 
-            // Restablecer fecha actual
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('txtdate').value = today;
             document.getElementById('fechaDespacho').textContent = formatFecha(today);
             document.getElementById('strDate').value = today;
-
         } else {
             notifi(objData.message, 'error');
         }
@@ -418,23 +370,19 @@ async function enviarFormulario(e) {
         console.error('Error enviando formulario:', error);
         notifi('Error al procesar la orden', 'error');
     } finally {
-        // Restaurar botón
         btnGenerar.innerHTML = originalText;
         btnGenerar.disabled = false;
     }
 }
 
-// ========== PROGRESS BAR ==========
-
 async function actualizarProgresoOrdenes() {
     try {
-        const response = await fetch(base_url + 'Orden/getMonthlyStats');
+        const response = await fetch(base_url + 'Orden/getMonthlyStats?id_institucion=' + idInstitucionOrden);
         if (!response.ok) throw new Error('Error al obtener estadísticas mensuales.');
 
         const result = await response.json();
         if (result.success) {
             const { current_orders, target_orders, percentage } = result.data;
-
             const percentageEl = document.getElementById('progressPercentage');
             const fillEl = document.getElementById('progressBarFill');
             const currentEl = document.getElementById('progressCurrent');
@@ -448,23 +396,18 @@ async function actualizarProgresoOrdenes() {
     }
 }
 
-// ========== GESTIÓN DE ÓRDENES ==========
-
-// Inicializar DataTable
 function inicializarDataTable() {
     if ($.fn.DataTable.isDataTable('#tblOrdenes')) {
         $('#tblOrdenes').DataTable().destroy();
     }
 
     $('#tblOrdenes').DataTable({
-        "processing": true, // Muestra el indicador de "Cargando..."
-        "serverSide": false, // Paginación del lado del cliente
-        language: {
-            url: base_url + 'src/plugins/js/es_es.json'
-        },
+        "processing": true,
+        "serverSide": false,
+        language: { url: base_url + 'src/plugins/js/es_es.json' },
         "ajax": {
-            "url": base_url + "Orden/getOrdenes",
-            "dataSrc": "data" // Indicamos que los datos están en el array 'data'
+            "url": base_url + "Orden/getOrdenes?id_institucion=" + idInstitucionOrden,
+            "dataSrc": "data"
         },
         "columns": [
             {
@@ -475,7 +418,7 @@ function inicializarDataTable() {
                     return `<input type="checkbox" class="select-orden" value="${data}">`;
                 }
             },
-            { "data": "id_despacho" },
+            { "data": "numero_orden" },
             { "data": "fecha_despacho" },
             {
                 "data": null, "render": function (data, type, row) {
@@ -503,10 +446,10 @@ function inicializarDataTable() {
         ],
         pageLength: 10,
         lengthMenu: [[5, 10, 25, 50, -1], [5, 10, 25, 50, "Todos"]],
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         "responsive": true,
         "bDestroy": true,
-        dom: 'lBfrtip', // Estructura DOM para AdminLTE
+        dom: 'lBfrtip',
         buttons: [
             { extend: 'excelHtml5', text: '<i class="fas fa-file-excel"></i> Excel', className: 'btn btn-success' },
             { extend: 'pdfHtml5', text: '<i class="fas fa-file-pdf"></i> PDF', className: 'btn btn-danger' },
@@ -515,12 +458,13 @@ function inicializarDataTable() {
     });
 }
 
-// Buscar órdenes
 async function buscarOrdenes(e) {
     e.preventDefault();
 
     try {
         const formData = new FormData(document.getElementById('formBuscarDesp'));
+        formData.append('id_institucion', idInstitucionOrden);
+
         const response = await fetch(base_url + 'Orden/getBuscarOrden', {
             method: 'POST',
             body: formData
@@ -528,14 +472,14 @@ async function buscarOrdenes(e) {
 
         const result = await response.json();
         const searchResultsContainer = document.getElementById('searchResultsContainer');
-        searchResultsContainer.innerHTML = ''; // Limpiar resultados anteriores
+        searchResultsContainer.innerHTML = '';
 
         if (result.success && result.data.length > 0) {
             result.data.forEach(orden => {
                 const resultItem = `
                     <div onclick="fntViewOrden(${orden.id_despacho})" class="list-group-item list-group-item-action">
                         <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">Orden #${orden.id_despacho}</h5>
+                            <h5 class="mb-1">Orden #${orden.numero_orden}</h5>
                             <small>${orden.fecha_despacho}</small>
                         </div>
                         <p class="mb-1 small">
@@ -544,24 +488,19 @@ async function buscarOrdenes(e) {
                         </p>
                     </div>
                 `;
-                // Para Bootstrap, es mejor usar un list-group
                 if (searchResultsContainer.querySelector('.list-group') === null) {
                     searchResultsContainer.innerHTML = '<div class="list-group"></div>';
                 }
                 searchResultsContainer.querySelector('.list-group').insertAdjacentHTML('beforeend', resultItem);
             });
         } else {
-            const noResultsMessage = `
+            searchResultsContainer.innerHTML = `
                 <div class="text-center p-3 text-muted">
                     <i class="fas fa-search fa-2x mb-2"></i>
                     <p>${result.message || 'No se encontraron resultados.'}</p>
                 </div>
             `;
-            searchResultsContainer.innerHTML = noResultsMessage;
-            if (result.message) {
-                notifi(result.message, 'info');
-
-            }
+            if (result.message) notifi(result.message, 'info');
         }
     } catch (error) {
         console.error('Error buscando órdenes:', error);
@@ -569,16 +508,14 @@ async function buscarOrdenes(e) {
     }
 }
 
-// Ver detalles de orden en modal
 async function fntViewOrden(idDespacho) {
     try {
-        const response = await fetch(base_url + 'Orden/getOrdenDetalle/' + idDespacho);
+        const response = await fetch(base_url + 'Orden/getOrdenDetalle/' + idDespacho + '?id_institucion=' + idInstitucionOrden);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
 
         const objData = await response.json();
 
         if (objData.success) {
-            // Crear y mostrar modal con los detalles
             mostrarModalOrden(objData.data);
         } else {
             notifi(objData.message || 'No se pudo cargar el detalle.', 'error');
@@ -589,33 +526,28 @@ async function fntViewOrden(idDespacho) {
     }
 }
 
-// Editar orden
 async function fntEditOrden(idDespacho) {
     try {
-        const response = await fetch(base_url + 'Orden/getOrden/' + idDespacho);
+        const response = await fetch(base_url + 'Orden/getOrden/' + idDespacho + '?id_institucion=' + idInstitucionOrden);
         if (!response.ok) throw new Error('Error en la respuesta del servidor');
 
         const objData = await response.json();
         if (objData.success) {
             const { orden, articulos } = objData.data;
 
-            // 1. Llenar datos del formulario
             document.getElementById('idDespacho').value = orden.id_despacho;
             document.getElementById('txtdate').value = orden.fecha_despacho;
             document.getElementById('strDate').value = orden.fecha_despacho;
             document.getElementById('fechaDespacho').textContent = formatFecha(orden.fecha_despacho);
             document.getElementById('txtObs').value = orden.observacion;
 
-            // 2. Establecer valores en Select2
             $('#listUnidad').val(orden.id_flota).trigger('change');
-            // Esperar un poco para que se carguen los datos de la unidad
             setTimeout(() => fntGetUnidad(orden.id_flota), 100);
 
             $('#listOperador').val(orden.operador_id).trigger('change');
             $('#listMecanico').val(orden.mecanico_id).trigger('change');
             $('#listDespachador').val(orden.despachador_id).trigger('change');
 
-            // 3. Llenar tabla de artículos
             articulosAgregados = [];
             document.getElementById('lista').innerHTML = '';
 
@@ -653,11 +585,9 @@ async function fntEditOrden(idDespacho) {
             actualizarEstadoBotonGenerar();
             actualizarResumenOrden();
 
-            // 4. Cambiar texto del botón y hacer scroll
             document.getElementById('btnGenerar').innerHTML = '<i class="fas fa-sync"></i> Actualizar Orden';
             document.querySelector('.content-wrapper').scrollTo({ top: 0, behavior: 'smooth' });
             window.scrollTo({ top: 0, behavior: 'smooth' });
-
         } else {
             notifi(objData.message, 'error');
         }
@@ -667,15 +597,13 @@ async function fntEditOrden(idDespacho) {
     }
 }
 
-// Mostrar modal con detalles de la orden
 function mostrarModalOrden(orden) {
-    // 1. Crear el HTML del modal
     const modalContent = `
         <div class="modal fade" id="ordenDetailModal" tabindex="-1" role="dialog" aria-labelledby="ordenDetailModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title" id="ordenDetailModalLabel">Detalles de Orden #${orden.id_despacho}</h5>
+                        <h5 class="modal-title" id="ordenDetailModalLabel">Detalles de Orden #${orden.numero_orden}</h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <span aria-hidden="true">&times;</span>
                         </button>
@@ -685,6 +613,7 @@ function mostrarModalOrden(orden) {
                             <div class="col-md-6">
                                 <h5>Información de la Orden</h5>
                                 <ul class="list-unstyled">
+                                    <li><strong>N° Orden:</strong> ${orden.numero_orden}</li>
                                     <li><strong>Fecha:</strong> ${orden.fecha_despacho}</li>
                                     <li><strong>Unidad:</strong> ${orden.id_unidad} - ${orden.marca_unidad} ${orden.modelo_unidad}</li>
                                     <li><strong>VIN:</strong> ${orden.vim_unidad || 'N/A'}</li>
@@ -740,44 +669,32 @@ function mostrarModalOrden(orden) {
         </div>
     `;
 
-    // 2. Agregar el modal al DOM
     document.body.insertAdjacentHTML('beforeend', modalContent);
-
-    // 3. Inicializar y mostrar el modal de Bootstrap
     const modalElement = $('#ordenDetailModal');
     modalElement.modal('show');
-
-    // 4. Limpiar el modal del DOM cuando se cierre para evitar conflictos
     modalElement.on('hidden.bs.modal', function () {
         $(this).remove();
     });
 }
 
-// Cerrar modal
 function cerrarModal(modalId) {
-    // Bootstrap se encarga de cerrar el modal con el atributo data-dismiss o con jQuery
     $('#' + modalId).modal('hide');
 }
 
-// Eliminar orden
 async function fntdelDesp(idDesp) {
     const { value: text } = await Swal.fire({
         title: "¿Está seguro?",
         text: "Esta acción no se puede deshacer",
         input: 'textarea',
         inputPlaceholder: 'Motivo de la eliminación...',
-        inputAttributes: {
-            'aria-label': 'Motivo de la eliminación'
-        },
+        inputAttributes: { 'aria-label': 'Motivo de la eliminación' },
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
         confirmButtonText: 'Sí, eliminar',
         cancelButtonText: 'Cancelar',
         inputValidator: (value) => {
-            if (!value) {
-                return 'Debe especificar un motivo';
-            }
+            if (!value) return 'Debe especificar un motivo';
         }
     });
 
@@ -786,12 +703,11 @@ async function fntdelDesp(idDesp) {
             const params = new URLSearchParams();
             params.append('idDesp', idDesp);
             params.append('srtText', text);
+            params.append('id_institucion', idInstitucionOrden);
 
             const response = await fetch(base_url + 'Orden/delOrden', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: params
             });
 
@@ -799,7 +715,7 @@ async function fntdelDesp(idDesp) {
 
             if (objData.success) {
                 notifi(objData.message, 'success');
-                $('#tblOrdenes').DataTable().ajax.reload(); // Recargar listado
+                $('#tblOrdenes').DataTable().ajax.reload();
             } else {
                 notifi(objData.message, 'error');
             }
@@ -810,7 +726,6 @@ async function fntdelDesp(idDesp) {
     }
 }
 
-// Función para imprimir 2 órdenes en una hoja
 async function fntImprimirLote() {
     const checkboxes = document.querySelectorAll('.select-orden:checked');
     if (checkboxes.length !== 2) {
@@ -821,16 +736,15 @@ async function fntImprimirLote() {
     const ids = Array.from(checkboxes).map(cb => cb.value);
 
     try {
-        const response = await fetch(base_url + 'Orden/getOrdenesPrint', {
+        const response = await fetch(base_url + 'Orden/getOrdenesPrint?id_institucion=' + idInstitucionOrden, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ids: ids })
+            body: JSON.stringify({ ids: ids, id_institucion: idInstitucionOrden })
         });
 
         const result = await response.json();
 
         if (result.success) {
-            // Crear formulario para enviar al nuevo reporte
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = base_url + "data/almacen/reporte.php";
@@ -854,14 +768,11 @@ async function fntImprimirLote() {
     }
 }
 
-// Generar PDF de orden
 function fntImpDespacho(idDespacho) {
-    // 1. Obtener los datos completos de la orden
-    fetch(base_url + 'Orden/getOrdenDetalle/' + idDespacho)
+    fetch(base_url + 'Orden/getOrdenDetalle/' + idDespacho + '?id_institucion=' + idInstitucionOrden)
         .then(response => response.json())
         .then(result => {
             if (result.success && result.data) {
-                // 2. Si los datos se obtienen correctamente, generar el PDF
                 generarPDFOrden(result.data);
             } else {
                 notifi(result.message || 'No se pudieron obtener los datos para el reporte.', 'error');
@@ -874,11 +785,10 @@ function fntImpDespacho(idDespacho) {
 }
 
 function generarPDFOrden(reporteData) {
-    // 3. Crear un formulario oculto para enviar los datos al script PHP
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = base_url + "data/almacen/reportePDFdesp.php";
-    form.target = '_blank'; // Abrir en una nueva pestaña
+    form.target = '_blank';
 
     const input = document.createElement('input');
     input.type = 'hidden';

@@ -1,5 +1,5 @@
 <?php
-set_time_limit(0); // Establece el tiempo máximo de ejecución a ilimitado para este script
+set_time_limit(0);
 require_once '../dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
@@ -22,11 +22,19 @@ $fechaInicio = $decodedData['fechaInicio'] ?? null;
 $fechaFin = $decodedData['fechaFin'] ?? null;
 $searchValue = $decodedData['searchValue'] ?? '';
 
+// Nombre de la institución
+$nombreInstitucion = !empty($_POST['nombreInstitucion']) 
+    ? htmlspecialchars($_POST['nombreInstitucion'], ENT_QUOTES, 'UTF-8') 
+    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+
+// Título del reporte
+$tituloReporte = 'REPORTE DETALLADO DE COMPRAS';
+
 $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);
 
-// Calcular totales generales a partir de los datos agrupados
+// Calcular totales generales
 $totalGeneralDivisa = 0;
 $totalGeneralBs = 0;
 $totalGeneralArticulos = 0;
@@ -39,10 +47,10 @@ foreach ($reporteData as $unidad) {
 
 $dompdf = new Dompdf($options);
 
-// Importar encabezado estandarizado
+// Importar encabezado
 require_once '../encabezado.php';
 
-// Construir la leyenda de filtros
+// Leyenda de filtros
 $leyendaFiltros = '<ul>';
 if ($fechaInicio && $fechaFin) {
     $fechaInicioFormatted = date('d/m/Y', strtotime($fechaInicio));
@@ -65,7 +73,6 @@ $html = '
     <title>Reporte Detallado de Compras Costeadas</title>
     ' . $cssCommon . '
     <style>
-        .report-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 40px; }
         .filter-legend { border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; font-size: 9px; }
         .filter-legend h4 { margin: 0 0 8px 0; font-size: 11px; border-bottom: 1px solid #eee; padding-bottom: 4px; }
         .filter-legend ul { list-style: none; padding: 0; margin: 0; }
@@ -75,7 +82,7 @@ $html = '
         .totals-legend h4 { color: #005a9e; }
         .totals-legend ul li { font-size: 10px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 15px; page-break-inside: avoid; }
-        th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
+        th, td { border: 1px solid #ccc; padding: 5px; text-align: left; font-size: 10px; }
         thead { background-color: #f2f2f2; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -88,8 +95,6 @@ $html = '
 <body>
     ' . $headerHtml . '
     ' . $footerHtml . '
-
-    <div class="report-title">REPORTE DETALLADO DE COMPRAS</div>
 
     <div class="legend-container">
         <div class="filter-legend">
@@ -115,7 +120,7 @@ foreach ($reporteData as $unidad) {
                 <th colspan="7">UNIDAD: ' . htmlspecialchars($unidad['nombre_unidad']) . '</th>
             </tr>
             <tr>
-                <th class="text-center">ID Despacho</th>
+                <th class="text-center">N° Orden</th>
                 <th class="text-center">Fecha Despacho</th>
                 <th>Artículo</th>
                 <th class="text-center">Cantidad</th>
@@ -128,9 +133,10 @@ foreach ($reporteData as $unidad) {
 
     foreach ($unidad['despachos'] as $despacho) {
         foreach ($despacho['articulos'] as $articulo) {
+            $numeroOrden = $articulo['numero_orden'] ?? $articulo['id_despacho'];
             $html .= '
             <tr>
-                <td class="text-center">' . htmlspecialchars($articulo['id_despacho']) . '</td>
+                <td class="text-center">' . htmlspecialchars($numeroOrden) . '</td>
                 <td class="text-center">' . htmlspecialchars($articulo['fecha_despacho']) . '</td>
                 <td>' . htmlspecialchars($articulo['producto']) . '</td>
                 <td class="text-center">' . htmlspecialchars($articulo['cant_despacho']) . '</td>

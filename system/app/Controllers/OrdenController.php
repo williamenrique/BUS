@@ -1,27 +1,23 @@
 <?php
 header('Access-Control-Allow-Origin: *');
 class Orden extends Controllers{
-    private $db; //para inicializar la base de datos
     public function __construct(){
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
-        // Validar sesión de manera más robusta
         if (!$this->validateSession()) {
             header("Location:".base_url().'login');
             exit();
         }
-        //invocar para que se ejecute el metodo de la herencia
         parent::__construct();
         $this->ordenModel = new OrdenModel();
-
     }
-    /*manejo de sesiones activas*/
-	function getActiveSession(){
-		$reuest = $this->model->getActiveSession($_SESSION['idUser']);
-	}
+
+    function getActiveSession(){
+        $request = $this->model->getActiveSession($_SESSION['idUser']);
+    }
+
     public function validateSession() {
-        // Verificar si la sesión está iniciada y es válida
         if (empty($_SESSION['login']) || empty($_SESSION['idUser'])) {
             return false;
         }
@@ -34,52 +30,83 @@ class Orden extends Controllers{
         }
         return true;
     }
-    /*fin manejo de sesiones activas*/
-    /**inicio de manejo de errores en cada controlador debe estar */
-	private function handleDatabaseError($error) {
-        // Log del error
-        error_log("Error de BD en controlador User: " . $error);
-        // Puedes elegir cómo manejar el error:
-        // 1. Redirigir a una página de error
-        // 2. Mostrar un mensaje JSON (para APIs)
-        // 3. Guardar en variable para mostrar en vista
-        // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
-            $arrResponse = [
-                'success' => false,
-                'message' => 'Error de conexión a la base de datos',
-                'error' => $error
-            ];
+
+    private function handleDatabaseError($error) {
+        error_log("Error de BD en Orden: " . $error);
+        if ($this->isAjaxRequest()) {
+            $arrResponse = ['success' => false, 'message' => 'Error de BD', 'error' => $error];
             header('Content-Type: application/json');
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
             die();
-        } else {
-            // Para vistas HTML, podrías guardar el error para mostrarlo
-            $_SESSION['error_message'] = "Error de base de datos: " . $error;
         }
     }
+
     private function isAjaxRequest() {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
-	/**fin de manejo de errores en cada controlador debe estar*/
-    public function orden(){
+
+    /**
+     * Resuelve institución.
+     */
+    private function resolverInstitucion($institucion = 'actual') {
+        return ($institucion === 'taller') ? 2 : 1;
+    }
+
+    /**
+     * Helper: lee id_institucion de GET/POST con fallback.
+     */
+    private function obtenerInstitucionDeRequest(): int {
+        if (isset($_GET['id_institucion'])) return intval($_GET['id_institucion']);
+        if (isset($_POST['id_institucion'])) return intval($_POST['id_institucion']);
+        return 1;
+    }
+
+    /**************************************************/
+    /********* VISTAS *********************************/
+    /**************************************************/
+
+    /**
+     * Vista de órdenes SSLMTY.
+     */
+    public function orden($institucion = 'actual'){
         if (!$this->validateSession()) {
             header("Location:".base_url().'login');
             exit();
         }
+        $idInstitucion = $this->resolverInstitucion($institucion);
+        $nombreInstitucion = $this->ordenModel->getNombreInstitucion($idInstitucion);
+        $this->ordenModel->setInstitucion($idInstitucion);
+
         $data = [
             'page_tag' => "Gestión de Órdenes",
-            'page_title' => "Sistema de Órdenes",
+            'page_title' => "Sistema de Órdenes - " . $nombreInstitucion,
             'page_name' => "almacen",
-            'page_link' => "despacho",
-            'page_functions' => "function.ordenes.js"
+            'page_link' => ($idInstitucion === 2) ? "despacho_taller" : "despacho",
+            'page_functions' => "function.ordenes.js",
+            'id_institucion' => $idInstitucion,
+            'nombre_institucion' => $nombreInstitucion,
+            'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "orden", $data);
     }
 
+    /**
+     * Wrapper Taller.
+     */
+    public function ordenTaller() {
+        $this->orden('taller');
+    }
+
+    /**************************************************/
+    /********* API: DATOS INICIALES *******************/
+    /**************************************************/
+
     public function getInitialData() {
         $arrResponse = ['success' => false, 'message' => 'No se pudieron cargar los datos iniciales.'];
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $data = [
                 'flota' => $this->ordenModel->selectListFlota(),
                 'operadores' => $this->ordenModel->selectListOper(),
@@ -89,7 +116,6 @@ class Orden extends Controllers{
             ];
             $arrResponse = ['success' => true, 'data' => $data];
         } catch (Exception $e) {
-            $this->handleDatabaseError($e->getMessage());
             $arrResponse['message'] = $e->getMessage();
         }
         header('Content-Type: application/json');
@@ -97,33 +123,19 @@ class Orden extends Controllers{
         die();
     }
 
-
-
-    public function getListFlota(){
-        try {
-            $arrData = $this->ordenModel->selectListFlota();
-            $htmlOptions = '<option value="0">Seleccione una unidad</option>';
-            if (!empty($arrData)) {
-                foreach ($arrData as $flota) {
-                    $htmlOptions .= '<option value="' . $flota['id_flota'] . '">' . $flota['id_unidad'] . ' - ' . $flota['modelo_unidad'] . '</option>';
-                }
-            }
-            $arrResponse = ['success' => true, 'data' => $arrData];
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        } catch (Exception $e) {
-            $this->handleDatabaseError($e->getMessage());
-        }
-        die();
-    }
-
     public function getUnidad($idUnidad){
         $arrResponse = ['success' => false, 'message' => 'Error al obtener datos de la unidad'];
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $idUnidad = intval($idUnidad);
             $arrData = $this->ordenModel->selectUnidad($idUnidad);
             if (!empty($arrData)) {
                 $arrResponse = ['success' => true, 'message' => 'Datos cargados', 'data' => $arrData];
-            } else { $arrResponse['message'] = 'Unidad no encontrada.'; }
+            } else { 
+                $arrResponse['message'] = 'Unidad no encontrada.'; 
+            }
         } catch (Exception $e) {
             $arrResponse['msg'] = $e->getMessage();
         }
@@ -131,40 +143,23 @@ class Orden extends Controllers{
         die();
     }
 
-    public function getListOper(){
+    public function getArt($idArt){
+        $arrResponse = ['success' => false, 'message' => 'Error al obtener datos del artículo'];
         try {
-            $arrData = $this->ordenModel->selectListOper();            
-            $arrResponse = ['success' => true, 'data' => $arrData];
-            header('Content-Type: application/json');
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
 
+            $idArt = intval($idArt);
+            $arrData = $this->ordenModel->selectArt($idArt);
+            if (!empty($arrData)) {
+                $arrResponse = ['success' => true, 'message' => 'Datos cargados', 'data' => $arrData];
+            } else { 
+                $arrResponse['message'] = 'Artículo no encontrado.'; 
+            }
         } catch (Exception $e) {
-            $this->handleDatabaseError($e->getMessage());
+            $arrResponse['msg'] = $e->getMessage();
         }
-        die();
-    }
-
-    public function getListMec(){
-        try {
-            $arrData = $this->ordenModel->selectListMec();
-            $arrResponse = ['success' => true, 'data' => $arrData];
-            header('Content-Type: application/json');
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        } catch (Exception $e) {
-            $this->handleDatabaseError($e->getMessage());
-        }
-        die();
-    }
-
-    public function getListDesp(){
-        try {
-            $arrData = $this->ordenModel->selectListDesp();
-            $arrResponse = ['success' => true, 'data' => $arrData];
-            header('Content-Type: application/json');
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        } catch (Exception $e) {
-            $this->handleDatabaseError($e->getMessage());
-        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
 
@@ -175,34 +170,9 @@ class Orden extends Controllers{
             $arrData = $this->ordenModel->selectPersonal($idPersonal);
             if (!empty($arrData)) {
                 $arrResponse = ['success' => true, 'message' => 'Datos cargados', 'data' => $arrData];
-            } else { $arrResponse['message'] = 'Personal no encontrado.'; }
-        } catch (Exception $e) {
-            $arrResponse['msg'] = $e->getMessage();
-        }
-        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        die();
-    }
-
-    public function getListArt(){
-        try {
-            $arrData = $this->ordenModel->selectListArt();
-            $arrResponse = ['success' => true, 'data' => $arrData];
-            header('Content-Type: application/json');
-            echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        } catch (Exception $e) {
-            $this->handleDatabaseError($e->getMessage());
-        }
-        die();
-    }
-
-    public function getArt($idArt){
-        $arrResponse = ['success' => false, 'message' => 'Error al obtener datos del artículo'];
-        try {
-            $idArt = intval($idArt);
-            $arrData = $this->ordenModel->selectArt($idArt);
-            if (!empty($arrData)) {
-                $arrResponse = ['success' => true, 'message' => 'Datos cargados', 'data' => $arrData];
-            } else { $arrResponse['message'] = 'Artículo no encontrado.'; }
+            } else { 
+                $arrResponse['message'] = 'Personal no encontrado.'; 
+            }
         } catch (Exception $e) {
             $arrResponse['msg'] = $e->getMessage();
         }
@@ -213,6 +183,9 @@ class Orden extends Controllers{
     public function getOrden($idDespacho){
         $arrResponse = ['success' => false, 'message' => 'Error al obtener datos de la orden'];
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $idDespacho = intval($idDespacho);
             if ($idDespacho > 0) {
                 $orden = $this->ordenModel->selectOrdenForEdit($idDespacho);
@@ -230,6 +203,10 @@ class Orden extends Controllers{
         die();
     }
 
+    /**************************************************/
+    /********* API: CREAR/ACTUALIZAR ******************/
+    /**************************************************/
+
     public function setOrdenD(){
         $arrResponse = ['success' => false, 'message' => 'Error al registrar la orden'];
         try {
@@ -237,23 +214,23 @@ class Orden extends Controllers{
                 throw new Exception('Método no permitido');
             }
 
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $idDespacho = intval($_POST['idDespacho'] ?? 0);
             $intUnidad = intval($_POST['listUnidad']);
             $intIdUser = $_SESSION['idUser'];
             $srtObs = !empty($_POST['txtObs']) ? strtoupper(strClean($_POST['txtObs'])) : '';
-            // Se elimina strClean para no corromper el formato de fecha YYYY-MM-DD que necesita la tabla de compras pendientes
             $strDate = !empty($_POST['strDate']) ? $_POST['strDate'] : date('Y-m-d');
 
             $idOper = intval($_POST['listOperador']);
             $idMec = intval($_POST['listMecanico']);
             $idDesp = intval($_POST['listDespachador']);
 
-            // Validar que todos los IDs sean válidos
             if ($intUnidad <= 0 || $idOper <= 0 || $idMec <= 0 || $idDesp <= 0) {
                 throw new Exception('Debe seleccionar Unidad, Operador, Mecánico y Despachador.');
             }
 
-            // Obtener los nombres completos del personal
             $operadorData = $this->ordenModel->selectPersonal($idOper);
             $mecanicoData = $this->ordenModel->selectPersonal($idMec);
             $despachadorData = $this->ordenModel->selectPersonal($idDesp);
@@ -263,16 +240,10 @@ class Orden extends Controllers{
             $strDesp = !empty($despachadorData) ? strtoupper($despachadorData['personal_nombre'] . ' ' . $despachadorData['personal_apellido']) : 'N/A';
 
             if ($idDespacho > 0) {
-                // Actualizar Orden
-                // 1. Actualizar cabecera
                 $this->ordenModel->updateDespacho($idDespacho, $intUnidad, $strOper, $strMec, $strDesp, $srtObs, $strDate);
-                
-                // 2. Revertir stock de artículos anteriores y limpiar detalles
                 $this->ordenModel->revertirYLimpiar($idDespacho);
-                
                 $msg = 'Orden actualizada correctamente';
             } else {
-                // Crear Orden
                 $idDespacho = $this->ordenModel->insertDespacho($intUnidad, $strOper, $strMec, $strDesp, $intIdUser, $srtObs, $strDate);
                 $msg = 'Orden registrada correctamente con ID: ' . $idDespacho;
             }
@@ -281,7 +252,6 @@ class Orden extends Controllers{
                 if (!empty($_POST['cod']) && is_array($_POST['cod'])) {
                     foreach ($_POST['cod'] as $index => $idArticulo) {
                         $intCant = floatval($_POST['cantidad'][$index]);
-                        // Insertar relación y descontar stock (funciona igual para create y update tras limpiar)
                         $this->ordenModel->insertRDespacho($idDespacho, $idArticulo, $intCant, $intUnidad, $strDate);
                         $this->ordenModel->updateCant($idArticulo, $intCant);
                     }
@@ -295,35 +265,36 @@ class Orden extends Controllers{
         die();
     }
 
+    /**************************************************/
+    /********* API: LISTADO ***************************/
+    /**************************************************/
+
     public function getOrdenes() {
         try {
-            // Obtener todos los datos de las órdenes desde el modelo
-            $ordenesData = $this->ordenModel->selectOrdenes();
-    
-            $arrResponse = [
-                // DataTables en modo cliente espera los datos en la clave "data"
-                "data" => $ordenesData
-            ];
-        } catch (Exception $e) {
-            $arrResponse = ["data" => [], "error" => "Error al cargar las órdenes: " . $e->getMessage()];
-        }
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
 
+            $ordenesData = $this->ordenModel->selectOrdenes();
+            $arrResponse = ["data" => $ordenesData];
+        } catch (Exception $e) {
+            $arrResponse = ["data" => [], "error" => "Error: " . $e->getMessage()];
+        }
         header('Content-Type: application/json');
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
 
     public function getOrdenDetalle($idDespacho){
-    $arrResponse = ['status' => false, 'msg' => 'Error al obtener detalles de la orden'];
+        $arrResponse = ['status' => false, 'msg' => 'Error'];
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $idDespacho = intval($idDespacho);
-            // Obtener información básica de la orden
             $orden = $this->ordenModel->selectDepacho($idDespacho);
             
             if (!empty($orden)) {
-                // Obtener artículos de la orden
                 $articulos = $this->ordenModel->getListArtDesp($idDespacho);
-                
                 $arrResponse = [
                     'success' => true, 
                     'message' => 'Datos cargados', 
@@ -332,13 +303,16 @@ class Orden extends Controllers{
             }
         } catch (Exception $e) {
             $arrResponse['message'] = $e->getMessage();
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
     }
-    echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-    die();
-}
 
     public function getOrdenesPrint() {
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $json = file_get_contents('php://input');
             $data = json_decode($json, true);
             $ids = $data['ids'] ?? [];
@@ -365,6 +339,9 @@ class Orden extends Controllers{
 
     public function getBuscarOrden(){
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $strCod = !empty($_POST['txtCod']) ? $_POST['txtCod'] : '';
             $strFecha = !empty($_POST['txtFecha']) ? $_POST['txtFecha'] : '';
             $strUnidad = !empty($_POST['txtUnidad']) ? $_POST['txtUnidad'] : '';
@@ -378,12 +355,16 @@ class Orden extends Controllers{
             header('Content-Type: application/json');
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         } catch (Exception $e) {
-            $arrResponse = ['success' => false, 'message' => 'Error en la búsqueda: ' . $e->getMessage()];
+            $arrResponse = ['success' => false, 'message' => 'Error: ' . $e->getMessage()];
             header('Content-Type: application/json');
             echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         }
         die();
     }
+
+    /**************************************************/
+    /********* API: ELIMINAR **************************/
+    /**************************************************/
 
     public function delOrden(){
         $arrResponse = ['success' => false, 'message' => 'Error al eliminar la orden'];
@@ -394,6 +375,9 @@ class Orden extends Controllers{
         }
 
         try {
+            $idInstitucion = intval($_POST['id_institucion'] ?? 1);
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $idDesp = intval($_POST['idDesp'] ?? 0);
             $motivo = strClean($_POST['srtText'] ?? '');
             $idUsuario = $_SESSION['idUser'];
@@ -408,7 +392,6 @@ class Orden extends Controllers{
                 $this->ordenModel->updateCantN($articulo['id_producto'], $nuevaCantidad);
             }
 
-            // Cambiar estado de la orden y registrar en historial
             $success = $this->ordenModel->delDesp($idDesp, $motivo, $idUsuario);
 
             if ($success) {
@@ -421,41 +404,28 @@ class Orden extends Controllers{
         die();
     }
 
-
-    public function reporteDesp($idDespacho){
-        try {
-            $arrData = $this->ordenModel->selectDepacho($idDespacho);
-            $arrArticulos = $this->ordenModel->getListArtDesp($idDespacho);
-            
-            // Guardar datos en sesión para el PDF
-            $_SESSION['reporte_despacho'] = [
-                'orden' => $arrData,
-                'articulos' => $arrArticulos
-            ];
-            
-            echo json_encode(['success' => true, 'message' => 'Reporte generado correctamente']);
-        } catch (Exception $e) {
-            echo json_encode(['success' => false, 'message' => 'Error al generar reporte: ' . $e->getMessage()]);
-        }
-        die();
-    }
+    /**************************************************/
+    /********* API: STATS *****************************/
+    /**************************************************/
 
     public function getMonthlyStats() {
         $arrResponse = ['success' => false, 'message' => 'No se pudieron cargar las estadísticas.'];
         try {
+            $idInstitucion = $this->obtenerInstitucionDeRequest();
+            $this->ordenModel->setInstitucion($idInstitucion);
+
             $stats = $this->ordenModel->getMonthlyOrderCount();
-            $target = 120; // Meta mensual, se puede hacer configurable después
+            $target = 120;
             $currentCount = $stats['total_ordenes'] ?? 0;
             $percentage = ($target > 0) ? round(($currentCount / $target) * 100) : 0;
     
             $data = [
                 'current_orders' => $currentCount,
                 'target_orders' => $target,
-                'percentage' => $percentage > 100 ? 100 : $percentage // Cap at 100%
+                'percentage' => $percentage > 100 ? 100 : $percentage
             ];
             
             $arrResponse = ['success' => true, 'data' => $data];
-    
         } catch (Exception $e) {
             $arrResponse['message'] = $e->getMessage();
         }

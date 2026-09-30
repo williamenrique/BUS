@@ -18,21 +18,30 @@ if (json_last_error() !== JSON_ERROR_NONE || empty($data) || !isset($data['info'
 $info = $data['info'] ?? [];
 $articulos = $data['articulos'] ?? [];
 
+// Nombre de la institución (enviado desde el JS)
+$nombreInstitucion = !empty($_POST['nombreInstitucion']) 
+    ? htmlspecialchars($_POST['nombreInstitucion'], ENT_QUOTES, 'UTF-8') 
+    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+
+// Título del reporte
+$tituloReporte = 'ORDEN DE COMPRA COSTEADA';
+
 // Importar encabezado estandarizado
 require_once '../encabezado.php';
 
-// Construir el HTML para el PDF usando el método de concatenación
+$numeroOrden = $info['numero_orden'] ?? $info['id_despacho'];
+
+// Construir el HTML para el PDF
 $html = '
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Orden de Compra Costeada #' . htmlspecialchars($info['id_despacho']) . '</title>
+    <title>Orden de Compra Costeada #' . htmlspecialchars($numeroOrden) . '</title>
     ' . $cssCommon . '
     <style>
-        .report-title { text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 40px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 25px; page-break-inside: avoid; }
-        th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
+        th, td { border: 1px solid #ccc; padding: 5px; text-align: left; font-size: 10px; }
         thead { background-color: #f2f2f2; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -43,11 +52,10 @@ $html = '
 <body>
     ' . $headerHtml . '
     ' . $footerHtml . '
-    <div class="report-title">ORDEN DE COMPRA COSTEADA</div>
     <table>
         <thead>
             <tr class="despacho-header">
-                <th>Despacho: #' . htmlspecialchars($info['id_despacho']) . '</th>
+                <th>Orden: #' . htmlspecialchars($numeroOrden) . '</th>
                 <th class="text-center">Fecha: ' . htmlspecialchars($info['fecha_despacho']) . '</th>
                 <th colspan="3" class="text-right">Unidad: ' . htmlspecialchars($info['id_unidad'] . ' - ' . $info['modelo_unidad']) . '</th>
             </tr>
@@ -95,29 +103,9 @@ $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);
 
-// Instanciar Dompdf
 $dompdf = new Dompdf($options);
-
-// Cargar el HTML
 $dompdf->loadHtml($html);
-
 $dompdf->setPaper('A4', 'portrait');
-
-// Renderizar el HTML como PDF
 $dompdf->render();
-
-// Enviar el PDF al navegador para su visualización/descarga
-$dompdf->stream('Orden_Costeada_' . $info['id_despacho'] . '.pdf', array("Attachment" => 0));
-
+$dompdf->stream('Orden_Costeada_' . $numeroOrden . '.pdf', array("Attachment" => 0));
 ?>
-
-```
-
-**Importante:** No olvides agregar el botón para generar el PDF en el pie de tu modal `modalVerDetalle` (en tu vista de compras), como te mostré en la conversación anterior.
-
-Con estos cambios, la nueva funcionalidad estará lista.
-
-<!--
-[PROMPT_SUGGESTION]¿Podemos añadir una firma digital al final del PDF de la orden costeada?[/PROMPT_SUGGESTION]
-[PROMPT_SUGGESTION]Ahora, optimiza la carga de la tabla de compras costeadas para que sea más rápida.[/PROMPT_SUGGESTION]
--->

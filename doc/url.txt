@@ -1,0 +1,55 @@
+URLs disponibles
+Flota SSLMTY:
+
+flota
+
+flota/statusaceite
+
+flota/historialunidad/{id}
+
+Flota Taller:
+
+flota/taller
+
+flota/talleraceite
+
+flota/tallerhistorial/{id}
+
+Productos SSLMTY:
+
+producto/producto
+
+producto/historial
+
+producto/inventario
+
+Productos Taller:
+
+producto/productoTaller
+
+producto/historialTaller
+
+producto/inventarioTaller
+
+Órdenes SSLMTY:
+
+orden/orden
+
+Órdenes Taller:
+
+orden/ordenTaller
+
+Compras SSLMTY:
+
+compras/costos
+
+Compras Taller:
+
+compras/costosTaller
+
+Dashboard público:
+
+publico/movimientos
+
+bienes
+bienesTaller

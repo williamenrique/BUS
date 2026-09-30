@@ -1,32 +1,36 @@
 <?= head($data)?>
 
+<!-- ID de institución y nombre para JS -->
+<input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
+
 <!-- Content Wrapper. Contains page content -->
 <div class="content-wrapper">
-    <!-- Content Header (Page header) -->
     <section class="content-header">
         <div class="container-fluid">
             <div class="row mb-2">
                 <div class="col-sm-6">
-                    <h1><i class="fas fa-history"></i> <?= $data['page_title'] ?></h1>
+                    <h1><i class="fas fa-history"></i> <?= $data['page_title'] ?>
+                        <span class="badge badge-info ml-2"><?= $data['nombre_institucion'] ?></span>
+                    </h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url(); ?>/dashboard">Home</a></li>
-                        <li class="breadcrumb-item active">Historial</li>
+                        <li class="breadcrumb-item active">Historial - <?= $data['nombre_institucion'] ?></li>
                     </ol>
                 </div>
             </div>
-        </div><!-- /.container-fluid -->
+        </div>
     </section>
 
-    <!-- Main content -->
     <section class="content">
         <div class="container-fluid">
-            <!-- Vista de la Tabla Resumen (Visible por defecto) -->
+            <!-- Vista de la Tabla Resumen -->
             <div id="summaryView">
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Resumen de Movimientos</h3>
+                        <h3 class="card-title">Resumen de Movimientos - <?= $data['nombre_institucion'] ?></h3>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -41,16 +45,14 @@
                                         <th>Último Despacho</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    <!-- Data will be loaded by DataTable -->
-                                </tbody>
+                                <tbody></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Vista de Detalle (Oculta por defecto) -->
+            <!-- Vista de Detalle -->
             <div id="detailView" class="d-none">
                 <div class="card">
                     <div class="card-header">
@@ -62,15 +64,7 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- Timeline -->
-                        <div class="timeline" id="timelineContainer">
-                            <!-- Los eventos del timeline se insertarán aquí -->
-                            <div id="timelineEmptyState" class="d-none text-center py-5">
-                                <i class="fas fa-box-open fa-3x text-muted"></i>
-                                <p class="mt-3 text-muted">Este producto aún no ha sido despachado.</p>
-                            </div>
-                        </div>
-                        <!-- Contenedor para la Paginación -->
+                        <div class="timeline" id="timelineContainer"></div>
                         <div class="card-footer clearfix">
                             <div id="pagination-container"></div>
                         </div>
@@ -79,8 +73,6 @@
             </div>
         </div>
     </section>
-    <!-- /.content -->
 </div>
-<!-- /.content-wrapper -->
 
 <?= footer($data)?>

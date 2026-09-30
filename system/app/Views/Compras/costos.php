@@ -1,17 +1,37 @@
 <?= head($data)?>
 
-    <!-- Content Wrapper. Contains page content -->
-    <div class="content-wrapper">
-        <!-- Main content -->
-        <section class="content">
+<!-- ID de institución y nombre para JS -->
+<input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
 
-            <div class="container-fluid">
-                <div class="row">
-                    <div class="col-12">
-                    <!-- Default box -->
+<!-- Content Wrapper. Contains page content -->
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1><i class="fas fa-shopping-cart"></i> <?= $data['page_title'] ?>
+                        <span class="badge badge-info ml-2"><?= $data['nombre_institucion'] ?></span>
+                    </h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
+                        <li class="breadcrumb-item active">Compras - <?= $data['nombre_institucion'] ?></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <!-- Reporte de Compras -->
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Generar Reporte de Compras</h3>
+                            <h3 class="card-title">Generar Reporte de Compras - <?= $data['nombre_institucion'] ?></h3>
                         </div>
                         <div class="card-body">
                             <form id="formReporteCompras">
@@ -35,12 +55,13 @@
                                     </div>
                                 </div>
                                 <div id="conteoReporte" class="form-text text-muted mt-2" style="height: 1.25rem;">
-                                    <!-- Mensaje de conteo de órdenes se insertará aquí -->
+                                    <i class="fas fa-info-circle mr-1"></i> Seleccione una unidad para ver las órdenes disponibles.
                                 </div>
                             </form>
                         </div>
                     </div>
 
+                    <!-- Tabs: Pendientes / Costeadas -->
                     <div class="card card-primary card-tabs">
                         <div class="card-header p-0 pt-1">
                             <ul class="nav nav-tabs" id="comprasTab" role="tablist">
@@ -54,12 +75,13 @@
                         </div>
                         <div class="card-body">
                             <div class="tab-content" id="comprasTabContent">
+                                <!-- Tab Pendientes -->
                                 <div class="tab-pane fade show active" id="pendientes" role="tabpanel" aria-labelledby="pendientes-tab">
                                     <div class="table-responsive">
                                         <table id="tableComprasPendientes" class="table table-bordered table-striped">
                                             <thead>
                                                 <tr>
-                                                    <th>ID Despacho</th>
+                                                    <th>N° Orden</th>
                                                     <th>Fecha Despacho</th>
                                                     <th>Unidad</th>
                                                     <th>Artículos Pendientes</th>
@@ -70,6 +92,8 @@
                                         </table>
                                     </div>
                                 </div>
+
+                                <!-- Tab Costeados -->
                                 <div class="tab-pane fade" id="costeados" role="tabpanel" aria-labelledby="costeados-tab">
                                     <form id="formFiltroCosteadas" class="mb-4 p-3 border rounded">
                                         <div class="row align-items-end">
@@ -92,7 +116,7 @@
                                         <table id="tableComprasCosteadas" class="table table-bordered table-striped">
                                             <thead>
                                                 <tr>
-                                                    <th>ID Despacho</th>
+                                                    <th>N° Orden</th>
                                                     <th>Fecha Despacho</th>
                                                     <th>Unidad</th>
                                                     <th>Artículos</th>
@@ -109,7 +133,7 @@
                         </div>
                     </div>
 
-                    <!-- Modal para Asignar Costo -->
+                    <!-- Modal: Asignar Costo -->
                     <div class="modal fade" id="modalAsignarCosto" tabindex="-1" role="dialog" aria-labelledby="titleModalCosto" aria-hidden="true">
                         <div class="modal-dialog modal-lg" role="document">
                             <div class="modal-content">
@@ -163,7 +187,7 @@
                         </div>
                     </div>
 
-                    <!-- Modal para Ver Detalle de Costos -->
+                    <!-- Modal: Ver Detalle de Costos -->
                     <div class="modal fade" id="modalVerDetalle" tabindex="-1" role="dialog" aria-labelledby="titleModalDetalle" aria-hidden="true">
                         <div class="modal-dialog modal-xl" role="document">
                             <div class="modal-content">
@@ -210,12 +234,10 @@
                         </div>
                     </div>
                     <!-- /box end -->
-                    </div>
                 </div>
             </div>
-        </section>
-        <!-- /.content -->
-    </div>
-    <!-- /.content-wrapper -->
+        </div>
+    </section>
+</div>
 
 <?= footer($data)?>

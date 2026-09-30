@@ -2,12 +2,14 @@ let tableProducto;
 let tableHistory;
 let tableInventario;
 
+// Institución activa leída del hidden input
+const idInstitucionProducto = document.getElementById('id_institucion')?.value || 1;
+
 // =================================================================================
 // INICIALIZACIÓN Y EVENTOS PRINCIPALES
 // =================================================================================
 
 document.addEventListener('DOMContentLoaded', function () {
-    // Detecta en qué página estamos para ejecutar el código correspondiente
     if (document.getElementById('tableProducto')) {
         cargarDatosIniciales();
         configurarEventListeners();
@@ -17,16 +19,16 @@ document.addEventListener('DOMContentLoaded', function () {
     } else if (document.getElementById('tableInventario')) {
         inicializarInventarioTable();
     } else if (document.getElementById('formUpdateProducto')) {
-        // La lógica para esta página ahora está en function.cleanAlmacen.js
+        // La lógica está en function.cleanAlmacen.js
     }
 });
 
-/*
- *Carga los datos iniciales para los selects de los formularios.
+/**
+ * Carga los datos iniciales para los selects.
  */
 async function cargarDatosIniciales() {
     try {
-        const response = await fetch(base_url + 'Producto/getInitialData');
+        const response = await fetch(base_url + 'Producto/getInitialData?id_institucion=' + idInstitucionProducto);
         if (!response.ok) throw new Error('Error al cargar datos iniciales.');
 
         const result = await response.json();
@@ -45,9 +47,6 @@ async function cargarDatosIniciales() {
     }
 }
 
-/**
- * Configura los event listeners para los formularios de la página de productos.
- */
 function configurarEventListeners() {
     const formNewArticulo = document.getElementById('formNewArticulo');
     if (formNewArticulo) formNewArticulo.addEventListener('submit', setProducto);
@@ -59,14 +58,6 @@ function configurarEventListeners() {
     if (listArticuloExistente) listArticuloExistente.addEventListener('change', getProducto);
 }
 
-/**
- * Rellena un elemento <select> con datos.
- * @param {string} selectId - ID del elemento select.
- * @param {Array} data - Array de objetos con los datos.
- * @param {string} valueField - Nombre del campo para el `value` de la opción.
- * @param {string|Function} textField - Nombre del campo o función para el texto de la opción.
- * @param {string} defaultOptionText - Texto para la opción por defecto.
- */
 function populateSelect(selectId, data, valueField, textField, defaultOptionText) {
     const select = document.getElementById(selectId);
     if (!select) return;
@@ -84,18 +75,16 @@ function populateSelect(selectId, data, valueField, textField, defaultOptionText
 }
 
 // =================================================================================
-// FUNCIONES PARA CREAR Y ACTUALIZAR PRODUCTOS
+// CREAR Y ACTUALIZAR PRODUCTOS
 // =================================================================================
 
-/**
- * Envía el formulario para crear un nuevo producto.
- * @param {Event} e - Evento del formulario.
- */
 async function setProducto(e) {
     e.preventDefault();
     const form = e.target;
     try {
         const formData = new FormData(form);
+        formData.append('id_institucion', idInstitucionProducto);
+
         const response = await fetch(base_url + 'Producto/setProducto', {
             method: 'POST',
             body: formData
@@ -105,7 +94,7 @@ async function setProducto(e) {
             notifi(result.message, 'success');
             form.reset();
             tableProducto.ajax.reload();
-            cargarDatosIniciales(); // Recargar selects por si hay nuevos productos
+            cargarDatosIniciales();
         } else {
             notifi(result.message, 'error');
         }
@@ -115,15 +104,13 @@ async function setProducto(e) {
     }
 }
 
-/**
- * Envía el formulario para actualizar el stock de un producto existente.
- * @param {Event} e - Evento del formulario.
- */
 async function updateProducto(e) {
     e.preventDefault();
     const form = e.target;
     try {
         const formData = new FormData(form);
+        formData.append('id_institucion', idInstitucionProducto);
+
         const response = await fetch(base_url + 'Producto/updateProducto', {
             method: 'POST',
             body: formData
@@ -143,9 +130,6 @@ async function updateProducto(e) {
     }
 }
 
-/**
- * Obtiene la cantidad de stock actual de un producto seleccionado.
- */
 async function getProducto() {
     const idProducto = document.getElementById('listArticuloExistente').value;
     if (idProducto == 0) {
@@ -153,7 +137,7 @@ async function getProducto() {
         return;
     }
     try {
-        const response = await fetch(base_url + 'Producto/getProducto/' + idProducto);
+        const response = await fetch(base_url + 'Producto/getProducto/' + idProducto + '?id_institucion=' + idInstitucionProducto);
         const result = await response.json();
         if (result.success) {
             document.getElementById('txtCantidadActual').value = result.data.cant_producto || 0;
@@ -167,19 +151,17 @@ async function getProducto() {
 }
 
 // =================================================================================
-// GESTIÓN DE LA TABLA DE PRODUCTOS (DATATABLE)
+// DATATABLE DE PRODUCTOS
 // =================================================================================
 
-/**
- * Inicializa la DataTable para mostrar la lista de productos.
- */
 function inicializarDataTable() {
     tableProducto = $('#tableProducto').DataTable({
         "aProcessing": true,
         "aServerSide": true,
         "language": { "url": base_url + "src/plugins/js/es_es.json" },
         "ajax": {
-            "url": base_url + "Producto/getProductos",
+            "url": base_url + "Producto/getProductos?id_institucion=" + idInstitucionProducto,
+            "type": "POST",
             "dataSrc": "data"
         },
         "columns": [
@@ -192,18 +174,16 @@ function inicializarDataTable() {
             { "data": null, "defaultContent": "", "orderable": false }
         ],
         "createdRow": function (row, data, dataIndex) {
-            // Stock
             let stockCell = $(row).find('td:eq(5)');
             const stock = parseFloat(data.cant_producto);
             if (stock <= 0) {
                 stockCell.html(`<span class="stock-badge stock-out">Sin Stock</span>`);
-            } else if (stock < 10) { // Umbral para stock bajo
+            } else if (stock < 10) {
                 stockCell.html(`<span class="stock-badge stock-low">${stock} ${data.present_producto}</span>`);
             } else {
                 stockCell.html(`<span class="stock-badge stock-high">${stock} ${data.present_producto}</span>`);
             }
 
-            // Acciones
             let actionsCell = $(row).find('td:eq(6)');
             actionsCell.addClass('text-center').html(`
                 <button class="btn btn-danger btn-sm" onClick="fntDelProducto(${data.id_producto})" title="Eliminar">
@@ -215,16 +195,46 @@ function inicializarDataTable() {
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]],
-        "dom": 'lfrtip' // Se revierte al DOM por defecto de DataTables
+        "dom": 'lfrtip'
     });
 }
 
-/**
- * Genera un PDF enviando datos a un script PHP.
- * @param {object} data - Los datos para el reporte.
- * @param {string} reportScript - El nombre del script PHP que genera el PDF.
- * @param {string} reportTitle - El título del reporte.
- */
+function reloadTable() {
+    tableProducto.ajax.reload();
+}
+
+function fntDelProducto(idProducto) {
+    Swal.fire({
+        title: 'Eliminar Producto',
+        text: "¿Realmente quiere eliminar este producto? Esta acción es irreversible.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            try {
+                const formData = new FormData();
+                formData.append('id_producto', idProducto);
+                formData.append('id_institucion', idInstitucionProducto);
+
+                const response = await fetch(base_url + 'Producto/delProducto', { method: 'POST', body: formData });
+                const res = await response.json();
+                if (res.success) {
+                    notifi(res.message, 'success');
+                    tableProducto.ajax.reload();
+                } else {
+                    notifi(res.message, 'error');
+                }
+            } catch (error) {
+                notifi('Error al intentar eliminar el producto.', 'error');
+            }
+        }
+    });
+}
+
 function generarPDF(data, reportScript, reportTitle, fechaInicio = null, fechaFin = null) {
     const form = document.createElement('form');
     form.method = 'POST';
@@ -248,61 +258,21 @@ function generarPDF(data, reportScript, reportTitle, fechaInicio = null, fechaFi
     document.body.removeChild(form);
 }
 
-/**
- * Genera un reporte en PDF del inventario de productos.
- */
 async function fntReporteProductosPDF() {
     await fntReporteInventarioPDF();
 }
 
-function reloadTable() {
-    tableProducto.ajax.reload();
-}
+// =================================================================================
+// INVENTARIO
+// =================================================================================
 
-/**
- * Muestra una confirmación y elimina un producto.
- * @param {number} idProducto - ID del producto a eliminar.
- */
-function fntDelProducto(idProducto) {
-    Swal.fire({
-        title: 'Eliminar Producto',
-        text: "¿Realmente quiere eliminar este producto? Esta acción es irreversible.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then(async (result) => {
-        if (result.isConfirmed) {
-            try {
-                const formData = new FormData();
-                formData.append('id_producto', idProducto);
-                const response = await fetch(base_url + 'Producto/delProducto', { method: 'POST', body: formData });
-                const res = await response.json();
-                if (res.success) {
-                    notifi(res.message, 'success');
-                    tableProducto.ajax.reload();
-                } else {
-                    notifi(res.message, 'error');
-                }
-            } catch (error) {
-                notifi('Error al intentar eliminar el producto.', 'error');
-            }
-        }
-    });
-}
-
-/**
- * Inicializa la DataTable para mostrar el inventario de productos.
- */
 function inicializarInventarioTable() {
     tableInventario = $('#tableInventario').DataTable({
         "aProcessing": true,
         "aServerSide": true,
         "language": { "url": base_url + "src/plugins/js/es_es.json" },
         "ajax": {
-            "url": base_url + "Producto/getInventario",
+            "url": base_url + "Producto/getInventario?id_institucion=" + idInstitucionProducto,
             "type": "POST",
             "dataSrc": "data"
         },
@@ -335,22 +305,16 @@ function inicializarInventarioTable() {
     });
 }
 
-/**
- * Recarga la tabla de inventario.
- */
 function reloadInventarioTable() {
     if (tableInventario) {
         tableInventario.ajax.reload();
     }
 }
 
-/**
- * Genera un reporte en PDF del inventario de productos.
- */
 async function fntReporteInventarioPDF() {
     notifi('Generando reporte de inventario...', 'info');
     try {
-        const response = await fetch(base_url + 'Clean/getProductosReporte');
+        const response = await fetch(base_url + 'Clean/getProductosReporte?id_institucion=' + idInstitucionProducto);
         const result = await response.json();
         if (result.success) {
             generarPDF(result.data, 'almacen/reporte_inventario.php', 'Reporte de Inventario por Ubicación');
@@ -364,19 +328,16 @@ async function fntReporteInventarioPDF() {
 }
 
 // =================================================================================
-// FUNCIONES PARA EL HISTORIAL DE PRODUCTOS
+// HISTORIAL
 // =================================================================================
 
-/**
- * Inicializa la DataTable para la página de historial de productos.
- */
 function inicializarHistoryTable() {
     tableHistory = $('#tableHistory').DataTable({
         "aProcessing": true,
         "aServerSide": true,
         "language": { "url": base_url + "src/plugins/js/es_es.json" },
         "ajax": {
-            "url": base_url + "Producto/getHistorySummary",
+            "url": base_url + "Producto/getHistorySummary?id_institucion=" + idInstitucionProducto,
             "dataSrc": "data"
         },
         "columns": [
@@ -388,11 +349,8 @@ function inicializarHistoryTable() {
             { "data": "ultimo_despacho" }
         ],
         "createdRow": function (row, data, dataIndex) {
-            // Hacer que el nombre del producto sea un enlace para ver el historial
             let productNameCell = $(row).find('td:eq(1)');
-            // Escapar comillas simples en el nombre del producto para evitar errores de sintaxis en el onclick
             const escapedProductName = data.producto.replace(/'/g, "\\'");
-
             productNameCell.html(`<a href="#" onclick="viewProductHistory(${data.id_producto}, '${escapedProductName}')" class="font-weight-bold">${data.producto}</a>`);
         },
         "responsive": true,
@@ -405,37 +363,28 @@ function inicializarHistoryTable() {
     });
 }
 
-/**
- * Muestra la vista de detalle (timeline) para un producto específico.
- * @param {number} idProducto - ID del producto.
- * @param {string} nombreProducto - Nombre del producto.
- */
 async function viewProductHistory(idProducto, nombreProducto, page = 1) {
-    // Ocultar la vista de resumen y mostrar la de detalle con clases de Bootstrap
     document.getElementById('summaryView').classList.add('d-none');
     document.getElementById('detailView').classList.remove('d-none');
     document.getElementById('detailProductName').textContent = `Historial de: ${nombreProducto}`;
 
     const timelineContainer = document.getElementById('timelineContainer');
     const paginationContainer = document.getElementById('pagination-container');
-    const emptyState = document.getElementById('timelineEmptyState');
-    timelineContainer.innerHTML = ''; // Limpiar timeline anterior
-    paginationContainer.innerHTML = ''; // Limpiar paginación anterior
+    timelineContainer.innerHTML = '';
+    paginationContainer.innerHTML = '';
 
     try {
         const response = await fetch(base_url + 'Producto/getDetailHistory/' + idProducto, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ page: page })
+            body: JSON.stringify({ page: page, id_institucion: idInstitucionProducto })
         });
         const result = await response.json();
 
         if (result.success && result.data && result.data.length > 0) {
-            // Renderizar el timeline y la paginación
             renderTimeline(result.data, timelineContainer);
             renderPagination(result.pagination, idProducto, nombreProducto, paginationContainer);
         } else {
-            // Si no hay datos, mostrar el mensaje de estado vacío
             timelineContainer.innerHTML = `
                 <div id="timelineEmptyState" class="text-center py-5">
                     <i class="fas fa-box-open fa-3x text-muted"></i>
@@ -449,14 +398,8 @@ async function viewProductHistory(idProducto, nombreProducto, page = 1) {
     }
 }
 
-/**
- * Renderiza los items del historial en el contenedor del timeline.
- * @param {Array} items - Array de objetos con los datos del historial.
- * @param {HTMLElement} container - El elemento contenedor del timeline.
- */
 function renderTimeline(items, container) {
     items.forEach(item => {
-        // Estructura del timeline de AdminLTE
         const timelineItem = ` 
                     <div>
                         <i class="fas fa-truck bg-blue"></i>
@@ -476,17 +419,9 @@ function renderTimeline(items, container) {
                 `;
         container.insertAdjacentHTML('beforeend', timelineItem);
     });
-    // Añadir el ícono de fin de timeline
     container.insertAdjacentHTML('beforeend', '<div><i class="fas fa-clock bg-gray"></i></div>');
 }
 
-/**
- * Renderiza los controles de paginación.
- * @param {object} paginationData - Objeto con `total_pages` y `current_page`.
- * @param {number} idProducto - ID del producto para las llamadas futuras.
- * @param {string} nombreProducto - Nombre del producto para las llamadas futuras.
- * @param {HTMLElement} container - El elemento contenedor de la paginación.
- */
 function renderPagination(paginationData, idProducto, nombreProducto, container) {
     const { total_pages, current_page } = paginationData;
 
@@ -497,14 +432,12 @@ function renderPagination(paginationData, idProducto, nombreProducto, container)
 
     let paginationHTML = '<ul class="pagination pagination-sm m-0 float-right">';
 
-    // Botón "Anterior"
     paginationHTML += `
         <li class="page-item ${current_page === 1 ? 'disabled' : ''}">
             <a class="page-link pagination-btn" href="#" data-page="${current_page - 1}">&laquo;</a>
         </li>
     `;
 
-    // Botones de página
     for (let i = 1; i <= total_pages; i++) {
         paginationHTML += `
             <li class="page-item ${i === current_page ? 'active' : ''}">
@@ -513,7 +446,6 @@ function renderPagination(paginationData, idProducto, nombreProducto, container)
         `;
     }
 
-    // Botón "Siguiente"
     paginationHTML += `
         <li class="page-item ${current_page === total_pages ? 'disabled' : ''}">
             <a class="page-link pagination-btn" href="#" data-page="${current_page + 1}">&raquo;</a>
@@ -523,7 +455,6 @@ function renderPagination(paginationData, idProducto, nombreProducto, container)
     paginationHTML += '</ul>';
     container.innerHTML = paginationHTML;
 
-    // Agregar event listeners a los nuevos botones
     container.querySelectorAll('.pagination-btn').forEach(button => {
         button.addEventListener('click', function (e) {
             e.preventDefault();
@@ -535,22 +466,15 @@ function renderPagination(paginationData, idProducto, nombreProducto, container)
     });
 }
 
-/**
- * Muestra la vista de resumen (tabla) y oculta la de detalle.
- */
 function showSummaryView() {
     document.getElementById('detailView').classList.add('d-none');
     document.getElementById('summaryView').classList.remove('d-none');
 }
 
 // =================================================================================
-// FUNCIONES DEL MODAL DE ÓRDENES (MOVIDAS DESDE function.ordenes.js)
+// MODAL DE ÓRDENES
 // =================================================================================
 
-/**
- * Obtiene los detalles de una orden y muestra el modal.
- * @param {number} idDespacho - ID de la orden de despacho.
- */
 async function fntViewOrden(idDespacho) {
     try {
         const response = await fetch(base_url + 'Orden/getOrdenDetalle/' + idDespacho);
@@ -569,12 +493,7 @@ async function fntViewOrden(idDespacho) {
     }
 }
 
-/**
- * Construye y muestra el modal con los detalles de la orden.
- * @param {object} orden - Objeto con los datos de la orden.
- */
 function mostrarModalOrden(orden) {
-    // Reutilizamos la función de function.ordenes.js, pero la definimos aquí para que esté disponible
     const modalContent = `
         <div class="modal fade" id="ordenDetailModal" tabindex="-1" role="dialog" aria-labelledby="ordenDetailModalLabel" aria-hidden="true">
             <div class="modal-dialog modal-lg" role="document">
@@ -640,44 +559,31 @@ function mostrarModalOrden(orden) {
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
                         <button onclick="fntImpDespacho(${orden.id_despacho})" class="btn btn-primary"><i class="fas fa-print"></i> Imprimir PDF</button>
                     </div>
-                                </div>
-                            </div>
+                </div>
+            </div>
         </div>
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalContent);
-
     const modalElement = $('#ordenDetailModal');
     modalElement.modal('show');
-
     modalElement.on('hidden.bs.modal', function () {
         $(this).remove();
     });
 }
 
-/**
- * Cierra un modal con una animación de salida.
- * @param {string} modalId - ID del modal a cerrar.
- */
 function cerrarModal(modalId) {
     $('#' + modalId).modal('hide');
 }
 
-// Función para imprimir PDF de orden (necesaria para el modal)
 function fntImpDespacho(idDespacho) {
-    // Esta función ya debería existir en function.ordenes.js, pero la replicamos aquí para que el modal funcione
     window.open(base_url + 'data/almacen/reportePDFdesp.php?id=' + idDespacho, '_blank');
 }
 
 // =================================================================================
-// FUNCIONES UTILITARIAS
+// UTILIDADES
 // =================================================================================
 
-/**
- * Muestra una notificación tipo "toast".
- * @param {string} msg - Mensaje a mostrar.
- * @param {string} tipo - Tipo de notificación (success, error, warning, info).
- */
 function notifi(msg, tipo) {
     Swal.fire({
         toast: true,
@@ -690,20 +596,14 @@ function notifi(msg, tipo) {
     });
 }
 
-/**
- * Inyecta los controles de fecha y botón de reporte en la vista de historial.
- */
 function setupHistoryControls() {
-    // Evitar duplicados si se recarga la tabla
     if (document.getElementById('history-controls-row')) return;
 
-    // Buscar el wrapper de DataTables de forma más robusta
     let wrapper = $('#tableHistory_wrapper');
     if (wrapper.length === 0) {
         wrapper = $('#tableHistory').closest('.dataTables_wrapper');
     }
 
-    // HTML de los controles
     const controlsHtml = `
         <div id="history-controls-row" class="row mb-3 ml-1">
             <div class="col-md-3">
@@ -721,13 +621,9 @@ function setupHistoryControls() {
             </div>
         </div>
     `;
-    // Insertar antes de la tabla (dentro del wrapper de DataTables)
     wrapper.prepend(controlsHtml);
 }
 
-/**
- * Recopila los datos filtrados de la tabla y genera el PDF.
- */
 function fntGenerarReporteHistorial() {
     const fechaInicio = document.getElementById('txtFechaInicioHist').value;
     const fechaFin = document.getElementById('txtFechaFinHist').value;
@@ -737,15 +633,13 @@ function fntGenerarReporteHistorial() {
         return;
     }
 
-    // Hacer petición AJAX para obtener datos filtrados por fechas
     fetch(base_url + 'Producto/getHistorySummaryByDateRange', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
             fechaInicio: fechaInicio,
-            fechaFin: fechaFin
+            fechaFin: fechaFin,
+            id_institucion: idInstitucionProducto
         })
     })
         .then(response => response.json())
@@ -755,7 +649,6 @@ function fntGenerarReporteHistorial() {
                     notifi("No hay datos para generar el reporte en el rango de fechas seleccionado.", "warning");
                     return;
                 }
-                // Usar la función genérica existente para enviar los datos al PHP
                 generarPDF(result.data, 'almacen/historia_productos.php', 'Reporte de Historial de Productos', fechaInicio, fechaFin);
             } else {
                 notifi(result.message, 'error');
