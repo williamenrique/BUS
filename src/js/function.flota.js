@@ -1,6 +1,9 @@
 let tableFlota;
 let allFlotaData = []; // Almacenará todos los datos de la flota para los filtros
 
+// ID de la institución activa (leído del hidden input en la vista)
+const idInstitucion = document.getElementById('id_institucion')?.value || 1;
+
 const statusMap = {
     0: { text: 'Desincorporada', color: 'badge-secondary' },
     1: { text: 'Operativa', color: 'badge-success' },
@@ -23,6 +26,9 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         "ajax": {
             "url": base_url + "Flota/getFlota",
+            "data": function (d) {
+                d.id_institucion = idInstitucion;
+            },
             "dataSrc": "data"
         },
         "columns": [
@@ -49,6 +55,12 @@ document.addEventListener('DOMContentLoaded', function () {
             {
                 "targets": 5,
                 "render": function (data, type, row) {
+                    // Detectar si estamos en el Taller para redirigir el historial
+                    const esTaller = (idInstitucion == 2);
+                    const urlHistorial = esTaller 
+                        ? `${base_url}flota/tallerhistorial/${data}` 
+                        : `${base_url}flota/historialunidad/${data}`;
+                    
                     return `
                         <div class="btn-group" role="group">
                             <button onclick="fntViewUnidad(${data})" class="btn btn-info btn-sm" title="Ver"><i class="fas fa-eye"></i></button>
@@ -63,14 +75,10 @@ document.addEventListener('DOMContentLoaded', function () {
         "bDestroy": true,
         "iDisplayLength": 10,
         "order": [[0, "desc"]],
-        // --- INICIO: Adición para el reporte de operatividad ---
         "drawCallback": function (settings) {
-            // Cada vez que la tabla se dibuje, guardamos los datos para los filtros.
-            // 'settings.json.data' contiene todos los datos devueltos por el servidor.
             allFlotaData = settings.json ? settings.json.data : [];
             setupReportSection();
         }
-        // --- FIN: Adición para el reporte de operatividad ---
     });
 
     // Manejar envío del formulario
@@ -123,12 +131,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     };
 
-    // --- INICIO: Adición para el reporte de operatividad ---
     const toggleButton = document.getElementById('toggleReportSection');
     if (toggleButton) {
         toggleButton.addEventListener('click', toggleReportSection);
     }
-    // --- FIN: Adición para el reporte de operatividad ---
 });
 
 function loadSelects() {
@@ -156,9 +162,12 @@ function loadSelects() {
 
 function openModal() {
     document.querySelector('#id_flota').value = "";
+    document.querySelector('#id_institucion_form').value = idInstitucion;
     document.querySelector('#modalTitle').innerHTML = "Nueva Unidad";
     document.querySelector('#btnText').innerHTML = "Guardar";
     document.querySelector('#formFlota').reset();
+    // Después del reset, hay que volver a setear el id_institucion (el reset lo borra)
+    document.querySelector('#id_institucion_form').value = idInstitucion;
     $('#modalFlota').modal('show');
 }
 
@@ -251,6 +260,8 @@ async function fntEditUnidad(idFlota) {
             document.querySelector("#fecha_creacion").value = unidad.fecha_creacion;
             document.querySelector("#tipo_combustible").value = unidad.tipo_combustible;
             document.querySelector("#transmision").value = unidad.transmision;
+            // Mantener la institución de la unidad (aunque no se puede editar, se preserva)
+            document.querySelector("#id_institucion_form").value = unidad.id_institucion || idInstitucion;
             $('#modalFlota').modal('show');
         } else {
             notifi(objData.message, "error");
@@ -275,7 +286,7 @@ function fntStatusUnidad(idFlota) {
 
                 let optionsHtml = '';
                 for (const key in statusMap) {
-                    if (key != unidad.status_unidad) { // No mostrar el estado actual como opción
+                    if (key != unidad.status_unidad) {
                         optionsHtml += `<option value="${key}">${statusMap[key].text}</option>`;
                     }
                 }
@@ -293,12 +304,7 @@ function fntStatusUnidad(idFlota) {
 // FUNCIONES PARA EL REPORTE DE OPERATIVIDAD
 // =================================================================================
 
-/**
- * Muestra u oculta la sección de reportes.
- */
 function toggleReportSection() {
-    // AdminLTE maneja el colapso, pero si el elemento no existe, el código puede fallar.
-    // Añadimos una verificación para evitar errores si la sección de reportes no está en la página.
     const reportCard = document.getElementById('report-section-card');
     if (!reportCard) {
         console.warn('La sección de reporte de operatividad no fue encontrada en esta página.');
@@ -306,27 +312,20 @@ function toggleReportSection() {
     }
 }
 
-/**
- * Configura la sección de reportes, principalmente cargando los filtros.
- */
 function setupReportSection() {
     loadReportFilters();
     const btnGenerarPdf = document.getElementById('btnGenerarPdfOperatividad');
     if (btnGenerarPdf) {
-        btnGenerarPdf.removeEventListener('click', generarPdfOperatividad); // Evitar duplicados
+        btnGenerarPdf.removeEventListener('click', generarPdfOperatividad);
         btnGenerarPdf.addEventListener('click', generarPdfOperatividad);
     }
 
-    // --- INICIO: Lógica para el buscador de grupos ---
     const filtroInput = document.getElementById('filtro-grupos-input');
     if (filtroInput) {
         filtroInput.addEventListener('input', filtrarGrupos);
     }
 }
 
-/**
- * Carga los datos de la flota, los agrupa y crea los checkboxes para el filtro.
- */
 function loadReportFilters() {
     const filtersContainer = document.getElementById('reporte-filtros');
     if (!filtersContainer) return;
@@ -336,7 +335,6 @@ function loadReportFilters() {
         return;
     }
 
-    // Agrupar unidades por [transmision][combustible]
     const groupedByCriteria = allFlotaData.reduce((acc, unit) => {
         const modelo = unit.modelo_unidad || 'Sin Modelo';
         const transmision = unit.transmision || 'No especificada';
@@ -351,7 +349,6 @@ function loadReportFilters() {
         return acc;
     }, {});
 
-    // Renderizar los grupos de checkboxes
     let html = '';
     if (Object.keys(groupedByCriteria).length > 0) {
         html += '<div>';
@@ -372,15 +369,11 @@ function loadReportFilters() {
 
     filtersContainer.innerHTML = html || '<p class="text-muted">No se pudieron agrupar las unidades.</p>';
 
-    // Añadir event listeners a todos los nuevos checkboxes
     filtersContainer.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
         checkbox.addEventListener('change', updatePreview);
     });
 }
 
-/**
- * Filtra la lista de grupos de checkboxes según el texto introducido.
- */
 function filtrarGrupos() {
     const searchTerm = document.getElementById('filtro-grupos-input').value.toLowerCase();
     const groups = document.querySelectorAll('#reporte-filtros .custom-control');
@@ -395,17 +388,12 @@ function filtrarGrupos() {
     });
 }
 
-/**
- * Actualiza la vista previa cada vez que se marca/desmarca un checkbox.
- */
 function updatePreview() {
-    // Elementos de la UI
     const tablaPreview = document.getElementById('tabla-unidades-seleccionadas');
     const tbodyPreview = tablaPreview.querySelector('tbody');
     const placeholder = document.getElementById('placeholder-vista-previa');
     const btnGenerarPdf = document.getElementById('btnGenerarPdfOperatividad');
 
-    // Contadores del resumen
     const totalCounter = document.getElementById('total-unidades-seleccionadas');
     const operativasCounter = document.getElementById('total-operativas');
     const inoperativasCounter = document.getElementById('total-inoperativas');
@@ -426,9 +414,8 @@ function updatePreview() {
         placeholder.classList.add('d-none');
         btnGenerarPdf.disabled = false;
 
-        // 1. Procesar cada grupo seleccionado para crear una fila de resumen
         checkedBoxes.forEach(groupCheckbox => {
-            const groupName = groupCheckbox.nextElementSibling.textContent.replace(/\s\(\d+\)$/, ''); // "Modelo / Comb / Trans (5)" -> "Modelo / Comb / Trans"
+            const groupName = groupCheckbox.nextElementSibling.textContent.replace(/\s\(\d+\)$/, '');
             const unitIdsInGroup = JSON.parse(groupCheckbox.dataset.unitIds);
 
             const groupCounts = { cantidad: 0, operativas: 0, inoperativas: 0, criticas: 0 };
@@ -444,7 +431,6 @@ function updatePreview() {
                 else if (statusInfo.text === 'Crítica') groupCounts.criticas++;
             });
 
-            // Añadir los datos del grupo al resumen general y a la tabla
             summaryData.push({ groupName, ...groupCounts });
 
             const row = `
@@ -458,28 +444,22 @@ function updatePreview() {
             `;
             tbodyPreview.innerHTML += row;
 
-            // Sumar al total general
             counts.operativas += groupCounts.operativas;
             counts.inoperativas += groupCounts.inoperativas;
             counts.criticas += groupCounts.criticas;
         });
     }
 
-    // Actualizar contadores
     totalCounter.textContent = summaryData.reduce((acc, group) => acc + group.cantidad, 0);
     operativasCounter.textContent = counts.operativas;
     inoperativasCounter.textContent = counts.inoperativas;
     criticasCounter.textContent = counts.criticas;
 }
 
-/**
- * Recopila los IDs de las unidades seleccionadas y las envía para generar el PDF.
- */
 async function generarPdfOperatividad() {
     const checkedBoxes = document.querySelectorAll('#reporte-filtros input[type="checkbox"]:checked');
     if (checkedBoxes.length === 0) return notifi('Debe seleccionar al menos una unidad.', 'warning');
 
-    // 1. Construir el objeto de datos de resumen, igual que en la vista previa
     const summaryData = [];
     checkedBoxes.forEach(groupCheckbox => {
         const groupName = groupCheckbox.nextElementSibling.textContent.replace(/\s\(\d+\)$/, '');
@@ -499,12 +479,17 @@ async function generarPdfOperatividad() {
 
     notifi('Generando reporte...', 'info');
 
-    // 2. Enviar los datos de resumen directamente al script del PDF
+    // Obtener el nombre de la institución desde el hidden input
+    const nombreInstitucion = document.getElementById('nombre_institucion')?.value || 'SSLMTY';
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = `${base_url}data/flota/operatividad.php`;
     form.target = '_blank';
-    form.innerHTML = `<input type="hidden" name="reporteData" value='${JSON.stringify(summaryData)}'>`;
+    form.innerHTML = `
+        <input type="hidden" name="reporteData" value='${JSON.stringify(summaryData)}'>
+        <input type="hidden" name="nombreInstitucion" value='${nombreInstitucion}'>
+    `;
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);

@@ -15,6 +15,83 @@
     <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?php echo CSS; ?>public.css">
+
+    <style>
+        /* Estilos para los selectores de institución */
+        .institucion-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .institucion-selector label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+
+        .institucion-selector select {
+            font-size: 0.85rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            background-color: #ffffff;
+            font-weight: 600;
+            color: var(--primary);
+            min-width: 130px;
+        }
+
+        .institucion-selector select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.15);
+        }
+
+        .institucion-selector .badge-institucion {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .badge-institucion-1 {
+            background-color: #e3f2fd;
+            color: #0d6efd;
+        }
+
+        .badge-institucion-2 {
+            background-color: #fef3c7;
+            color: #b45309;
+        }
+
+        /* Header de sección con selector */
+        .section-header-with-selector {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .section-header-with-selector h5 {
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .institucion-selector {
+                width: 100%;
+            }
+
+            .institucion-selector select {
+                flex: 1;
+            }
+        }
+    </style>
 </head>
 
 <body>
@@ -66,15 +143,19 @@
 
             <!-- Fleet Status Cards -->
             <div class="stats-section section-block mb-5" id="estadoFlota">
-                <div class="row g-3 mb-3 align-items-center">
-                    <div class="col-12 col-lg-6 d-flex align-items-center">
-                        <h5 class="mb-0 me-3"><i class="fas fa-bus me-2 text-primary"></i>Estado de Flota</h5>
-                        <span class="me-2 text-muted fw-bold">Total Unidades:</span>
-                        <span id="unidadesTotal" class="h4 mb-0 fw-bold text-primary">0</span>
+                <div class="section-header-with-selector">
+                    <div class="d-flex align-items-center flex-wrap gap-3">
+                        <h5 class="mb-0"><i class="fas fa-bus me-2 text-primary"></i>Estado de Flota</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2 text-muted fw-bold">Total Unidades:</span>
+                            <span id="unidadesTotal" class="h4 mb-0 fw-bold text-primary">0</span>
+                        </div>
                     </div>
-                    <div class="col-12 col-lg-6 d-flex align-items-center">
-                        <h5 class="mb-0 text-secondary" id="estadoFlotaUnidadesTitle"><i
-                                class="fas fa-bus me-2"></i>Seleccione un estado</h5>
+                    <div class="institucion-selector">
+                        <label for="instSelectFlota"><i class="fas fa-building me-1"></i>Institución:</label>
+                        <select id="instSelectFlota" data-section="flota">
+                            <option value="">Cargando...</option>
+                        </select>
                     </div>
                 </div>
                 <div class="row g-3">
@@ -139,16 +220,16 @@
                     </div>
                 </div>
             </div>
+
             <!-- Oil Change Status Cards -->
             <div class="oil-section section-block mb-5" id="estadoAceite">
-                <div class="row g-3 mb-3 align-items-center">
-                    <div class="col-12 col-lg-6 d-flex align-items-center">
-                        <h5 class="mb-0 me-2"><i class="fas fa-oil-can me-2 text-warning"></i>Monitoreo de Cambio de
-                            Aceite</h5>
-                    </div>
-                    <div class="col-12 col-lg-6 d-flex align-items-center">
-                        <h5 class="mb-0 text-secondary" id="estadoAceiteUnidadesTitle"><i
-                                class="fas fa-oil-can me-2"></i>Seleccione un estado</h5>
+                <div class="section-header-with-selector">
+                    <h5 class="mb-0"><i class="fas fa-oil-can me-2 text-warning"></i>Monitoreo de Cambio de Aceite</h5>
+                    <div class="institucion-selector">
+                        <label for="instSelectAceite"><i class="fas fa-building me-1"></i>Institución:</label>
+                        <select id="instSelectAceite" data-section="aceite">
+                            <option value="">Cargando...</option>
+                        </select>
                     </div>
                 </div>
                 <div class="row g-3">
@@ -253,14 +334,22 @@
                     </div>
                 </div>
             </div>
+
             <!-- Fleet Summary Section -->
             <div class="stats-section section-block mb-5" id="resumenFlota">
+                <div class="section-header-with-selector">
+                    <h5 class="mb-0"><i class="fas fa-table me-2 text-primary"></i>Resumen de Flota por Modelo</h5>
+                    <div class="institucion-selector">
+                        <label for="instSelectResumen"><i class="fas fa-building me-1"></i>Institución:</label>
+                        <select id="instSelectResumen" data-section="resumen">
+                            <option value="">Cargando...</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="row">
                     <div class="col-lg-8 mb-3 mb-lg-0">
                         <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
-                            <h5 class="mb-0"><i class="fas fa-table me-2 text-primary"></i>Resumen de
-                                Flota por Modelo
-                            </h5>
                             <div class="input-group input-group-sm" style="max-width: 300px;">
                                 <span class="input-group-text bg-white border-end-0"><i
                                         class="fas fa-search text-muted"></i></span>
@@ -379,14 +468,22 @@
 
             <!-- Table Section (Movements) - DataTables -->
             <div class="table-section section-block mb-5" id="movimientosSistema">
+                <div class="section-header-with-selector">
+                    <h5 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>Movimientos del Sistema</h5>
+                    <div class="institucion-selector">
+                        <label for="instSelectMovimientos"><i class="fas fa-building me-1"></i>Institución:</label>
+                        <select id="instSelectMovimientos" data-section="movimientos">
+                            <option value="">Cargando...</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="row g-3">
                     <div class="col-12 col-lg-8 mb-3 mb-lg-0">
                         <div class="card shadow-sm">
                             <div
                                 class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
-                                <h5 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>Movimientos del
-                                    Sistema
-                                </h5>
+                                <h6 class="mb-0"><i class="fas fa-list me-2 text-primary"></i>Listado</h6>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="input-group input-group-sm" style="width: 250px;">
                                         <span class="input-group-text bg-white border-end-0"><i
@@ -394,7 +491,6 @@
                                         <input type="text" class="form-control border-start-0" id="movimientosSearch"
                                             placeholder="Buscar por Orden, Unidad, Operador, Mecánico...">
                                     </div>
-
                                 </div>
                             </div>
 
@@ -478,14 +574,17 @@
 
             <!-- Table Section (ESTACION) - DataTables -->
             <div class="table-section section-block mb-5" id="estacionSistema">
+                <div class="section-header-with-selector">
+                    <h5 class="mb-0"><i class="fas fa-gas-pump me-2 text-primary"></i>Ventas de Estación</h5>
+                </div>
+
                 <div class="row g-3">
                     <!-- Columna Izquierda: Tabla de Ventas -->
                     <div class="col-12 col-lg-8 mb-3 mb-lg-0">
                         <div class="card shadow-sm h-100">
                             <div
                                 class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
-                                <h5 class="mb-0"><i class="fas fa-gas-pump me-2 text-primary"></i>Ventas de Estación
-                                </h5>
+                                <h6 class="mb-0"><i class="fas fa-gas-pump me-2 text-primary"></i>Listado</h6>
                                 <div class="d-flex align-items-center gap-2 flex-wrap">
                                     <div class="input-group input-group-sm" style="width: 250px;">
                                         <span class="input-group-text bg-white border-end-0"><i
@@ -542,7 +641,7 @@
                         </div>
                     </div>
 
-                    <!-- Columna Derecha: Gráficos/Charts (Preparada) -->
+                    <!-- Columna Derecha: Gráficos/Charts -->
                     <div class="col-12 col-lg-4">
                         <div class="card shadow-sm h-100">
                             <div class="card-header bg-light py-2">

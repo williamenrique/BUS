@@ -1,4 +1,9 @@
 <?php
+/**
+ * Archivo: reporteaceite.php
+ * Reporte de estado de aceite en PDF.
+ */
+
 require_once '../dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
@@ -13,29 +18,39 @@ $items = $data['items'];
 $counts = $data['counts'];
 $filtro = $data['filtro'] ?: 'Varios';
 
+// Nombre de la institución
+$nombreInstitucion = !empty($data['nombre_institucion']) 
+    ? htmlspecialchars($data['nombre_institucion'], ENT_QUOTES, 'UTF-8') 
+    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+
 // Configurar Dompdf
 $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
 
-// Importar encabezado estandarizado
+// Importar encabezado
+$tituloReporte = 'Reporte de Aceite';
 require_once '../encabezado.php';
 
 $css = $cssCommon . '
     <style>
-        /* Sobrescribir estilos del encabezado para que no sea fijo (solo primera página) */
-        .header { 
-            position: relative; 
-            top: auto; 
-            left: auto; 
-            right: auto; 
-            height: auto; 
-            margin-bottom: 20px;
+        .titulo-reporte {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
         }
-        .header .logo {
-            top: -35px;
+
+        .subtitulo {
+            text-align: center;
+            color: #666;
+            font-size: 11px;
+            margin-bottom: 25px;
         }
+
         .legend-box { 
             border: 1px solid #ccc; 
             padding: 10px; 
@@ -55,8 +70,9 @@ $css = $cssCommon . '
         .status-bien { color: #28a745; font-weight: bold; }
         .status-sin_registro { color: #6c757d; font-weight: bold; }
         
-        .table-data th { background-color: #e9ecef; text-align: center; }
-        .table-data td { text-align: center; vertical-align: middle; }
+        .table-data { width: 100%; border-collapse: collapse; }
+        .table-data th { background-color: #e9ecef; text-align: center; border: 1px solid #ccc; padding: 5px; }
+        .table-data td { text-align: center; vertical-align: middle; border: 1px solid #ccc; padding: 5px; }
         .text-left { text-align: left !important; }
     </style>
 ';
@@ -73,8 +89,7 @@ $html = '
     ' . $headerHtml . '
     ' . $footerHtml . '
 
-    <h2 style="text-align: center; margin-top: 0; margin-bottom: 10px;">REPORTE DE ESTADO DE ACEITE</h2>
-    <p style="text-align: center; margin-top: 0; color: #666;">Estados Incluidos: ' . $filtro . '</p>
+    <div class="subtitulo">Estados Incluidos: ' . $filtro . '</div>
 
     <div class="legend-box">
         <strong>Resumen de Cantidades:</strong><br>
@@ -87,7 +102,7 @@ $html = '
         </div>
     </div>
 
-    <table class="table-data" width="100%" border="1" cellspacing="0" cellpadding="5">
+    <table class="table-data">
         <thead>
             <tr>
                 <th width="15%">Unidad</th>
@@ -104,7 +119,6 @@ if (empty($items)) {
     $html .= '<tr><td colspan="6" style="text-align:center; padding: 20px;">No se encontraron unidades con el criterio seleccionado.</td></tr>';
 } else {
     foreach ($items as $item) {
-        // Reemplazamos espacios por guion bajo para que coincida con la clase CSS .status-sin_registro
         $estadoClass = 'status-' . strtolower(str_replace(' ', '_', $item['estado']));
         $kmUltimo = $item['ultimo_cambio_km'] ? number_format($item['ultimo_cambio_km']) : 'N/A';
         $kmProximo = $item['proximo_cambio_km'] ? number_format($item['proximo_cambio_km']) : 'N/A';

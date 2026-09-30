@@ -1,7 +1,28 @@
 <?php
 class FlotaModel extends Mysql {
+    private $id_institucion = 1;
+
     public function __construct() {
         parent::__construct();
+    }
+
+    /**
+     * Establece la institución activa para las consultas que la requieran.
+     * @param int $id
+     */
+    public function setInstitucion(int $id): void {
+        $this->id_institucion = $id;
+    }
+
+    /**
+     * Obtiene el nombre de una institución por su ID.
+     * @param int $id
+     * @return string
+     */
+    public function getNombreInstitucion(int $id): string {
+        $sql = "SELECT nombre FROM table_instituciones WHERE id_institucion = ?";
+        $result = $this->select($sql, [$id]);
+        return $result['nombre'] ?? 'Institución Desconocida';
     }
 
     /**
@@ -19,7 +40,7 @@ class FlotaModel extends Mysql {
     }
 
     /**
-     * Obtiene todas las unidades de la flota para la DataTable.
+     * Obtiene todas las unidades de la flota de la institución activa para la DataTable.
      * @return array
      */
     public function selectFlota(): array {
@@ -35,8 +56,9 @@ class FlotaModel extends Mysql {
                 FROM table_flota f
                 INNER JOIN table_flota_marca m ON f.id_marca = m.id_marca
                 INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                WHERE f.id_institucion = ?
                 ORDER BY f.id_flota DESC";
-        return $this->select_all($sql);
+        return $this->select_all($sql, [$this->id_institucion]);
     }
 
     /**
@@ -80,11 +102,20 @@ class FlotaModel extends Mysql {
             return "exist";
         }
 
-        $sql = "INSERT INTO table_flota (id_unidad, id_marca, id_modelo, vim_unidad, fecha_creacion, cap_pasajero, tipo_combustible, transmision, status_unidad) VALUES (?,?,?,?,?,?,?,?,?)";
+        $sql = "INSERT INTO table_flota 
+                    (id_unidad, id_marca, id_modelo, vim_unidad, fecha_creacion, cap_pasajero, tipo_combustible, transmision, status_unidad, id_institucion) 
+                VALUES (?,?,?,?,?,?,?,?,?,?)";
         $arrData = [
-            $data['id_unidad'], $data['id_marca'], $data['id_modelo'], $data['vim_unidad'],
-            $data['fecha_creacion'], $data['cap_pasajero'], $data['tipo_combustible'],
-            $data['transmision'], $data['status_unidad']
+            $data['id_unidad'], 
+            $data['id_marca'], 
+            $data['id_modelo'], 
+            $data['vim_unidad'],
+            $data['fecha_creacion'], 
+            $data['cap_pasajero'], 
+            $data['tipo_combustible'],
+            $data['transmision'], 
+            $data['status_unidad'],
+            $this->id_institucion
         ];
         return $this->insert($sql, $arrData);
     }
@@ -116,15 +147,14 @@ class FlotaModel extends Mysql {
         $sql_update = "UPDATE table_flota SET status_unidad = ? WHERE id_flota = ?";
         $this->update($sql_update, [$status, $idFlota]);
 
-        $sql_history = "INSERT INTO table_flota_status (id_flota, idstatus, textCambio, fechaCambio, usuario_id) VALUES (?, ?, ?, NOW(), ?)";
-        return $this->insert($sql_history, [$idFlota, $status, $motivo, $userId]);
+        $sql_history = "INSERT INTO table_flota_status (id_flota, idstatus, textCambio, fechaCambio, usuario_id, id_institucion) VALUES (?, ?, ?, NOW(), ?, ?)";
+        return $this->insert($sql_history, [$idFlota, $status, $motivo, $userId, $this->id_institucion]);
     }
 
     // MÉTODOS PARA EL MÓDULO DE CAMBIO DE ACEITE
 
     /**
-     * Obtiene el estado del cambio de aceite de todas las unidades.
-     * Une la información de la flota, el último kilometraje y el último cambio de aceite.
+     * Obtiene el estado del cambio de aceite de todas las unidades de la institución activa.
      * @return array
      */
     public function selectAceiteStatus(): array {
@@ -151,9 +181,9 @@ class FlotaModel extends Mysql {
                 FROM table_flota f
                 LEFT JOIN table_flota_marca m ON f.id_marca = m.id_marca
                 LEFT JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
-                WHERE f.status_unidad = 1
+                WHERE f.status_unidad = 1 AND f.id_institucion = ?
                 ORDER BY f.id_unidad ASC";
-        return $this->select_all($sql);
+        return $this->select_all($sql, [$this->id_institucion]);
     }
 
     /**
@@ -164,9 +194,8 @@ class FlotaModel extends Mysql {
      * @return bool
      */
     public function updateKilometraje(int $idFlota, int $kilometraje, int $userId): bool {
-        // Insertamos el nuevo valor de kilometraje.
-        $sql = "INSERT INTO table_flota_kilometraje (id_flota, kilometraje_actual, usuario_id, fecha_actualizacion) VALUES (?, ?, ?, NOW())";
-        $request = $this->insert($sql, [$idFlota, $kilometraje, $userId]);
+        $sql = "INSERT INTO table_flota_kilometraje (id_flota, kilometraje_actual, usuario_id, fecha_actualizacion, id_institucion) VALUES (?, ?, ?, NOW(), ?)";
+        $request = $this->insert($sql, [$idFlota, $kilometraje, $userId, $this->id_institucion]);
         return $request > 0;
     }
 
@@ -181,12 +210,11 @@ class FlotaModel extends Mysql {
      */
     public function insertCambioAceite(int $idFlota, int $kilometrajeCambio, int $kilometrajeAnterior, int $userId, string $fechaCambio): bool {
         $sql = "INSERT INTO table_flota_aceite_historial 
-                    (id_flota, fecha_cambio, kilometraje_cambio, kilometraje_anterior, usuario_id) 
-                VALUES (?, ?, ?, ?, ?)";
+                    (id_flota, fecha_cambio, kilometraje_cambio, kilometraje_anterior, usuario_id, id_institucion) 
+                VALUES (?, ?, ?, ?, ?, ?)";
         
-        $request = $this->insert($sql, [$idFlota, $fechaCambio, $kilometrajeCambio, $kilometrajeAnterior, $userId]);
+        $request = $this->insert($sql, [$idFlota, $fechaCambio, $kilometrajeCambio, $kilometrajeAnterior, $userId, $this->id_institucion]);
         
-        // También actualizamos el kilometraje actual de la unidad para que coincida
         if ($request > 0) {
             $this->updateKilometraje($idFlota, $kilometrajeCambio, $userId);
         }
@@ -200,10 +228,9 @@ class FlotaModel extends Mysql {
      * @return bool
      */
     public function deleteLatestKilometraje(int $idFlota): bool {
-        // Seleccionar el ID del registro más reciente
         $sql_select_id = "SELECT id_kilometraje FROM table_flota_kilometraje WHERE id_flota = ? ORDER BY fecha_actualizacion DESC LIMIT 1";
         $latest_id = $this->select($sql_select_id, [$idFlota]);
-        if (empty($latest_id)) return false; // No hay registros para eliminar
+        if (empty($latest_id)) return false;
 
         $sql_delete = "DELETE FROM table_flota_kilometraje WHERE id_kilometraje = ?";
         return $this->delete($sql_delete, [$latest_id['id_kilometraje']]);
@@ -218,17 +245,17 @@ class FlotaModel extends Mysql {
         $sql_delete = "DELETE FROM table_flota_aceite_historial WHERE id_flota = ? ORDER BY fecha_cambio DESC LIMIT 1";
         return $this->delete($sql_delete, [$idFlota]);
     }
+
     // =================================================================================
     // MÉTODOS PARA EL REPORTE DE OPERATIVIDAD
     // =================================================================================
 
     /**
      * Obtiene los datos detallados de una lista de unidades por sus IDs para el reporte.
-     * @param array $ids Array de IDs de las unidades de la flota.
-     * @return array Datos detallados de las unidades.
+     * @param array $ids
+     * @return array
      */
-    public function selectUnidadesParaReporte(array $ids)
-    {
+    public function selectUnidadesParaReporte(array $ids) {
         if (empty($ids)) {
             return [];
         }
@@ -259,12 +286,14 @@ class FlotaModel extends Mysql {
                 INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
                 WHERE f.id_flota IN ($placeholders)";
 
-        return $this->select_all($sql, $types, $ids);
+        return $this->select_all($sql, $ids);
     }
 
-    // aqui consultas historial unidad
+    // =================================================================================
+    // MÉTODOS PARA EL HISTORIAL DE UNA UNIDAD
+    // =================================================================================
+
     public function selectHistorialUnidad(int $idFlota, array $postData, int $perPage) {
-        // --- PARÁMETROS DE FILTRADO Y PAGINACIÓN ---
         $fechaInicio = !empty($postData['fechaInicio']) ? $postData['fechaInicio'] : null;
         $fechaFin = !empty($postData['fechaFin']) ? $postData['fechaFin'] : null;
         $filtroTipo = !empty($postData['filtroTipo']) ? $postData['filtroTipo'] : null;
@@ -292,7 +321,6 @@ class FlotaModel extends Mysql {
             $params[] = $filtroTipo;
         }
         if ($filtroTermino) {
-            // Búsqueda en ID, diagnóstico, motivo, etc.
             $whereClauses[] = "(h.id_evento LIKE ? OR h.detalles LIKE ?)";
             $params[] = "%" . $filtroTermino . "%";
             $params[] = "%" . $filtroTermino . "%";
@@ -300,7 +328,7 @@ class FlotaModel extends Mysql {
     
         $whereSql = "WHERE " . implode(" AND ", $whereClauses);
     
-        // --- CONSTRUCCIÓN DE LA CONSULTA UNIFICADA (VISTA TEMPORAL) ---
+        // La rama de despacho se filtra por institución para no mezclar despachos de otras instituciones
         $unionQuery = "
             (SELECT
                 'despacho' as tipo,
@@ -310,7 +338,8 @@ class FlotaModel extends Mysql {
                 JSON_OBJECT('observacion', d.observacion) as detalles,
                 d.user_id as usuario_id
             FROM table_alm_despacho d
-            WHERE d.status_despacho = 1)
+            INNER JOIN table_flota f ON d.id_flota = f.id_flota
+            WHERE d.status_despacho = 1 AND f.id_institucion = " . intval($this->id_institucion) . ")
             
             UNION ALL
             
@@ -355,11 +384,9 @@ class FlotaModel extends Mysql {
             FROM table_flota_status s)
         ";
     
-        // --- CONSULTA PARA CONTAR EL TOTAL DE ITEMS FILTRADOS ---
         $countSql = "SELECT COUNT(*) as total FROM ($unionQuery) as h $whereSql";
         $totalItems = $this->select($countSql, $params)['total'];
 
-        // --- NUEVO: CONSULTA PARA CONTAR POR TIPO (DESGLOSE) ---
         $countTypeSql = "SELECT tipo, COUNT(*) as total FROM ($unionQuery) as h $whereSql GROUP BY tipo";
         $typeCounts = $this->select_all($countTypeSql, $params);
         $counts = ['despacho' => 0, 'mantenimiento' => 0, 'aceite' => 0, 'status' => 0];
@@ -367,10 +394,7 @@ class FlotaModel extends Mysql {
             $counts[$row['tipo']] = $row['total'];
         }
     
-        // --- CONSULTA PARA OBTENER LOS ITEMS DE LA PÁGINA ACTUAL ---
         $itemsSql = "SELECT h.*, 
-                        -- Se une directamente a usuarios y luego a personal para obtener el nombre correcto
-                        -- COALESCE se usa como fallback por si un usuario no tiene personal asignado
                         COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), d.departamento_nombre, 'Sistema') as usuario
                      FROM ($unionQuery) as h 
                      LEFT JOIN table_usuarios u ON h.usuario_id = u.usuario_id
@@ -379,8 +403,6 @@ class FlotaModel extends Mysql {
                      $whereSql ORDER BY h.fecha DESC, h.id_evento DESC LIMIT $perPage OFFSET $offset";
         $items = $this->select_all($itemsSql, $params);
     
-        // --- ENRIQUECER LOS DETALLES DE DESPACHO CON SUS ARTÍCULOS ---
-        // 1. Extraer los IDs de los eventos de tipo 'despacho'
         $despacho_ids = [];
         foreach ($items as $item) {
             if ($item['tipo'] === 'despacho') {
@@ -388,7 +410,6 @@ class FlotaModel extends Mysql {
             }
         }
 
-        // 2. Si hay despachos, obtener todos sus artículos en una sola consulta eficiente
         $articulos_por_despacho = [];
         if (!empty($despacho_ids)) {
             $placeholders = implode(',', array_fill(0, count($despacho_ids), '?'));
@@ -399,7 +420,6 @@ class FlotaModel extends Mysql {
             
             $todos_los_articulos = $this->select_all($sqlArticulos, $despacho_ids);
 
-            // 3. Agrupar los artículos por su id_despacho
             foreach ($todos_los_articulos as $articulo) {
                 $articulos_por_despacho[$articulo['id_despacho']][] = $articulo;
             }
@@ -407,13 +427,11 @@ class FlotaModel extends Mysql {
 
         foreach ($items as &$item) {
             if ($item['tipo'] === 'despacho') {
-                // Decodificar JSON, agregar artículos y volver a codificar
                 $detalles = json_decode($item['detalles'], true);
                 $detalles['articulos'] = $articulos_por_despacho[$item['id_evento']] ?? [];
                 $item['detalles'] = json_encode($detalles);
             }
 
-            // Renombrar campos para el frontend
             $item['tipo_evento'] = $item['tipo'];
             $item['fecha_evento'] = $item['fecha'];
             $item['titulo'] = ucwords(str_replace('_', ' ', $item['tipo'])) . " #" . $item['id_evento'];
@@ -423,7 +441,7 @@ class FlotaModel extends Mysql {
         return [
             'total_items' => $totalItems,
             'items' => $items,
-            'counts' => $counts // Retornamos el desglose
+            'counts' => $counts
         ];
     }
 
@@ -444,5 +462,4 @@ class FlotaModel extends Mysql {
                 return 'Detalles no disponibles.';
         }
     }
-    
 }

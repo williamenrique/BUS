@@ -5,9 +5,214 @@ class PublicoModel extends Mysql {
     }
     
     /**
-     * Get despachos from almacén for public view
+     * =================================================================
+     * INSTITUCIONES
+     * =================================================================
      */
-    public function getDespachosPublic($fechaInicio, $fechaFin) {
+    
+    /**
+     * Devuelve las instituciones activas para los selectores.
+     */
+    public function getInstituciones() {
+        $query = "SELECT id_institucion, nombre 
+                  FROM table_instituciones 
+                  WHERE status = 1 
+                  ORDER BY id_institucion ASC";
+        return $this->select_all($query);
+    }
+    
+    /**
+     * Devuelve el nombre de una institución por su ID.
+     */
+    public function getNombreInstitucion($idInstitucion) {
+        $query = "SELECT nombre FROM table_instituciones WHERE id_institucion = ?";
+        $result = $this->select($query, [intval($idInstitucion)]);
+        return $result['nombre'] ?? 'Institución Desconocida';
+    }
+    
+    /**
+     * =================================================================
+     * ESTADO DE FLOTA (con filtro por institución)
+     * =================================================================
+     */
+    
+    /**
+     * Devuelve conteos de flota por estado para una institución.
+     */
+    public function getEstadoFlota($idInstitucion) {
+        $query = "SELECT status_unidad, COUNT(*) as total 
+                  FROM table_flota 
+                  WHERE status_unidad BETWEEN 1 AND 4 
+                    AND id_institucion = ? 
+                  GROUP BY status_unidad";
+        $statusCounts = $this->select_all($query, [intval($idInstitucion)]);
+        
+        $operativas = 0; 
+        $inoperativas = 0; 
+        $enMantenimiento = 0; 
+        $criticas = 0;
+        
+        foreach ($statusCounts as $row) {
+            switch ($row['status_unidad']) {
+                case 1: $operativas = (int)$row['total']; break;
+                case 2: $inoperativas = (int)$row['total']; break;
+                case 3: $enMantenimiento = (int)$row['total']; break;
+                case 4: $criticas = (int)$row['total']; break;
+            }
+        }
+        
+        $total = $operativas + $inoperativas + $enMantenimiento + $criticas;
+        
+        return [
+            'total' => $total,
+            'operativas' => $operativas,
+            'inoperativas' => $inoperativas,
+            'en_mantenimiento' => $enMantenimiento,
+            'criticas' => $criticas
+        ];
+    }
+    
+    /**
+     * Devuelve conteos de cambio de aceite para una institución.
+     */
+    public function getEstadoAceite($idInstitucion) {
+        $query = "SELECT tf.id_flota,
+            COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = tf.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as kilometraje_actual,
+            COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = tf.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as proximo_cambio_km
+            FROM table_flota tf 
+            WHERE tf.status_unidad = 1 
+              AND tf.id_institucion = ?";
+        $aceites = $this->select_all($query, [intval($idInstitucion)]);
+        
+        $requerido = 0; 
+        $proximo = 0; 
+        $ok = 0;
+        
+        foreach ($aceites as $row) {
+            $kmActual = (int)$row['kilometraje_actual'];
+            $kmProximo = (int)$row['proximo_cambio_km'];
+            $diferencia = $kmProximo - $kmActual;
+            if ($kmProximo > 0) {
+                if ($diferencia <= 0) $requerido++;
+                elseif ($diferencia <= 1000) $proximo++;
+                else $ok++;
+            }
+        }
+        
+        return [
+            'requerido' => $requerido, 
+            'proximo' => $proximo, 
+            'ok' => $ok
+        ];
+    }
+    
+    /**
+     * Devuelve el resumen de flota por modelo para una institución.
+     */
+    public function getResumenFlota($idInstitucion) {
+        $query = "SELECT fm.marca_unidad as marca, fmo.modelo_unidad as modelo,
+            CONCAT(fm.marca_unidad, ' ', fmo.modelo_unidad) as marca_modelo,
+            f.transmision, f.tipo_combustible as combustible, f.status_unidad, COUNT(*) as total
+            FROM table_flota f
+            JOIN table_flota_marca fm ON f.id_marca = fm.id_marca
+            JOIN table_flota_modelo fmo ON f.id_modelo = fmo.id_modelo
+            WHERE f.status_unidad IN (1, 2, 3, 5)
+              AND f.id_institucion = ?
+            GROUP BY fm.marca_unidad, fmo.modelo_unidad, f.transmision, f.tipo_combustible, f.status_unidad
+            ORDER BY fm.marca_unidad, fmo.modelo_unidad";
+        $results = $this->select_all($query, [intval($idInstitucion)]);
+        
+        $grouped = [];
+        foreach ($results as $row) {
+            $key = $row['marca_modelo'] . '|' . $row['transmision'] . '|' . $row['combustible'];
+            if (!isset($grouped[$key])) {
+                $grouped[$key] = [
+                    'marca_modelo' => $row['marca_modelo'], 
+                    'transmision' => $row['transmision'],
+                    'combustible' => $row['combustible'], 
+                    'total' => 0, 
+                    'operativas' => 0, 
+                    'inoperativas' => 0
+                ];
+            }
+            $grouped[$key]['total'] += (int)$row['total'];
+            if ($row['status_unidad'] == 1) {
+                $grouped[$key]['operativas'] += (int)$row['total'];
+            } else {
+                $grouped[$key]['inoperativas'] += (int)$row['total'];
+            }
+        }
+        
+        return array_values($grouped);
+    }
+    
+    /**
+     * Devuelve las unidades filtradas por estado e institución.
+     */
+    public function getUnidadesPorEstado($status, $idInstitucion) {
+        $query = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.fecha_creacion,
+            fm.marca_unidad AS marca_unidad, fmo.modelo_unidad AS modelo_unidad,
+            f.transmision, f.tipo_combustible, f.status_unidad,
+            COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as km_actual,
+            COALESCE((SELECT ah.kilometraje_cambio FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as ultimo_cambio_aceite,
+            COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as proximo_cambio_aceite
+            FROM table_flota f
+            INNER JOIN table_flota_marca fm ON f.id_marca = fm.id_marca
+            INNER JOIN table_flota_modelo fmo ON f.id_modelo = fmo.id_modelo
+            WHERE f.status_unidad = ? 
+              AND f.id_institucion = ?
+            ORDER BY f.id_unidad";
+        return $this->select_all($query, [intval($status), intval($idInstitucion)]);
+    }
+    
+    /**
+     * Devuelve las unidades filtradas por estado de aceite e institución.
+     */
+    public function getUnidadesPorEstadoAceite($status, $idInstitucion) {
+        $query = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.fecha_creacion,
+            fm.marca_unidad AS marca_unidad, fmo.modelo_unidad AS modelo_unidad,
+            f.transmision, f.tipo_combustible, f.status_unidad,
+            COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as km_actual,
+            COALESCE((SELECT ah.kilometraje_cambio FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as ultimo_cambio_aceite,
+            COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as proximo_cambio_aceite
+            FROM table_flota f
+            INNER JOIN table_flota_marca fm ON f.id_marca = fm.id_marca
+            INNER JOIN table_flota_modelo fmo ON f.id_modelo = fmo.id_modelo
+            WHERE f.status_unidad = 1 
+              AND f.id_institucion = ?";
+        
+        $params = [intval($idInstitucion)];
+        
+        if ($status === 'requerido') {
+            $query .= " AND (EXISTS (SELECT 1 FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota AND ah.kilometraje_cambio > 0)
+                AND (COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
+                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) <= 0))";
+        } elseif ($status === 'proximo') {
+            $query .= " AND ((COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
+                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) > 0)
+                AND (COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
+                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) <= 1000))";
+        } elseif ($status === 'ok') {
+            $query .= " AND ((COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
+                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) > 1000))";
+        }
+        
+        $query .= " ORDER BY f.id_unidad";
+        return $this->select_all($query, $params);
+    }
+    
+    /**
+     * =================================================================
+     * MOVIMIENTOS (con filtro por institución)
+     * =================================================================
+     */
+    
+    /**
+     * Get despachos de almacén filtrados por institución.
+     * Solo despachos cuyas unidades pertenezcan a la institución indicada.
+     * NOTA: Si el despacho no tiene flota vinculada, NO se filtra.
+     */
+    public function getDespachosPublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
                 d.id_despacho,
@@ -23,11 +228,11 @@ class PublicoModel extends Mysql {
             FROM table_alm_despacho d
             LEFT JOIN table_flota f ON d.id_flota = f.id_flota
             WHERE d.fecha_despacho BETWEEN ? AND ?
+              AND (f.id_flota IS NULL OR f.id_institucion = ?)
             ORDER BY d.fecha_despacho DESC
         ";
-        $despachos = $this->select_all($query, [$fechaInicio, $fechaFin]);
+        $despachos = $this->select_all($query, [$fechaInicio, $fechaFin, intval($idInstitucion)]);
         
-        // Get products for each despacho
         if (!empty($despachos)) {
             $ids = array_column($despachos, 'id_despacho');
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -44,13 +249,11 @@ class PublicoModel extends Mysql {
             ";
             $productos = $this->select_all($queryProductos, $ids);
             
-            // Group products by despacho
             $productosByDespacho = [];
             foreach ($productos as $prod) {
                 $productosByDespacho[$prod['id_despacho']][] = $prod;
             }
             
-            // Add products to despachos
             foreach ($despachos as &$despacho) {
                 $despacho['productos'] = $productosByDespacho[$despacho['id_despacho']] ?? [];
             }
@@ -60,97 +263,9 @@ class PublicoModel extends Mysql {
     }
     
     /**
-     * Get ventas from estación for public view
+     * Get mantenimientos de flota filtrados por institución.
      */
-    public function getVentasPublic($fechaInicio, $fechaFin) {
-        $query = "
-            SELECT 
-                v.id_venta,
-                v.id_user,
-                v.id_tipo_pago,
-                v.id_tipo_vehiculo,
-                v.litros,
-                v.monto,
-                v.id_cierre_diario,
-                v.fecha_venta,
-                v.hora_venta,
-                v.tasa_dia,
-                v.id_rol,
-                v.status_ticket,
-                u.usuario_nick,
-                tv.nombre as tipo_vehiculo,
-                tp.nombre as tipo_pago
-            FROM table_es_venta v
-            LEFT JOIN table_usuarios u ON v.id_user = u.usuario_id
-            LEFT JOIN table_es_tipos_vehiculo tv ON v.id_tipo_vehiculo = tv.id_tipo_vehiculo
-            LEFT JOIN table_es_tipos_pago tp ON v.id_tipo_pago = tp.id_tipo_pago
-            WHERE v.fecha_venta BETWEEN ? AND ?
-            ORDER BY v.fecha_venta DESC, v.hora_venta DESC
-        ";
-        return $this->select_all($query, [$fechaInicio, $fechaFin]);
-    }
-    
-    /**
-     * Get ventas from estación for public view with station filter
-     */
-    public function getVentasEstacionPublic($fechaInicio, $fechaFin, $estacionId = null) {
-        $query = "
-            SELECT 
-                v.id_venta,
-                v.id_user,
-                v.id_tipo_pago,
-                v.id_tipo_vehiculo,
-                v.litros,
-                v.monto,
-                v.id_cierre_diario,
-                v.fecha_venta,
-                v.hora_venta,
-                v.tasa_dia,
-                v.id_rol,
-                v.status_ticket,
-                u.usuario_nick,
-                tv.nombre as tipo_vehiculo,
-                tp.nombre as tipo_pago,
-                e.estacion as estacion_nombre
-            FROM table_es_venta v
-            LEFT JOIN table_usuarios u ON v.id_user = u.usuario_id
-            LEFT JOIN table_es_tipos_vehiculo tv ON v.id_tipo_vehiculo = tv.id_tipo_vehiculo
-            LEFT JOIN table_es_tipos_pago tp ON v.id_tipo_pago = tp.id_tipo_pago
-            LEFT JOIN table_es_estacion e ON u.usuario_estacion_id = e.id_estacion
-            WHERE v.fecha_venta BETWEEN ? AND ?
-        ";
-        
-        $params = [$fechaInicio, $fechaFin];
-        
-        if ($estacionId && $estacionId !== 'todas') {
-            $query .= " AND u.usuario_estacion_id = ?";
-            $params[] = $estacionId;
-        }
-        
-        $query .= " ORDER BY v.fecha_venta DESC, v.hora_venta DESC";
-        
-        return $this->select_all($query, $params);
-    }
-    
-    /**
-     * Get all stations for public view
-     */
-    public function getEstacionesPublic() {
-        $query = "
-            SELECT 
-                id_estacion,
-                estacion
-            FROM table_es_estacion
-            WHERE status_estacion = 1
-            ORDER BY estacion
-        ";
-        return $this->select_all($query);
-    }
-    
-    /**
-     * Get mantenimientos from flota for public view
-     */
-    public function getMantenimientosPublic($fechaInicio, $fechaFin) {
+    public function getMantenimientosPublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
                 m.id_unidad_mantenimiento,
@@ -175,76 +290,16 @@ class PublicoModel extends Mysql {
             LEFT JOIN table_flota f ON m.id_flota = f.id_flota
             LEFT JOIN table_usuarios u ON m.usuario_id = u.usuario_id
             WHERE m.fecha_entrada BETWEEN ? AND ?
+              AND f.id_institucion = ?
             ORDER BY m.fecha_entrada DESC
         ";
-        return $this->select_all($query, [$fechaInicio, $fechaFin]);
+        return $this->select_all($query, [$fechaInicio, $fechaFin, intval($idInstitucion)]);
     }
     
     /**
-     * Get compras/requisiciones for public view
+     * Get cambios de aceite filtrados por institución.
      */
-    public function getComprasPublic($fechaInicio, $fechaFin) {
-        $query = "
-            SELECT 
-                r.id_requisicion,
-                r.id_despacho_fk,
-                r.id_flota,
-                f.id_unidad,
-                r.mecanico_cedula,
-                r.tipo_orden,
-                r.observacion,
-                r.user_id_creador,
-                r.fecha_creacion,
-                r.status_requisicion,
-                d.operador,
-                d.despachador,
-                d.estado_orden,
-                u.usuario_nick as creador_nick
-            FROM table_alm_requisicion r
-            LEFT JOIN table_flota f ON r.id_flota = f.id_flota
-            LEFT JOIN table_alm_despacho d ON r.id_despacho_fk = d.id_despacho
-            LEFT JOIN table_usuarios u ON r.user_id_creador = u.usuario_id
-            WHERE r.fecha_creacion BETWEEN ? AND ?
-            ORDER BY r.fecha_creacion DESC
-        ";
-        $requisiciones = $this->select_all($query, [$fechaInicio, $fechaFin]);
-        
-        // Get products for each requisicion
-        if (!empty($requisiciones)) {
-            $ids = array_column($requisiciones, 'id_requisicion');
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            
-            $queryProductos = "
-                SELECT 
-                    rd.id_requisicion_fk,
-                    p.producto,
-                    p.present_producto,
-                    rd.cantidad_solicitada
-                FROM table_alm_requisicion_detalle rd
-                JOIN table_alm_producto p ON rd.id_producto = p.id_producto
-                WHERE rd.id_requisicion_fk IN ($placeholders)
-            ";
-            $productos = $this->select_all($queryProductos, $ids);
-            
-            // Group products by requisicion
-            $productosByReq = [];
-            foreach ($productos as $prod) {
-                $productosByReq[$prod['id_requisicion_fk']][] = $prod;
-            }
-            
-            // Add products to requisiciones
-            foreach ($requisiciones as &$req) {
-                $req['productos'] = $productosByReq[$req['id_requisicion']] ?? [];
-            }
-        }
-        
-        return $requisiciones;
-    }
-    
-    /**
-     * Get cambios de aceite for public view
-     */
-    public function getCambiosAceitePublic($fechaInicio, $fechaFin) {
+    public function getCambiosAceitePublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
                 ah.id_aceite_historial,
@@ -261,15 +316,16 @@ class PublicoModel extends Mysql {
             LEFT JOIN table_flota f ON ah.id_flota = f.id_flota
             LEFT JOIN table_usuarios u ON ah.usuario_id = u.usuario_id
             WHERE ah.fecha_cambio BETWEEN ? AND ?
+              AND f.id_institucion = ?
             ORDER BY ah.fecha_cambio DESC
         ";
-        return $this->select_all($query, [$fechaInicio, $fechaFin]);
+        return $this->select_all($query, [$fechaInicio, $fechaFin, intval($idInstitucion)]);
     }
     
     /**
-     * Get kilometraje updates for public view
+     * Get kilometraje filtrado por institución.
      */
-    public function getKilometrajePublic($fechaInicio, $fechaFin) {
+    public function getKilometrajePublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
                 k.id_kilometraje,
@@ -283,153 +339,117 @@ class PublicoModel extends Mysql {
             LEFT JOIN table_flota f ON k.id_flota = f.id_flota
             LEFT JOIN table_usuarios u ON k.usuario_id = u.usuario_id
             WHERE DATE(k.fecha_actualizacion) BETWEEN ? AND ?
+              AND f.id_institucion = ?
             ORDER BY k.fecha_actualizacion DESC
         ";
-        return $this->select_all($query, [$fechaInicio, $fechaFin]);
+        return $this->select_all($query, [$fechaInicio, $fechaFin, intval($idInstitucion)]);
     }
     
     /**
-     * Get summary statistics for dashboard
+     * =================================================================
+     * DETALLES (con nombre de institución)
+     * =================================================================
      */
-    public function getResumenPublic($fechaInicio, $fechaFin) {
-        $resumen = [];
-        
-        // Total despachos
-        $query = "SELECT COUNT(*) as total FROM table_alm_despacho WHERE fecha_despacho BETWEEN ? AND ?";
-        $resumen['despachos'] = (int)$this->contar($query, [$fechaInicio, $fechaFin]);
-        
-        // Total ventas
-        $query = "SELECT COUNT(*) as total FROM table_es_venta WHERE fecha_venta BETWEEN ? AND ?";
-        $resumen['ventas'] = (int)$this->contar($query, [$fechaInicio, $fechaFin]);
-        
-        // Total mantenimientos
-        $query = "SELECT COUNT(*) as total FROM table_flota_mantenimiento WHERE fecha_entrada BETWEEN ? AND ?";
-        $resumen['mantenimientos'] = (int)$this->contar($query, [$fechaInicio, $fechaFin]);
-        
-        // Total requisiciones
-        $query = "SELECT COUNT(*) as total FROM table_alm_requisicion WHERE fecha_creacion BETWEEN ? AND ?";
-        $resumen['compras'] = (int)$this->contar($query, [$fechaInicio, $fechaFin]);
-        
-        // Total cambios aceite
-        $query = "SELECT COUNT(*) as total FROM table_flota_aceite_historial WHERE fecha_cambio BETWEEN ? AND ?";
-        $resumen['aceite'] = (int)$this->contar($query, [$fechaInicio, $fechaFin]);
-        
-        // Total kilometraje
-        $query = "SELECT COUNT(*) as total FROM table_flota_kilometraje WHERE DATE(fecha_actualizacion) BETWEEN ? AND ?";
-        $resumen['kilometraje'] = (int)$this->contar($query, [$fechaInicio, $fechaFin]);
-        
-        $resumen['total'] = array_sum($resumen);
-        
-        return $resumen;
-    }
     
     /**
-     * Get unit history (hoja de vida) for public view
-     * Returns all movements for a specific unit: despachos, mantenimientos, cambios aceite, kilometraje
+     * Get detalle de un cambio de aceite específico.
      */
-    public function getHistorialUnidad($idFlota) {
-        $historial = [];
-        
-        // 1. Despachos de Almacén
-        $query = "
-            SELECT 
-                d.id_despacho,
-                d.fecha_despacho as fecha,
-                'Despacho Almacén' as tipo,
-                CONCAT('DESP-', LPAD(d.id_despacho, 6, '0')) as referencia,
-                d.operador,
-                d.mecanico,
-                d.despachador,
-                d.observacion,
-                d.estado_orden as estado,
-                NULL as kilometraje
-            FROM table_alm_despacho d
-            WHERE d.id_flota = ?
-            ORDER BY d.fecha_despacho DESC
-        ";
-        $despachos = $this->select_all($query, [$idFlota]);
-        foreach ($despachos as $d) {
-            $historial[] = $d;
-        }
-        
-        // 2. Mantenimientos de Flota
-        $query = "
-            SELECT 
-                m.id_unidad_mantenimiento,
-                m.fecha_entrada as fecha,
-                'Mantenimiento Flota' as tipo,
-                CONCAT('MANT-', LPAD(m.id_unidad_mantenimiento, 6, '0')) as referencia,
-                m.operardor_unidad as operador,
-                m.nomb_mecanico as mecanico,
-                '-' as despachador,
-                m.diagnostico as observacion,
-                m.status_mantenimiento as estado,
-                m.km_unidad as kilometraje
-            FROM table_flota_mantenimiento m
-            WHERE m.id_flota = ?
-            ORDER BY m.fecha_entrada DESC
-        ";
-        $mantenimientos = $this->select_all($query, [$idFlota]);
-        foreach ($mantenimientos as $m) {
-            $historial[] = $m;
-        }
-        
-        // 3. Cambios de Aceite
+    public function getDetalleAceite($idAceite) {
         $query = "
             SELECT 
                 ah.id_aceite_historial,
-                ah.fecha_cambio as fecha,
-                'Cambio Aceite' as tipo,
-                CONCAT('ACE-', LPAD(ah.id_aceite_historial, 6, '0')) as referencia,
-                '-' as operador,
-                u.usuario_nick as mecanico,
-                '-' as despachador,
-                CONCAT('KM: ', FORMAT(ah.kilometraje_cambio, 0), ' | Próx: ', FORMAT(ah.kilometraje_proximo_cambio, 0)) as observacion,
-                'Completado' as estado,
-                ah.kilometraje_cambio as kilometraje
+                ah.id_flota,
+                f.id_unidad,
+                f.vim_unidad,
+                ah.fecha_cambio,
+                ah.kilometraje_cambio,
+                ah.kilometraje_anterior,
+                ah.kilometraje_proximo_cambio,
+                ah.usuario_id,
+                ah.observaciones,
+                u.usuario_nick,
+                COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick, 'Sistema') as responsable_nombre
             FROM table_flota_aceite_historial ah
+            LEFT JOIN table_flota f ON ah.id_flota = f.id_flota
             LEFT JOIN table_usuarios u ON ah.usuario_id = u.usuario_id
-            WHERE ah.id_flota = ?
-            ORDER BY ah.fecha_cambio DESC
+            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
+            WHERE ah.id_aceite_historial = ?
         ";
-        $aceites = $this->select_all($query, [$idFlota]);
-        foreach ($aceites as $a) {
-            $historial[] = $a;
-        }
-        
-        // 4. Actualizaciones de Kilometraje
-        $query = "
-            SELECT 
-                k.id_kilometraje,
-                k.fecha_actualizacion as fecha,
-                'Actualización KM' as tipo,
-                CONCAT('KM-', LPAD(k.id_kilometraje, 6, '0')) as referencia,
-                '-' as operador,
-                u.usuario_nick as mecanico,
-                '-' as despachador,
-                CONCAT('Kilometraje: ', FORMAT(k.kilometraje_actual, 0)) as observacion,
-                'Registrado' as estado,
-                k.kilometraje_actual as kilometraje
-            FROM table_flota_kilometraje k
-            LEFT JOIN table_usuarios u ON k.usuario_id = u.usuario_id
-            WHERE k.id_flota = ?
-            ORDER BY k.fecha_actualizacion DESC
-        ";
-        $kilometrajes = $this->select_all($query, [$idFlota]);
-        foreach ($kilometrajes as $k) {
-            $historial[] = $k;
-        }
-        
-        // Sort all by date descending
-        usort($historial, function($a, $b) {
-            return strtotime($b['fecha']) - strtotime($a['fecha']);
-        });
-        
-        return $historial;
+        return $this->select($query, [$idAceite]);
     }
     
     /**
-     * Get unit info for public view
+     * Get detalle de un mantenimiento específico.
+     */
+    public function getDetalleMantenimiento($idMantenimiento) {
+        $query = "
+            SELECT 
+                m.id_unidad_mantenimiento,
+                m.id_flota,
+                f.id_unidad,
+                f.vim_unidad,
+                m.ruta_unidad,
+                m.operardor_unidad,
+                m.nomb_mecanico,
+                m.km_unidad,
+                m.tipo_mantenimiento,
+                m.diagnostico,
+                m.recomendacion,
+                m.obsOperador,
+                m.obsSupervisor,
+                m.obsSalida,
+                m.fecha_entrada,
+                m.fecha_salida,
+                m.status_mantenimiento,
+                m.usuario_id,
+                u.usuario_nick,
+                COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick, 'Sistema') as responsable_nombre
+            FROM table_flota_mantenimiento m
+            LEFT JOIN table_flota f ON m.id_flota = f.id_flota
+            LEFT JOIN table_usuarios u ON m.usuario_id = u.usuario_id
+            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
+            WHERE m.id_unidad_mantenimiento = ?
+        ";
+        return $this->select($query, [$idMantenimiento]);
+    }
+    
+    /**
+     * Get detalle de una actualización de kilometraje específica.
+     */
+    public function getDetalleKilometraje($idKilometraje) {
+        $query = "
+            SELECT 
+                k.id_kilometraje,
+                k.id_flota,
+                f.id_unidad,
+                f.vim_unidad,
+                k.kilometraje_actual,
+                k.fecha_actualizacion,
+                k.usuario_id,
+                u.usuario_nick,
+                COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick, 'Sistema') as responsable_nombre,
+                (
+                    SELECT k2.kilometraje_actual 
+                    FROM table_flota_kilometraje k2 
+                    WHERE k2.id_flota = k.id_flota 
+                      AND (
+                        k2.fecha_actualizacion < k.fecha_actualizacion 
+                        OR (k2.fecha_actualizacion = k.fecha_actualizacion AND k2.id_kilometraje < k.id_kilometraje)
+                      )
+                    ORDER BY k2.fecha_actualizacion DESC, k2.id_kilometraje DESC 
+                    LIMIT 1
+                ) as kilometraje_anterior
+            FROM table_flota_kilometraje k
+            LEFT JOIN table_flota f ON k.id_flota = f.id_flota
+            LEFT JOIN table_usuarios u ON k.usuario_id = u.usuario_id
+            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
+            WHERE k.id_kilometraje = ?
+        ";
+        return $this->select($query, [$idKilometraje]);
+    }
+    
+    /**
+     * Get unit info for public view.
      */
     public function getUnidadInfo($idFlota) {
         $query = "
@@ -471,12 +491,17 @@ class PublicoModel extends Mysql {
     }
     
     /**
+     * =================================================================
+     * HISTORIAL DE UNIDAD
+     * =================================================================
+     */
+    
+    /**
      * Get complete unit history (Hoja de Vida) for public view
      * Includes: despacho, aceite, mantenimiento, status
      * Based on FlotaModel::selectHistorialUnidad
      */
     public function selectHistorialUnidad(int $idFlota, array $postData, int $perPage) {
-        // --- PARÁMETROS DE FILTRADO Y PAGINACIÓN ---
         $fechaInicio = !empty($postData['fechaInicio']) ? $postData['fechaInicio'] : null;
         $fechaFin = !empty($postData['fechaFin']) ? $postData['fechaFin'] : null;
         $filtroTipo = !empty($postData['filtroTipo']) ? $postData['filtroTipo'] : null;
@@ -504,7 +529,6 @@ class PublicoModel extends Mysql {
             $params[] = $filtroTipo;
         }
         if ($filtroTermino) {
-            // Búsqueda en ID, diagnóstico, motivo, etc.
             $whereClauses[] = "(h.id_evento LIKE ? OR h.detalles LIKE ?)";
             $params[] = "%" . $filtroTermino . "%";
             $params[] = "%" . $filtroTermino . "%";
@@ -512,7 +536,6 @@ class PublicoModel extends Mysql {
     
         $whereSql = "WHERE " . implode(" AND ", $whereClauses);
     
-        // --- CONSTRUCCIÓN DE LA CONSULTA UNIFICADA (VISTA TEMPORAL) ---
         $unionQuery = "
             (SELECT
                 'despacho' as tipo,
@@ -567,11 +590,9 @@ class PublicoModel extends Mysql {
             FROM table_flota_status s)
         ";
     
-        // --- CONSULTA PARA CONTAR EL TOTAL DE ITEMS FILTRADOS ---
         $countSql = "SELECT COUNT(*) as total FROM ($unionQuery) as h $whereSql";
         $totalItems = $this->select($countSql, $params)['total'];
 
-        // --- NUEVO: CONSULTA PARA CONTAR POR TIPO (DESGLOSE) ---
         $countTypeSql = "SELECT tipo, COUNT(*) as total FROM ($unionQuery) as h $whereSql GROUP BY tipo";
         $typeCounts = $this->select_all($countTypeSql, $params);
         $counts = ['despacho' => 0, 'mantenimiento' => 0, 'aceite' => 0, 'status' => 0];
@@ -579,10 +600,7 @@ class PublicoModel extends Mysql {
             $counts[$row['tipo']] = $row['total'];
         }
     
-        // --- CONSULTA PARA OBTENER LOS ITEMS DE LA PÁGINA ACTUAL ---
         $itemsSql = "SELECT h.*, 
-                        -- Se une directamente a usuarios y luego a personal para obtener el nombre correcto
-                        -- COALESCE se usa como fallback por si un usuario no tiene personal asignado
                         COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), d.departamento_nombre, 'Sistema') as usuario
                      FROM ($unionQuery) as h 
                      LEFT JOIN table_usuarios u ON h.usuario_id = u.usuario_id
@@ -591,8 +609,6 @@ class PublicoModel extends Mysql {
                      $whereSql ORDER BY h.fecha DESC, h.id_evento DESC LIMIT $perPage OFFSET $offset";
         $items = $this->select_all($itemsSql, $params);
     
-        // --- ENRIQUECER LOS DETALLES DE DESPACHO CON SUS ARTÍCULOS ---
-        // 1. Extraer los IDs de los eventos de tipo 'despacho'
         $despacho_ids = [];
         foreach ($items as $item) {
             if ($item['tipo'] === 'despacho') {
@@ -600,7 +616,6 @@ class PublicoModel extends Mysql {
             }
         }
 
-        // 2. Si hay despachos, obtener todos sus artículos en una sola consulta eficiente
         $articulos_por_despacho = [];
         if (!empty($despacho_ids)) {
             $placeholders = implode(',', array_fill(0, count($despacho_ids), '?'));
@@ -611,7 +626,6 @@ class PublicoModel extends Mysql {
             
             $todos_los_articulos = $this->select_all($sqlArticulos, $despacho_ids);
 
-            // 3. Agrupar los artículos por su id_despacho
             foreach ($todos_los_articulos as $articulo) {
                 $articulos_por_despacho[$articulo['id_despacho']][] = $articulo;
             }
@@ -619,13 +633,11 @@ class PublicoModel extends Mysql {
 
         foreach ($items as &$item) {
             if ($item['tipo'] === 'despacho') {
-                // Decodificar JSON, agregar artículos y volver a codificar
                 $detalles = json_decode($item['detalles'], true);
                 $detalles['articulos'] = $articulos_por_despacho[$item['id_evento']] ?? [];
                 $item['detalles'] = json_encode($detalles);
             }
 
-            // Renombrar campos para el frontend
             $item['tipo_evento'] = $item['tipo'];
             $item['fecha_evento'] = $item['fecha'];
             $item['titulo'] = ucwords(str_replace('_', ' ', $item['tipo'])) . " #" . $item['id_evento'];
@@ -635,7 +647,7 @@ class PublicoModel extends Mysql {
         return [
             'total_items' => $totalItems,
             'items' => $items,
-            'counts' => $counts // Retornamos el desglose
+            'counts' => $counts
         ];
     }
     
@@ -658,7 +670,8 @@ class PublicoModel extends Mysql {
     }
     
     /**
-     * Get order details (orden de despacho) for public view
+     * Get order details (orden de despacho) for public view.
+     * NO se filtra por institución porque es un detalle específico.
      */
     public function getDetalleOrden($idDespacho) {
         $query = "
@@ -683,7 +696,6 @@ class PublicoModel extends Mysql {
             return null;
         }
         
-        // Get products for this despacho
         $queryProductos = "
             SELECT 
                 rd.id_despacho,
@@ -699,101 +711,61 @@ class PublicoModel extends Mysql {
         
         return $orden;
     }
-
-        /**
-     * Get detalle de un cambio de aceite específico
-     */
-    public function getDetalleAceite($idAceite) {
-        $query = "
-            SELECT 
-                ah.id_aceite_historial,
-                ah.id_flota,
-                f.id_unidad,
-                f.vim_unidad,
-                ah.fecha_cambio,
-                ah.kilometraje_cambio,
-                ah.kilometraje_anterior,
-                ah.kilometraje_proximo_cambio,
-                ah.usuario_id,
-                ah.observaciones,
-                u.usuario_nick,
-                COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick, 'Sistema') as responsable_nombre
-            FROM table_flota_aceite_historial ah
-            LEFT JOIN table_flota f ON ah.id_flota = f.id_flota
-            LEFT JOIN table_usuarios u ON ah.usuario_id = u.usuario_id
-            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
-            WHERE ah.id_aceite_historial = ?
-        ";
-        return $this->select($query, [$idAceite]);
-    }
-
+    
     /**
-     * Get detalle de un mantenimiento específico
+     * =================================================================
+     * ESTACIÓN - SIN FILTRO POR INSTITUCIÓN (NO MODIFICADO)
+     * =================================================================
      */
-    public function getDetalleMantenimiento($idMantenimiento) {
+    
+    public function getVentasEstacionPublic($fechaInicio, $fechaFin, $estacionId = null) {
         $query = "
             SELECT 
-                m.id_unidad_mantenimiento,
-                m.id_flota,
-                f.id_unidad,
-                f.vim_unidad,
-                m.ruta_unidad,
-                m.operardor_unidad,
-                m.nomb_mecanico,
-                m.km_unidad,
-                m.tipo_mantenimiento,
-                m.diagnostico,
-                m.recomendacion,
-                m.obsOperador,
-                m.obsSupervisor,
-                m.obsSalida,
-                m.fecha_entrada,
-                m.fecha_salida,
-                m.status_mantenimiento,
-                m.usuario_id,
+                v.id_venta,
+                v.id_user,
+                v.id_tipo_pago,
+                v.id_tipo_vehiculo,
+                v.litros,
+                v.monto,
+                v.id_cierre_diario,
+                v.fecha_venta,
+                v.hora_venta,
+                v.tasa_dia,
+                v.id_rol,
+                v.status_ticket,
                 u.usuario_nick,
-                COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick, 'Sistema') as responsable_nombre
-            FROM table_flota_mantenimiento m
-            LEFT JOIN table_flota f ON m.id_flota = f.id_flota
-            LEFT JOIN table_usuarios u ON m.usuario_id = u.usuario_id
-            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
-            WHERE m.id_unidad_mantenimiento = ?
+                tv.nombre as tipo_vehiculo,
+                tp.nombre as tipo_pago,
+                e.estacion as estacion_nombre
+            FROM table_es_venta v
+            LEFT JOIN table_usuarios u ON v.id_user = u.usuario_id
+            LEFT JOIN table_es_tipos_vehiculo tv ON v.id_tipo_vehiculo = tv.id_tipo_vehiculo
+            LEFT JOIN table_es_tipos_pago tp ON v.id_tipo_pago = tp.id_tipo_pago
+            LEFT JOIN table_es_estacion e ON u.usuario_estacion_id = e.id_estacion
+            WHERE v.fecha_venta BETWEEN ? AND ?
         ";
-        return $this->select($query, [$idMantenimiento]);
+        
+        $params = [$fechaInicio, $fechaFin];
+        
+        if ($estacionId && $estacionId !== 'todas') {
+            $query .= " AND u.usuario_estacion_id = ?";
+            $params[] = $estacionId;
+        }
+        
+        $query .= " ORDER BY v.fecha_venta DESC, v.hora_venta DESC";
+        
+        return $this->select_all($query, $params);
     }
-
-    /**
-     * Get detalle de una actualización de kilometraje específica
-     */
-    public function getDetalleKilometraje($idKilometraje) {
+    
+    public function getEstacionesPublic() {
         $query = "
             SELECT 
-                k.id_kilometraje,
-                k.id_flota,
-                f.id_unidad,
-                f.vim_unidad,
-                k.kilometraje_actual,
-                k.fecha_actualizacion,
-                k.usuario_id,
-                u.usuario_nick,
-                COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick, 'Sistema') as responsable_nombre,
-                (
-                    SELECT k2.kilometraje_actual 
-                    FROM table_flota_kilometraje k2 
-                    WHERE k2.id_flota = k.id_flota 
-                      AND (
-                        k2.fecha_actualizacion < k.fecha_actualizacion 
-                        OR (k2.fecha_actualizacion = k.fecha_actualizacion AND k2.id_kilometraje < k.id_kilometraje)
-                      )
-                    ORDER BY k2.fecha_actualizacion DESC, k2.id_kilometraje DESC 
-                    LIMIT 1
-                ) as kilometraje_anterior
-            FROM table_flota_kilometraje k
-            LEFT JOIN table_flota f ON k.id_flota = f.id_flota
-            LEFT JOIN table_usuarios u ON k.usuario_id = u.usuario_id
-            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
-            WHERE k.id_kilometraje = ?
+                id_estacion,
+                estacion
+            FROM table_es_estacion
+            WHERE status_estacion = 1
+            ORDER BY estacion
         ";
-        return $this->select($query, [$idKilometraje]);
+        return $this->select_all($query);
     }
 }

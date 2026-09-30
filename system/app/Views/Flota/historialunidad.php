@@ -1,6 +1,9 @@
 <?= head($data)?>
 <!-- ID de la flota para ser usado por JS -->
 <input type="hidden" id="id_flota" value="<?= $data['id_flota'] ?>">
+<!-- ID de la institución para ser usado por JS -->
+<input type="hidden" id="id_institucion_historial" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion_historial" value="<?= $data['nombre_institucion'] ?>">
 
 <div class="content-wrapper">
     <section class="content-header">
@@ -12,7 +15,11 @@
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <li class="breadcrumb-item"><a href="<?= base_url() ?>flota">Flota</a></li>
+                        <?php if ($data['id_institucion'] == 2): ?>
+                            <li class="breadcrumb-item"><a href="<?= base_url() ?>flota/taller"><?= $data['nombre_institucion'] ?></a></li>
+                        <?php else: ?>
+                            <li class="breadcrumb-item"><a href="<?= base_url() ?>flota"><?= $data['nombre_institucion'] ?></a></li>
+                        <?php endif; ?>
                         <li class="breadcrumb-item active">Historial</li>
                     </ol>
                 </div>
@@ -27,9 +34,18 @@
                 <div class="card-header">
                     <h3 class="card-title">Unidad: <span class="font-weight-bold"><?= $data['unidad']['id_unidad'] ?></span></h3>
                     <div class="card-tools">
-                        <a href="<?= base_url() ?>flota" class="btn btn-sm btn-secondary">
-                            <i class="fas fa-arrow-left mr-1"></i> Volver a la Flota
-                        </a>
+                        <span class="badge badge-info p-2 mr-2">
+                            <i class="fas fa-building mr-1"></i> <?= $data['nombre_institucion'] ?>
+                        </span>
+                        <?php if ($data['id_institucion'] == 2): ?>
+                            <a href="<?= base_url() ?>flota/taller" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-arrow-left mr-1"></i> Volver al Taller
+                            </a>
+                        <?php else: ?>
+                            <a href="<?= base_url() ?>flota" class="btn btn-sm btn-secondary">
+                                <i class="fas fa-arrow-left mr-1"></i> Volver a la Flota
+                            </a>
+                        <?php endif; ?>
                     </div>
                 </div>
                 <div class="card-body">
@@ -165,6 +181,7 @@ document.getElementById('btnExportarPDF').addEventListener('click', async functi
     const fechaFin = document.getElementById('fechaFin').value;
     const filtroTipo = document.getElementById('filtroTipo').value;
     const filtroTermino = document.getElementById('filtroTermino').value;
+    const nombreInstitucion = document.getElementById('nombre_institucion_historial').value;
 
     // Mostrar alerta de carga
     Swal.fire({
@@ -205,7 +222,8 @@ document.getElementById('btnExportarPDF').addEventListener('click', async functi
                 id: '<?= $data['unidad']['id_unidad'] ?>',
                 marca: '<?= $data['unidad']['marca_unidad'] ?>',
                 modelo: '<?= $data['unidad']['modelo_unidad'] ?>',
-                vin: '<?= $data['unidad']['vim_unidad'] ?>'
+                vin: '<?= $data['unidad']['vim_unidad'] ?>',
+                institucion: nombreInstitucion
             });
             form.appendChild(inputUnidad);
 

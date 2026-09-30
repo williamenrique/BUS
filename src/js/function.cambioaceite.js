@@ -1,5 +1,8 @@
 let tableAceite;
 
+// ID de la institución activa (leído del hidden input en la vista)
+const idInstitucionAceite = document.getElementById('id_institucion_aceite')?.value || 1;
+
 document.addEventListener('DOMContentLoaded', function () {
     // Inicializar la DataTable
     if (!$.fn.DataTable.isDataTable('#tableAceite')) {
@@ -35,12 +38,10 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Event Listeners para el modal de eliminación
-    // Usamos delegación de eventos con jQuery para capturar el clic en cualquier botón de eliminar que se genere en la tabla.
     $('#tableAceite tbody').on('click', 'button[data-target="#modalDeleteRecord"]', function () {
         const idFlota = $(this).data('id-flota');
         const idUnidad = $(this).data('id-unidad');
 
-        // Asignamos los datos directamente a los botones dentro del modal ANTES de que se muestre.
         const modalDelete = document.getElementById('modalDeleteRecord');
         modalDelete.querySelector('#unidad_delete_label').textContent = idUnidad;
         modalDelete.querySelector('#unidad_delete_label_confirm').textContent = idUnidad;
@@ -48,7 +49,6 @@ document.addEventListener('DOMContentLoaded', function () {
         modalDelete.querySelector('#btnDeleteAceite').dataset.idFlota = idFlota;
     });
 
-    // Los listeners para los botones de confirmación dentro del modal se mantienen igual.
     document.getElementById('btnDeleteKilometraje').addEventListener('click', function () {
         submitDeleteRecord(this.dataset.idFlota, 'kilometraje');
     });
@@ -67,6 +67,9 @@ function initAceiteDataTable() {
         },
         "ajax": {
             "url": base_url + "Flota/getAceiteStatus",
+            "data": function (d) {
+                d.id_institucion = idInstitucionAceite;
+            },
             "dataSrc": function (json) {
                 document.querySelector('#card-requeridas').textContent = json.requeridas || 0;
                 document.querySelector('#card-proximas').textContent = json.proximas || 0;
@@ -75,7 +78,18 @@ function initAceiteDataTable() {
             }
         },
         "columns": [
-            { "data": "id_unidad", "render": (data, type, row) => `<a href="${base_url}flota/historialunidad/${row.id_flota}" class="font-weight-bold">${row.id_unidad}</a><br><small class="text-muted">${row.marca_unidad} ${row.modelo_unidad}</small>` },
+            { 
+                "data": "id_unidad", 
+                "render": (data, type, row) => {
+                    // Detectar si estamos en el Taller para redirigir el historial
+                    const esTaller = (idInstitucionAceite == 2);
+                    const urlHistorial = esTaller 
+                        ? `${base_url}flota/tallerhistorial/${row.id_flota}` 
+                        : `${base_url}flota/historialunidad/${row.id_flota}`;
+                    
+                    return `<a href="${urlHistorial}" class="font-weight-bold">${row.id_unidad}</a><br><small class="text-muted">${row.marca_unidad} ${row.modelo_unidad}</small>`;
+                } 
+            },
             { "data": "kilometraje_actual", "render": data => (data || 0).toLocaleString('es-VE') },
             { "data": "ultimo_cambio_km", "render": data => (data || 0).toLocaleString('es-VE') },
             { "data": "fecha_ultimo_cambio", "render": data => (!data || data === '0000-00-00') ? '<span class="text-muted">N/A</span>' : new Date(data + 'T00:00:00').toLocaleDateString('es-VE') },
@@ -95,7 +109,7 @@ function initAceiteDataTable() {
         "responsive": true,
         "bDestroy": true,
         "iDisplayLength": 10,
-        "order": [[5, "asc"]], // Ordenar por KM restantes
+        "order": [[5, "asc"]],
         "dom": "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" +
             "<'row'<'col-sm-12'tr>>" +
             "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
@@ -169,8 +183,6 @@ function openAceiteModal(idFlota, idUnidad, kmActual) {
 }
 
 async function submitForm(form, url, successMessage, modalId) {
-    // El botón de submit está fuera del <form> en el DOM (en el modal-footer),
-    // por lo que lo buscamos en todo el modal usando el ID del formulario como referencia.
     const modal = document.getElementById(modalId);
     const button = modal.querySelector(`button[form="${form.id}"]`);
     const originalButtonText = button.innerHTML;
@@ -273,8 +285,6 @@ function notifi(message, type) {
 
 /**
  * Función para generar el reporte de estado de aceite en PDF.
- * Recopila los filtros seleccionados, solicita los datos procesados al servidor
- * y envía la información al script PHP encargado de generar el PDF.
  */
 function fntGenerarReporteAceite() {
     // 1. Obtener los valores de los checkboxes seleccionados
@@ -291,7 +301,6 @@ function fntGenerarReporteAceite() {
 
     const filtroString = filtros.join(',');
 
-    // 2. Mostrar alerta de carga (loading) para indicar al usuario que el proceso ha iniciado
     Swal.fire({
         title: 'Generando Reporte...',
         text: 'Por favor espere mientras se procesan los datos.',
@@ -299,47 +308,41 @@ function fntGenerarReporteAceite() {
         didOpen: () => { Swal.showLoading() }
     });
 
-    // 3. Realizar petición asíncrona (AJAX) al controlador para obtener los datos del reporte
+    // 2. Enviar el filtro y el id_institucion al backend
+    const params = new URLSearchParams();
+    params.append('filtro', filtroString);
+    params.append('id_institucion', idInstitucionAceite);
+
     fetch(base_url + 'Flota/getReporteAceiteData', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'filtro=' + filtroString
+        body: params.toString()
     })
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 4. Si la petición es exitosa, crear un formulario dinámico temporal
-                // Esto es necesario para enviar los datos JSON grandes vía POST al abrir una nueva pestaña
+                // 3. Crear formulario dinámico para enviar los datos al PDF
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = base_url + 'data/flota/reporteaceite.php';
-                form.target = '_blank'; // Importante: Abrir en una nueva pestaña
+                form.target = '_blank';
 
-                // Crear input oculto que contendrá los datos JSON
                 const input = document.createElement('input');
                 input.type = 'hidden';
                 input.name = 'reporteData';
                 input.value = JSON.stringify(data);
 
-                // Agregar el input al formulario y el formulario al cuerpo del documento
                 form.appendChild(input);
                 document.body.appendChild(form);
-
-                // Enviar el formulario
                 form.submit();
-
-                // Limpiar el DOM eliminando el formulario temporal
                 document.body.removeChild(form);
 
-                // Cerrar la alerta de carga
                 Swal.close();
             } else {
-                // Mostrar mensaje de error si el servidor responde con fallo lógico
                 Swal.fire('Error', data.message, 'error');
             }
         })
         .catch(error => {
-            // 5. Manejo de errores de red o ejecución
             console.error("Error en fntGenerarReporteAceite:", error);
             Swal.fire('Error', 'Ocurrió un error inesperado al generar el reporte.', 'error');
         });

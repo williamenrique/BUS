@@ -1,4 +1,9 @@
 <?php
+/**
+ * Archivo: historial_flota.php
+ * PDF de la hoja de vida de una unidad.
+ */
+
 set_time_limit(0);
 require_once '../../system/core/Config/config.system.php';
 require_once '../dompdf/autoload.inc.php';
@@ -6,7 +11,6 @@ require_once '../dompdf/autoload.inc.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-// Validar recepción de datos
 if (!isset($_POST['reporteData']) || !isset($_POST['unidadData'])) {
     die("No se recibieron datos para generar el reporte.");
 }
@@ -21,46 +25,45 @@ if (json_last_error() !== JSON_ERROR_NONE || empty($reporteData)) {
 $items = $reporteData['items'];
 $counts = $reporteData['counts'];
 
-// Configuración de Dompdf
+$nombreInstitucion = !empty($unidadData['institucion']) 
+    ? htmlspecialchars($unidadData['institucion'], ENT_QUOTES, 'UTF-8') 
+    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+
 $options = new Options();
 $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
 
-// Importar encabezado estandarizado
+$tituloReporte = 'Hoja de Vida';
 require_once '../encabezado.php';
 
-// Estilos CSS Específicos para este reporte (Timeline)
 $css = $cssCommon . '
     <style>
-        /* Sobrescribir estilos del encabezado para que no sea fijo (solo primera página) */
-        .header { 
-            position: relative; 
-            top: auto; 
-            left: auto; 
-            right: auto; 
-            height: auto; 
-            margin-bottom: 20px;
+        .titulo-reporte {
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            margin-top: 10px;
+            margin-bottom: 25px;
+            text-transform: uppercase;
         }
-        .header .logo {
-            top: -35px;
-        }
+
         .info-box { background-color: #f8f9fa; border: 1px solid #ddd; padding: 10px; margin-bottom: 20px; border-radius: 5px; }
-        .info-box table { width: 100%; }
-        .info-box td { vertical-align: top; }
+        .info-box table { width: 100%; border-collapse: collapse; }
+        .info-box td { vertical-align: top; border: none; padding: 3px; font-size: 11px; }
         .info-label { font-weight: bold; color: #555; }
         
-        .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 6px; text-align: center; }
+        .summary-table { width: 100%; border-collapse: collapse; margin-bottom: 25px; }
+        .summary-table th, .summary-table td { border: 1px solid #ddd; padding: 6px; text-align: center; font-size: 10px; }
         .summary-table th { background-color: #e9ecef; }
         
-        .timeline-item { margin-bottom: 15px; border-left: 2px solid #ccc; padding-left: 15px; page-break-inside: avoid; }
-        .timeline-header { background-color: #f1f1f1; padding: 5px 10px; font-weight: bold; border-radius: 3px; display: flex; justify-content: space-between; }
+        .timeline-item { margin-bottom: 15px; border-left: 3px solid #ccc; padding-left: 15px; page-break-inside: avoid; }
+        .timeline-header { background-color: #f1f1f1; padding: 5px 10px; font-weight: bold; border-radius: 3px; font-size: 11px; }
         .timeline-date { float: right; font-size: 10px; color: #666; }
-        .timeline-body { padding: 5px 10px; }
+        .timeline-body { padding: 5px 10px; font-size: 10px; }
         .timeline-footer { font-size: 9px; color: #888; margin-top: 5px; font-style: italic; }
         
-        .badge { padding: 2px 5px; border-radius: 3px; color: white; font-size: 9px; font-weight: bold; }
+        .badge { padding: 2px 6px; border-radius: 3px; color: white; font-size: 9px; font-weight: bold; }
         .bg-despacho { background-color: #007bff; }
         .bg-mantenimiento { background-color: #17a2b8; }
         .bg-aceite { background-color: #ffc107; color: black; }
@@ -70,12 +73,11 @@ $css = $cssCommon . '
     </style>
 ';
 
-// Construcción del HTML
 $html = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Historial de Unidad</title>' . $css . '</head><body>';
 
 $html .= $headerHtml;
 $html .= $footerHtml;
-$html .= '<h2 style="text-align: center; margin-top: 0; margin-bottom: 20px; font-size: 16px; color: #333;">HOJA DE VIDA DE UNIDAD</h2>';
+// $html .= '<div class="titulo-reporte">HOJA DE VIDA DE UNIDAD</div>';
 
 // Información de la Unidad
 $html .= '
@@ -113,8 +115,8 @@ $html .= '
         </tbody>
     </table>';
 
-// Listado de Eventos (Timeline)
-$html .= '<h3>Detalle de Eventos</h3>';
+// Listado de Eventos
+$html .= '<h3 style="font-size: 12px; margin-bottom: 10px;">Detalle de Eventos</h3>';
 
 if (empty($items)) {
     $html .= '<p style="text-align:center; color:#666;">No se encontraron eventos registrados para esta unidad con los filtros aplicados.</p>';
@@ -124,14 +126,12 @@ if (empty($items)) {
         $tipo = $item['tipo'];
         $fecha = date('d/m/Y', strtotime($item['fecha']));
         
-        // Modificación: No mostrar ID de evento para cambios de aceite
         $titulo = strtoupper(str_replace('_', ' ', $tipo));
         if ($tipo !== 'aceite') {
             $titulo .= " #" . $item['id_evento'];
         }
         $usuario = $item['usuario'] ?? 'Sistema';
         
-        // Determinar clase y contenido según tipo
         $badgeClass = 'bg-' . $tipo;
         $contenido = '';
 

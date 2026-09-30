@@ -1,0 +1,5 @@
+DROP TABLE table_men_menu_backup_2026;
+DROP TABLE table_men_submenu_backup_2026;
+DROP TABLE table_men_usuario_menu_backup_2026;
+DROP TABLE table_men_usuario_submenu_backup_2026;
+DROP TABLE table_men_departamento_menu_backup_2026;

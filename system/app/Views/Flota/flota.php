@@ -1,5 +1,9 @@
 <?= head($data)?>
 
+<!-- ID de la institución activa para ser usado por JS -->
+<input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
+
 <div class="content-wrapper">
     <section class="content-header">
         <div class="container-fluid">
@@ -10,7 +14,7 @@
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <li class="breadcrumb-item active"><?= $data['page_title'] ?></li>
+                        <li class="breadcrumb-item active"><?= $data['nombre_institucion'] ?></li>
                     </ol>
                 </div>
             </div>
@@ -26,6 +30,9 @@
                             <button id="btnNuevo" type="button" class="btn btn-primary" onclick="openModal()">
                                 <i class="fas fa-plus-circle"></i> Nueva Unidad
                             </button>
+                            <span class="ml-2 badge badge-info p-2">
+                                <i class="fas fa-building mr-1"></i> <?= $data['nombre_institucion'] ?>
+                            </span>
                         </div>
                         <div class="card-body">
                             <!-- Sección de Reporte de Operatividad -->
@@ -120,6 +127,7 @@
             <div class="modal-body">
                 <form id="formFlota" name="formFlota">
                     <input type="hidden" id="id_flota" name="id_flota" value="">
+                    <input type="hidden" id="id_institucion_form" name="id_institucion" value="<?= $data['id_institucion'] ?>">
                     <div class="form-row">
                         <div class="form-group col-md-6">
                             <label for="id_unidad">Identificador Unidad</label>

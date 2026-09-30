@@ -111,7 +111,7 @@ function time_ago($timestamp) {
         return ($hours == 1) ? "hace 1 hora" : "hace $hours horas";
     } else if ($days <= 7) {
         return ($days == 1) ? "hace 1 día" : "hace $days días";
-    } else if ($weeks <= 4.3) { // 4.3 semanas por mes
+    } else if ($weeks <= 4.3) {
         return ($weeks == 1) ? "hace 1 semana" : "hace $weeks semanas";
     } else if ($months <= 12) {
         return ($months == 1) ? "hace 1 mes" : "hace $months meses";
@@ -177,12 +177,10 @@ function destroySession() {
 function strClean($strCadena) {
     if (empty($strCadena)) return '';
     
-    // Limpieza básica
     $string = trim($strCadena);
     $string = stripslashes($string);
     $string = htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
     
-    // Patrones de inyección SQL
     $patterns = [
         '/<script.*?>.*?<\/script>/is',
         '/SELECT.*?FROM/i',
@@ -200,8 +198,6 @@ function strClean($strCadena) {
     ];
     
     $string = preg_replace($patterns, '', $string);
-    
-    // Caracteres peligrosos
     $string = str_replace(['^', '[', ']', '==', ';'], '', $string);
     
     return $string;
@@ -219,18 +215,15 @@ function passGenerator($length = 12) {
     
     $password = '';
     
-    // Asegurar al menos un carácter de cada tipo
     foreach ($chars as $charSet) {
         $password .= $charSet[random_int(0, strlen($charSet) - 1)];
     }
     
-    // Completar con caracteres aleatorios
     $allChars = implode('', $chars);
     for ($i = strlen($password); $i < $length; $i++) {
         $password .= $allChars[random_int(0, strlen($allChars) - 1)];
     }
     
-    // Mezclar la contraseña
     return str_shuffle($password);
 }
 
@@ -289,27 +282,33 @@ function validarCaracteres($name) {
     return $resultado;
 }
 
-// Función para sanear nombres de archivo
 function sanitize_filename($filename) {
     $filename = preg_replace('/[^a-zA-Z0-9_.-]/', '_', $filename);
     $filename = preg_replace('/_+/', '_', $filename);
     return trim($filename, '_');
 }
 
-// Función para verificar si es una petición AJAX
 function is_ajax_request() {
     return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
            strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
 }
 
-// Función para redireccionar
 function redirect($url, $statusCode = 303) {
     header('Location: ' . $url, true, $statusCode);
     exit();
 }
 
+/**
+ * =====================================================================
+ * RENDERIZADO DEL MENÚ LATERAL DINÁMICO
+ * =====================================================================
+ * Este es el corazón del nuevo sistema. Recibe el nick del usuario y 
+ * la URL actual, resuelve qué menú debe estar activo, y renderiza el
+ * árbol completo (menús, submenús, sub-submenús, etc.) usando AdminLTE.
+ * =====================================================================
+ */
 function cargar_menu_dinamico($usuarioNick, $data = []) {
-    // Asegurarse de que el modelo está disponible
+    // 1. Cargar el modelo
     $modelPath = "system/app/Models/MenuModel.php";
     if (!class_exists('MenuModel')) {
         if (file_exists($modelPath)) {
@@ -320,45 +319,53 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
         }
     }
 
-    $currentPageName = $data['page_name'] ?? '';
-    $currentPageLink = $data['page_link'] ?? '';
+    // 2. Obtener la URL actual
+    $urlActual = trim($_GET['url'] ?? '', '/');
+    if (empty($urlActual)) {
+        $urlActual = 'home/home';
+    }
 
+    // 3. Obtener los menús asignados al usuario
     $menuModel = new MenuModel();
-    $menuData = $menuModel->obtenerMenuUsuario($usuarioNick);
+    $menusPlanos = $menuModel->obtenerMenuUsuario($usuarioNick);
 
-    // Organizar los datos en una estructura jerárquica
-    $menuEstructura = [];
-    foreach ($menuData as $item) {
-        $menuId = $item['menu_id'];
+    if (empty($menusPlanos)) {
+        echo '<nav class="mt-2">';
+        echo '<ul class="nav nav-pills nav-sidebar flex-column">';
+        echo '<li class="nav-header">SIN PERMISOS</li>';
+        echo '<li class="nav-item"><a href="#" class="nav-link"><i class="nav-icon fas fa-exclamation-triangle text-warning"></i><p>No tiene menús asignados</p></a></li>';
+        echo '</ul></nav>';
+        return;
+    }
 
-        if (!isset($menuEstructura[$menuId])) {
-            $menuEstructura[$menuId] = [
-                'menu_id' => $item['menu_id'],
-                'menu_nombre' => $item['menu_nombre'],
-                'menu_icono' => $item['menu_icono'],
-                'menu_es_desplegable' => $item['menu_tiene_submenu'],
-                'menu_link' => $item['menu_pagina'], // Usar menu_link
-                'submenus' => []
-            ];
-        }
+    // 4. Recolectar los IDs de menús permitidos
+    $menuIdsPermitidos = array_column($menusPlanos, 'menu_id');
 
-        if (!empty($item['submenu_id']) && !empty($item['submenu_nombre'])) {
-            $menuEstructura[$menuId]['submenus'][] = [
-                'submenu_id' => $item['submenu_id'],
-                'submenu_nombre' => $item['submenu_nombre'],
-                'submenu_pagina' => $item['submenu_pagina'],
-                'submenu_url' => $item['submenu_url']
-            ];
+    // 5. Resolver qué menú debe estar activo (por patrones de URL)
+    $menuActivoId = $menuModel->resolverMenuActivo($urlActual, $menuIdsPermitidos);
+
+    // 6. Construir el árbol desde la lista plana
+    $arbol = construir_arbol_menu($menusPlanos, null);
+
+    // 7. Marcar como activos todos los ancestros del menú activo
+    $menusActivos = [];
+    $menusAbiertos = [];
+    if ($menuActivoId) {
+        $menusActivos[$menuActivoId] = true;
+        $menuActual = buscar_menu_por_id($menusPlanos, $menuActivoId);
+        while ($menuActual && !empty($menuActual['menu_padre_id'])) {
+            $menusActivos[$menuActual['menu_padre_id']] = true;
+            $menusAbiertos[$menuActual['menu_padre_id']] = true; // Para que se despliegue
+            $menuActual = buscar_menu_por_id($menusPlanos, $menuActual['menu_padre_id']);
         }
     }
 
-    // Iniciar la construcción del menú con la estructura de AdminLTE
+    // 8. Renderizar
     echo '<nav class="mt-2">';
     echo '<ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">';
 
-    // --- Enlaces básicos (siempre visibles) ---
-    $isHomeActive = ($currentPageName === 'home') ? 'active' : '';
-    // Inicio (Home)
+    // --- Enlaces fijos (Inicio, Perfil) ---
+    $isHomeActive = ($urlActual === 'home/home' || $urlActual === 'home') ? 'active' : '';
     echo '<li class="nav-item">
             <a href="' . base_url() . 'home" class="nav-link ' . $isHomeActive . '">
                 <i class="nav-icon fas fa-home"></i>
@@ -366,8 +373,7 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
             </a>
           </li>';
 
-    $isProfileActive = ($currentPageName === 'perfil') ? 'active' : '';
-    // Perfil
+    $isProfileActive = (strpos($urlActual, 'user/perfil') === 0) ? 'active' : '';
     echo '<li class="nav-item">
             <a href="' . base_url() . 'user/perfil" class="nav-link ' . $isProfileActive . '">
                 <i class="nav-icon fas fa-user"></i>
@@ -375,78 +381,92 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
             </a>
           </li>';
 
-    // --- Menús personalizados desde la base de datos ---
-    if (empty($menuEstructura)) {
-        echo '<li class="nav-header">SIN PERMISOS</li>';
-        echo '<li class="nav-item"><a href="#" class="nav-link"><i class="nav-icon fas fa-exclamation-triangle text-warning"></i><p>No tiene menús asignados</p></a></li>';
-    } else {
-        foreach ($menuEstructura as $menu) {
-            $tieneSubmenus = !empty($menu['submenus']) && $menu['menu_es_desplegable'];
-            $claseMenu = $tieneSubmenus ? 'nav-item has-treeview' : 'nav-item';
-            $claseEnlaceMenu = 'nav-link';
-            $isParentActive = false;
+    // --- Renderizar árbol recursivo ---
+    renderizar_nodos_menu($arbol, $menusActivos, $menusAbiertos, 0);
 
-            if ($tieneSubmenus) {
-                // Verificar si algún submenú de este menú está activo
-                foreach ($menu['submenus'] as $submenu) {
-                    if ($submenu['submenu_pagina'] === $currentPageLink) {
-                        $isParentActive = true;
-                        break;
-                    }
-                }
-                if ($isParentActive) {
-                    $claseMenu .= ' menu-open';
-                    $claseEnlaceMenu .= ' active';
-                }
+    echo '</ul></nav>';
+}
 
-                echo '<li class="' . $claseMenu . '">';
-                // Menú con submenús
-                echo '<a href="#" class="' . $claseEnlaceMenu . '">
-                        <i class="nav-icon ' . $menu['menu_icono'] . '"></i>
-                        <p>
-                            ' . $menu['menu_nombre'] . '
-                            <i class="right fas fa-angle-left"></i>
-                        </p>
-                      </a>';
-                echo '<ul class="nav nav-treeview">';
-                foreach ($menu['submenus'] as $submenu) {
-                    $claseSubmenu = ($submenu['submenu_pagina'] === $currentPageLink) ? 'active' : '';
-                    $url = $submenu['submenu_url'] ? base_url() . $submenu['submenu_url'] : '#';
-                    echo '<li class="nav-item">
-                            <a href="' . $url . '" class="nav-link ' . $claseSubmenu . '" data-page="' . $submenu['submenu_pagina'] . '">
-                               <i class="far fa-circle nav-icon"></i>
-                               <p>' . $submenu['submenu_nombre'] . '</p>
-                            </a>
-                          </li>';
-                }
-                echo '</ul>';
-            } else {
-                // Menú sin submenús
-                if ($menu['menu_link'] === $currentPageName) {
-                    $claseEnlaceMenu .= ' active';
-                }
-                echo '<li class="' . $claseMenu . '">';
-                // Menú sin submenús
-                $enlace = $menu['menu_link'] ? base_url() . $menu['menu_link'] : '#';
-                echo '<a href="' . $enlace . '" class="' . $claseEnlaceMenu . '" data-page="' . $menu['menu_link'] . '">
-                        <i class="nav-icon ' . $menu['menu_icono'] . '"></i>
-                        <p>' . $menu['menu_nombre'] . '</p>
-                      </a>';
+/**
+ * Construye un árbol jerárquico a partir de una lista plana de menús.
+ * @param array $items Lista plana con menu_id, menu_padre_id, etc.
+ * @param int|null $padreId ID del padre cuyos hijos estamos buscando.
+ * @return array Árbol jerárquico.
+ */
+function construir_arbol_menu($items, $padreId = null) {
+    $rama = [];
+    foreach ($items as $item) {
+        if ($item['menu_padre_id'] == $padreId) {
+            $hijos = construir_arbol_menu($items, $item['menu_id']);
+            if (!empty($hijos)) {
+                $item['hijos'] = $hijos;
             }
-
-            echo '</li>';
+            $rama[] = $item;
         }
     }
+    return $rama;
+}
 
-    // --- Cerrar sesión ---
-    /*
-    echo '<li class="nav-header">CUENTA</li>';
-    echo '<li class="nav-item">
-            <a href="' . base_url() . 'logout" class="nav-link">
-                <i class="nav-icon fas fa-sign-out-alt text-danger"></i>
-                <p class="text">Cerrar Sesión</p>
-            </a>
-          </li>';
-    */
-    echo '</ul></nav>';
+/**
+ * Busca un menú por ID dentro de una lista plana.
+ */
+function buscar_menu_por_id($items, $menuId) {
+    foreach ($items as $item) {
+        if ($item['menu_id'] == $menuId) return $item;
+    }
+    return null;
+}
+
+/**
+ * Renderiza recursivamente un árbol de menús en formato AdminLTE.
+ * @param array $nodos Lista de nodos del árbol.
+ * @param array $activos Mapa de menu_id => true para los activos.
+ * @param array $abiertos Mapa de menu_id => true para los que deben desplegarse.
+ * @param int $nivel Nivel actual de profundidad (0 = raíz).
+ */
+function renderizar_nodos_menu($nodos, $activos, $abiertos, $nivel = 0) {
+    foreach ($nodos as $nodo) {
+        $tieneHijos = !empty($nodo['hijos']);
+        $menuId = $nodo['menu_id'];
+        $estaActivo = !empty($activos[$menuId]);
+        $estaAbierto = !empty($abiertos[$menuId]);
+        
+        // Construir clases del <li>
+        $clasesLi = ['nav-item'];
+        if ($tieneHijos) $clasesLi[] = 'has-treeview';
+        if ($estaAbierto) $clasesLi[] = 'menu-open';
+        
+        // Construir clases del <a>
+        $clasesA = ['nav-link'];
+        if ($estaActivo) $clasesA[] = 'active';
+        
+        // Icono
+        $icono = !empty($nodo['menu_icono']) ? $nodo['menu_icono'] : 'far fa-circle';
+        
+        // URL
+        $url = !empty($nodo['menu_ruta']) ? base_url() . $nodo['menu_ruta'] : '#';
+        
+        echo '<li class="' . implode(' ', $clasesLi) . '">';
+        
+        if ($tieneHijos) {
+            // Menú con hijos → no navega, solo despliega
+            echo '<a href="#" class="' . implode(' ', $clasesA) . '">';
+            echo '<i class="nav-icon ' . $icono . '"></i>';
+            echo '<p>' . htmlspecialchars($nodo['menu_nombre']) . '<i class="right fas fa-angle-left"></i></p>';
+            echo '</a>';
+            
+            // Renderizar hijos
+            echo '<ul class="nav nav-treeview">';
+            renderizar_nodos_menu($nodo['hijos'], $activos, $abiertos, $nivel + 1);
+            echo '</ul>';
+        } else {
+            // Menú hoja → navega
+            echo '<a href="' . $url . '" class="' . implode(' ', $clasesA) . '" data-page="' . htmlspecialchars($nodo['menu_ruta'] ?? '') . '">';
+            echo '<i class="nav-icon ' . $icono . '"></i>';
+            echo '<p>' . htmlspecialchars($nodo['menu_nombre']) . '</p>';
+            echo '</a>';
+        }
+        
+        echo '</li>';
+    }
 }

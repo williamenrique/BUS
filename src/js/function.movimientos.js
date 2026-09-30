@@ -1,6 +1,7 @@
 /**
  * Public Movimientos Dashboard - JavaScript
- * Funcionalidad para el dashboard público de consulta de movimientos
+ * Dashboard público de consulta de movimientos
+ * CON SOPORTE MULTI-INSTITUCIÓN
  */
 
 // ============================================
@@ -28,12 +29,144 @@ let currentPage = 1;
 let recordsPerPage = 10;
 
 // ============================================
-// FUNCIONES GLOBALES - NAVEGACIÓN DE LINKS
+// ESTADO MULTI-INSTITUCIÓN
+// ============================================
+
+let allInstituciones = [];
+
+const instSeleccionada = {
+    flota: null,
+    aceite: null,
+    resumen: null,
+    movimientos: null
+};
+
+// ============================================
+// FUNCIONES DE INSTITUCIÓN
 // ============================================
 
 /**
- * Abrir detalle de un DESPACHO específico
+ * Carga la lista de instituciones desde el backend y llena los 4 selectores.
  */
+async function cargarInstituciones() {
+    try {
+        const response = await fetch('?url=Publico/getInstituciones');
+        const data = await response.json();
+
+        if (!data.success || !Array.isArray(data.data)) {
+            console.error('No se pudieron cargar las instituciones');
+            return;
+        }
+
+        allInstituciones = data.data;
+
+        ['flota', 'aceite', 'resumen', 'movimientos'].forEach(seccion => {
+            const select = document.getElementById(`instSelect${capitalize(seccion)}`);
+            if (!select) return;
+
+            select.innerHTML = '';
+
+            allInstituciones.forEach(inst => {
+                const option = document.createElement('option');
+                option.value = inst.id_institucion;
+                option.textContent = abreviarNombreInstitucion(inst.nombre);
+                option.title = inst.nombre;
+                select.appendChild(option);
+            });
+
+            if (allInstituciones.length > 0) {
+                instSeleccionada[seccion] = parseInt(allInstituciones[0].id_institucion, 10);
+                select.value = instSeleccionada[seccion];
+            }
+
+            select.addEventListener('change', function () {
+                instSeleccionada[seccion] = parseInt(this.value, 10);
+                if (typeof recargarSeccion === 'function') {
+                    recargarSeccion(seccion);
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error('Error cargando instituciones:', error);
+    }
+}
+
+/**
+ * Abrevia el nombre de la institución a iniciales si es muy largo.
+ */
+function abreviarNombreInstitucion(nombre) {
+    if (!nombre) return 'N/D';
+
+    if (nombre.length <= 20) {
+        return nombre;
+    }
+
+    const ignorar = ['de', 'del', 'la', 'el', 'los', 'las', 'y', 'e', 'o', 'a', 'en', 'con'];
+    const palabras = nombre.split(/\s+/);
+
+    let iniciales = '';
+    palabras.forEach(p => {
+        const lower = p.toLowerCase();
+        if (!ignorar.includes(lower) && p.length > 0) {
+            iniciales += p[0].toUpperCase();
+        }
+    });
+
+    if (iniciales.length < 3) {
+        return nombre;
+    }
+
+    return iniciales;
+}
+
+/**
+ * Devuelve el nombre completo de la institución según el id.
+ */
+function getNombreInstitucionPorId(id) {
+    const inst = allInstituciones.find(i => parseInt(i.id_institucion, 10) === parseInt(id, 10));
+    return inst ? inst.nombre : '';
+}
+
+/**
+ * Capitaliza la primera letra.
+ */
+function capitalize(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
+ * Recarga los datos de la sección seleccionada.
+ * Se ejecuta desde los selectores (change) y desde la carga inicial.
+ */
+function recargarSeccion(seccion) {
+    switch (seccion) {
+        case 'flota':
+            if (typeof cargarEstadoFlota === 'function') cargarEstadoFlota();
+            if (currentFlotaStatus && typeof cargarUnidadesPorEstadoFlota === 'function') {
+                cargarUnidadesPorEstadoFlota(currentFlotaStatus);
+            }
+            break;
+        case 'aceite':
+            if (typeof cargarEstadoAceite === 'function') cargarEstadoAceite();
+            if (currentAceiteStatus && typeof cargarUnidadesPorEstadoAceite === 'function') {
+                cargarUnidadesPorEstadoAceite(currentAceiteStatus);
+            }
+            break;
+        case 'resumen':
+            if (typeof cargarResumenFlota === 'function') cargarResumenFlota();
+            break;
+        case 'movimientos':
+            if (typeof initMovimientosDataTable === 'function') initMovimientosDataTable();
+            if (typeof cargarMovimientos === 'function') cargarMovimientos();
+            break;
+    }
+}
+
+// ============================================
+// FUNCIONES GLOBALES - NAVEGACIÓN DE LINKS
+// ============================================
+
 function cargarDetalleOrden(idDespacho) {
     const resumenDiv = document.getElementById('resumenMovimientos');
     const panelTitle = document.getElementById('panelTitle');
@@ -57,9 +190,6 @@ function cargarDetalleOrden(idDespacho) {
         });
 }
 
-/**
- * Abrir detalle de un CAMBIO DE ACEITE específico
- */
 function cargarDetalleAceite(idAceite) {
     const resumenDiv = document.getElementById('resumenMovimientos');
     const panelTitle = document.getElementById('panelTitle');
@@ -71,7 +201,10 @@ function cargarDetalleAceite(idAceite) {
     fetch('?url=Publico/getDetalleAceite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idAceite: idAceite })
+        body: JSON.stringify({
+            idAceite: idAceite,
+            id_institucion: instSeleccionada.movimientos
+        })
     })
         .then(r => r.json())
         .then(data => {
@@ -83,9 +216,6 @@ function cargarDetalleAceite(idAceite) {
         });
 }
 
-/**
- * Abrir detalle de un MANTENIMIENTO específico
- */
 function cargarDetalleMantenimiento(idMantenimiento) {
     const resumenDiv = document.getElementById('resumenMovimientos');
     const panelTitle = document.getElementById('panelTitle');
@@ -97,7 +227,10 @@ function cargarDetalleMantenimiento(idMantenimiento) {
     fetch('?url=Publico/getDetalleMantenimiento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idMantenimiento: idMantenimiento })
+        body: JSON.stringify({
+            idMantenimiento: idMantenimiento,
+            id_institucion: instSeleccionada.movimientos
+        })
     })
         .then(r => r.json())
         .then(data => {
@@ -109,9 +242,6 @@ function cargarDetalleMantenimiento(idMantenimiento) {
         });
 }
 
-/**
- * Abrir detalle de una ACTUALIZACIÓN DE KILOMETRAJE específica
- */
 function cargarDetalleKilometraje(idKilometraje) {
     const resumenDiv = document.getElementById('resumenMovimientos');
     const panelTitle = document.getElementById('panelTitle');
@@ -123,7 +253,10 @@ function cargarDetalleKilometraje(idKilometraje) {
     fetch('?url=Publico/getDetalleKilometraje', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idKilometraje: idKilometraje })
+        body: JSON.stringify({
+            idKilometraje: idKilometraje,
+            id_institucion: instSeleccionada.movimientos
+        })
     })
         .then(r => r.json())
         .then(data => {
@@ -135,9 +268,6 @@ function cargarDetalleKilometraje(idKilometraje) {
         });
 }
 
-/**
- * Abrir HOJA DE VIDA de una unidad
- */
 function cargarHistorialUnidad(idFlota, idUnidad) {
     const resumenDiv = document.getElementById('resumenMovimientos');
     const panelTitle = document.getElementById('panelTitle');
@@ -149,7 +279,10 @@ function cargarHistorialUnidad(idFlota, idUnidad) {
     fetch('?url=Publico/getHistorialUnidad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idFlota: idFlota })
+        body: JSON.stringify({
+            idFlota: idFlota,
+            id_institucion: instSeleccionada.movimientos
+        })
     })
         .then(r => r.json())
         .then(data => {
@@ -488,7 +621,10 @@ function descargarHojaVidaPDF(idFlota, idUnidad) {
     fetch('?url=Publico/getHistorialUnidad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idFlota: idFlota })
+        body: JSON.stringify({
+            idFlota: idFlota,
+            id_institucion: instSeleccionada.movimientos
+        })
     })
         .then(response => response.json())
         .then(result => {
@@ -511,7 +647,8 @@ function descargarHojaVidaPDF(idFlota, idUnidad) {
                     vin: unidad.vim_unidad || 'N/A',
                     km_actual: unidad.km_actual,
                     ultimo_cambio_aceite: unidad.ultimo_cambio_aceite,
-                    proximo_cambio_aceite: unidad.proximo_cambio_aceite
+                    proximo_cambio_aceite: unidad.proximo_cambio_aceite,
+                    institucion: unidad.nombre_institucion || getNombreInstitucionPorId(instSeleccionada.movimientos)
                 };
                 const form = document.createElement('form');
                 form.method = 'POST';
@@ -618,12 +755,9 @@ function getEstadoBadge(estado) {
 }
 
 // ============================================
-// FUNCIONES GLOBALES - RESUMEN FLOTA (SELECCIÓN DE GRUPOS)
+// FUNCIONES GLOBALES - RESUMEN FLOTA
 // ============================================
 
-/**
- * Toggle de selección de un grupo de flota desde el checkbox de la tabla
- */
 function toggleFleetGroup(index, checkbox) {
     if (!filteredFleetSummary || !filteredFleetSummary[index]) return;
 
@@ -636,30 +770,21 @@ function toggleFleetGroup(index, checkbox) {
         selectedFleetGroups.delete(key);
     }
 
-    // Actualizar el checkbox de la cabecera si es necesario
     actualizarCheckboxSelectAll();
-
-    // Actualizar resumen lateral
     actualizarResumenSeleccionados();
 }
 
-/**
- * Seleccionar / deseleccionar todos los grupos
- */
 function toggleSelectAllFleet(checkbox) {
     const isChecked = checkbox.checked;
 
-    // Sincronizar los dos checkboxes (superior e inferior)
     const selectAllFleet = document.getElementById('selectAllFleet');
     const selectAllFleetHeader = document.getElementById('selectAllFleetHeader');
     if (selectAllFleet) selectAllFleet.checked = isChecked;
     if (selectAllFleetHeader) selectAllFleetHeader.checked = isChecked;
 
-    // Marcar/desmarcar todos los checkboxes de la tabla
     const checkboxes = document.querySelectorAll('#tbodyFleetSummary input[type="checkbox"]');
     checkboxes.forEach(cb => { cb.checked = isChecked; });
 
-    // Actualizar el Set
     selectedFleetGroups.clear();
     if (isChecked) {
         allFleetSummary.forEach(item => {
@@ -671,10 +796,6 @@ function toggleSelectAllFleet(checkbox) {
     actualizarResumenSeleccionados();
 }
 
-/**
- * Actualiza el estado del checkbox "Seleccionar todos"
- * (marcado si están todos seleccionados, desmarcado si no)
- */
 function actualizarCheckboxSelectAll() {
     const checkboxes = document.querySelectorAll('#tbodyFleetSummary input[type="checkbox"]');
     const total = checkboxes.length;
@@ -688,15 +809,11 @@ function actualizarCheckboxSelectAll() {
     if (selectAllFleetHeader) selectAllFleetHeader.checked = allChecked;
 
     if (noneChecked) {
-        // Nada seleccionado, desmarcar ambos
         if (selectAllFleet) selectAllFleet.checked = false;
         if (selectAllFleetHeader) selectAllFleetHeader.checked = false;
     }
 }
 
-/**
- * Actualiza el panel lateral "Grupos Seleccionados" con los totales
- */
 function actualizarResumenSeleccionados() {
     const tbodySelectedGroups = document.getElementById('tbodySelectedGroups');
     const selTotalCant = document.getElementById('selTotalCant');
@@ -720,7 +837,6 @@ function actualizarResumenSeleccionados() {
             totalCant += parseInt(item.total || 0);
             totalOp += parseInt(item.operativas || 0);
             totalInop += parseInt(item.inoperativas || 0);
-            // Críticas no viene en el resumen, se asume 0
             totalCrit += 0;
         }
     });
@@ -766,9 +882,6 @@ function actualizarResumenSeleccionados() {
     tbodySelectedGroups.innerHTML = html;
 }
 
-/**
- * Generar PDF de operatividad de flota por grupos seleccionados
- */
 function generarPdfFlota() {
     if (selectedFleetGroups.size === 0) {
         alert('Seleccione al menos un grupo para generar el PDF');
@@ -782,7 +895,6 @@ function generarPdfFlota() {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...';
     }
 
-    // Construir array de grupos seleccionados con el formato que espera operatividad.php
     const reporteData = [];
     allFleetSummary.forEach(item => {
         const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
@@ -792,29 +904,35 @@ function generarPdfFlota() {
                 cantidad: parseInt(item.total || 0),
                 operativas: parseInt(item.operativas || 0),
                 inoperativas: parseInt(item.inoperativas || 0),
-                criticas: 0  // No viene en el resumen, se asume 0
+                criticas: 0
             });
         }
     });
 
-    // Enviar al archivo operatividad.php via form POST para abrir PDF en nueva pestaña
+    const nombreInstitucion = getNombreInstitucionPorId(instSeleccionada.resumen);
+
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '../../data/flota/operatividad.php';
     form.target = '_blank';
     form.style.display = 'none';
 
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = 'reporteData';
-    input.value = JSON.stringify(reporteData);
-    form.appendChild(input);
+    const inputData = document.createElement('input');
+    inputData.type = 'hidden';
+    inputData.name = 'reporteData';
+    inputData.value = JSON.stringify(reporteData);
+    form.appendChild(inputData);
+
+    const inputInst = document.createElement('input');
+    inputInst.type = 'hidden';
+    inputInst.name = 'nombreInstitucion';
+    inputInst.value = nombreInstitucion;
+    form.appendChild(inputInst);
 
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
 
-    // Restaurar botón
     setTimeout(() => {
         if (btn) {
             btn.disabled = false;
@@ -872,7 +990,6 @@ document.addEventListener('DOMContentLoaded', function () {
         fleetSearch: document.getElementById('fleetSearch')
     };
 
-    // Fechas por defecto
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const todayStr = today.toISOString().split('T')[0];
@@ -883,39 +1000,20 @@ document.addEventListener('DOMContentLoaded', function () {
         movElements.fechaInicio.value = firstDayStr;
     }
 
-    // Botón generar PDF flota
     if (fleetElements.btnGenerarPdfFlota) {
         fleetElements.btnGenerarPdfFlota.addEventListener('click', generarPdfFlota);
     }
 
-    // Buscador de flota
     if (fleetElements.fleetSearch) {
         fleetElements.fleetSearch.addEventListener('input', function () {
             filtrarResumenFlota();
         });
     }
 
-    // Carga inicial
-    cargarEstadoFlota();
-    cargarEstadoAceite();
-    cargarResumenFlota();
-    initMovimientosDataTable();
-    cargarMovimientos();
-
-    // Cambio de tipo de movimiento
-    const tipoMovimientoSelect = document.getElementById('tipoMovimiento');
-    if (tipoMovimientoSelect) {
-        tipoMovimientoSelect.addEventListener('change', function () {
-            allMovimientos = [];
-            filteredMovimientos = [];
-            initMovimientosDataTable();
-            cargarMovimientos();
-        });
-    }
-
     // ============================================
-    // DATATABLES INICIALIZACIÓN
+    // FUNCIONES INTERNAS (definidas ANTES de usarlas)
     // ============================================
+
     function initMovimientosDataTable() {
         if (typeof $ === 'undefined' || !$.fn.DataTable) return;
 
@@ -937,7 +1035,6 @@ document.addEventListener('DOMContentLoaded', function () {
         const isAceite = tipoMovimiento === 'aceite';
         const isFleet = ['mantenimientos', 'kilometraje'].includes(tipoMovimiento);
 
-        // Construir thead
         let headerHtml = '<tr>';
         if (isAceite) {
             headerHtml += '<th style="width: 40px;">#</th><th>Tipo</th><th style="width: 100px;">Fecha</th><th style="width: 110px;">Referencia</th><th style="width: 90px;">Unidad</th><th style="width: 100px;">KM Actual</th><th style="width: 100px;">Últ. Cambio</th><th style="width: 100px;">Próx. Cambio</th><th style="width: 120px;">Estado Aceite</th>';
@@ -951,7 +1048,6 @@ document.addEventListener('DOMContentLoaded', function () {
         headerHtml += '</tr>';
         if (thead) { thead.innerHTML = headerHtml; thead.className = 'table-dark'; }
 
-        // Definir columnas y columnDefs
         let columns = [];
         let columnDefs = [];
 
@@ -1111,8 +1207,210 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
+    function cargarEstadoFlota() {
+        fetch('?url=Publico/getEstadoFlota', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_institucion: instSeleccionada.flota
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    if (flotaElements.unidadesTotal) flotaElements.unidadesTotal.textContent = data.data.total || 0;
+                    if (flotaElements.unidadesOperativas) flotaElements.unidadesOperativas.textContent = data.data.operativas || 0;
+                    if (flotaElements.unidadesInoperativas) flotaElements.unidadesInoperativas.textContent = data.data.inoperativas || 0;
+                    if (flotaElements.unidadesMantenimiento) flotaElements.unidadesMantenimiento.textContent = data.data.en_mantenimiento || 0;
+                    if (flotaElements.unidadesCriticas) flotaElements.unidadesCriticas.textContent = data.data.criticas || 0;
+                }
+            })
+            .catch(err => console.error('Error estado flota:', err));
+    }
+
+    function cargarEstadoAceite() {
+        fetch('?url=Publico/getEstadoAceite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_institucion: instSeleccionada.aceite
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    if (aceiteElements.aceiteOK) aceiteElements.aceiteOK.textContent = data.data.ok || 0;
+                    if (aceiteElements.aceiteProximo) aceiteElements.aceiteProximo.textContent = data.data.proximo || 0;
+                    if (aceiteElements.aceiteRequerido) aceiteElements.aceiteRequerido.textContent = data.data.requerido || 0;
+                }
+            })
+            .catch(err => console.error('Error estado aceite:', err));
+    }
+
+    function cargarResumenFlota() {
+        fetch('?url=Publico/getResumenFlota', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                id_institucion: instSeleccionada.resumen
+            })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    allFleetSummary = data.data;
+                    filteredFleetSummary = [...allFleetSummary];
+                    renderFleetSummaryTable();
+                }
+            })
+            .catch(err => console.error('Error resumen flota:', err));
+    }
+
+    function filtrarResumenFlota() {
+        const query = fleetElements.fleetSearch?.value?.toLowerCase().trim() || '';
+        if (!query) {
+            filteredFleetSummary = [...allFleetSummary];
+        } else {
+            filteredFleetSummary = allFleetSummary.filter(item => {
+                const searchStr = `${item.marca_modelo || ''} ${item.transmision || ''} ${item.combustible || ''}`.toLowerCase();
+                return searchStr.includes(query);
+            });
+        }
+        renderFleetSummaryTable();
+    }
+
+    function renderFleetSummaryTable() {
+        if (!fleetElements.tbodyFleetSummary) return;
+        fleetElements.tbodyFleetSummary.innerHTML = '';
+
+        selectedFleetGroups.clear();
+
+        filteredFleetSummary.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
+            const isSelected = selectedFleetGroups.has(key);
+            tr.innerHTML = `
+                <td class="text-center">
+                    <input class="form-check-input" type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleFleetGroup(${index}, this)">
+                </td>
+                <td><small class="fw-bold">${item.marca_modelo}</small></td>
+                <td><small>${item.transmision || '-'}</small></td>
+                <td><small>${item.combustible || '-'}</small></td>
+                <td class="text-center"><small class="fw-bold">${item.total || 0}</small></td>
+                <td class="text-center"><small class="text-success">${item.operativas || 0}</small></td>
+                <td class="text-center"><small class="text-danger">${item.inoperativas || 0}</small></td>
+            `;
+            fleetElements.tbodyFleetSummary.appendChild(tr);
+        });
+
+        actualizarResumenSeleccionados();
+    }
+
+    function cargarMovimientos() {
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) spinner.style.display = 'flex';
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) emptyState.style.display = 'none';
+        const tipoMovimiento = document.getElementById('tipoMovimiento')?.value || 'todos';
+        const requestData = {
+            fechaInicio: (document.getElementById('fechaInicio')?.value) || '',
+            fechaFin: (document.getElementById('fechaFin')?.value) || '',
+            tipoMovimiento: tipoMovimiento,
+            id_institucion: instSeleccionada.movimientos
+        };
+        fetch('?url=Publico/getMovimientosData', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify(requestData)
+        })
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
+            .then(data => {
+                const spinner = document.getElementById('loadingSpinner');
+                if (spinner) spinner.style.display = 'none';
+                if (data.success && Array.isArray(data.data)) {
+                    let allData = data.data;
+                    if (tipoMovimiento === 'aceite') {
+                        allData = allData.map(mov => {
+                            if (mov.tipo === 'Cambio Aceite' && mov.observacion) {
+                                const obs = mov.observacion;
+                                const kmMatch = obs.match(/KM\s*[:=]\s*([\d.,]+)/i);
+                                const proxMatch = obs.match(/Pr[óo]x\s*[:=]\s*([\d.,]+)/i);
+                                const kmActual = kmMatch ? parseFloat(kmMatch[1].replace(/[.,]/g, '')) : 0;
+                                let kmProximo = proxMatch ? parseFloat(proxMatch[1].replace(/[.,]/g, '')) : 0;
+                                if (kmProximo <= 0 && kmActual > 0) kmProximo = kmActual + 5000;
+                                const kmFaltaAceite = kmProximo > 0 ? kmProximo - kmActual : 0;
+                                let estadoAceite = 'Sin registro';
+                                if (kmActual > 0) {
+                                    if (kmFaltaAceite <= 0) estadoAceite = 'Requerido';
+                                    else if (kmFaltaAceite <= 1000) estadoAceite = 'Próximo';
+                                    else estadoAceite = 'OK';
+                                }
+                                return { ...mov, km_actual: kmActual, ultimo_cambio_km: kmActual > 0 ? kmActual : 0, proximo_cambio_km: kmProximo, estado_aceite: estadoAceite };
+                            }
+                            return mov;
+                        });
+                        allData = allData.filter(mov => {
+                            if (mov.tipo === 'Cambio Aceite') {
+                                const km = parseInt(mov.km_actual || 0);
+                                const ultimoCambio = parseInt(mov.ultimo_cambio_km || 0);
+                                return km > 0 || ultimoCambio > 0;
+                            }
+                            return true;
+                        });
+                    }
+                    allMovimientos = allData;
+                    if (movimientosTable) {
+                        movimientosTable.clear();
+                        movimientosTable.rows.add(allMovimientos);
+                        movimientosTable.draw();
+                    }
+                    if (allMovimientos.length === 0) showMovimientosEmptyState();
+                } else {
+                    showMovimientosEmptyState();
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando movimientos:', error);
+                const spinner = document.getElementById('loadingSpinner');
+                if (spinner) spinner.style.display = 'none';
+                showMovimientosEmptyState();
+            })
+            .finally(() => {
+                const spinner = document.getElementById('loadingSpinner');
+                if (spinner) spinner.style.display = 'none';
+            });
+    }
+
+    function applyMovimientosFilters() {
+        const searchTerm = movElements.movimientosSearch?.value?.toLowerCase().trim() || '';
+        if (movimientosTable) movimientosTable.search(searchTerm).draw();
+    }
+
+    function showMovimientosEmptyState() {
+        try {
+            const spinner = document.getElementById('loadingSpinner');
+            if (spinner) spinner.style.display = 'none';
+        } catch (e) { console.warn(e); }
+        try {
+            if (movimientosTable) movimientosTable.clear().draw();
+        } catch (e) { console.error(e); }
+    }
+
     // ============================================
-    // ESTADO DE FLOTA
+    // EXPONER FUNCIONES AL ÁMBITO GLOBAL
+    // ============================================
+    // Esto permite que cargarInstituciones() (que se ejecuta antes) las encuentre
+    window.cargarEstadoFlota = cargarEstadoFlota;
+    window.cargarEstadoAceite = cargarEstadoAceite;
+    window.cargarResumenFlota = cargarResumenFlota;
+    window.cargarMovimientos = cargarMovimientos;
+    window.initMovimientosDataTable = initMovimientosDataTable;
+
+    // ============================================
+    // FLOTA - Event listeners de cards
     // ============================================
     const flotaStatusMap = {
         '1': { titulo: 'Unidades Operativas', badgeClass: 'bg-success' },
@@ -1138,8 +1436,12 @@ document.addEventListener('DOMContentLoaded', function () {
             flotaElements.estadoFlotaUnidadesTable.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="small text-muted mt-2">Cargando...</p></div>';
         }
         fetch('?url=Publico/getUnidadesPorEstado', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: status })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: status,
+                id_institucion: instSeleccionada.flota
+            })
         })
             .then(res => res.json())
             .then(data => {
@@ -1152,6 +1454,8 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => { console.error(err); renderizarTablaFlotaVacia('Error al cargar.'); });
     }
+
+    window.cargarUnidadesPorEstadoFlota = cargarUnidadesPorEstadoFlota;
 
     flotaElements.estadoFlotaUnidadesSearch?.addEventListener('input', function () {
         filtrarYRenderizarUnidadesFlota();
@@ -1197,7 +1501,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // ESTADO DE ACEITE
+    // ACEITE - Event listeners de cards
     // ============================================
     const aceiteStatusMap = {
         'ok': { titulo: 'Mantenimiento OK', badgeClass: 'bg-success' },
@@ -1222,8 +1526,12 @@ document.addEventListener('DOMContentLoaded', function () {
             aceiteElements.estadoAceiteUnidadesTable.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="small text-muted mt-2">Cargando...</p></div>';
         }
         fetch('?url=Publico/getUnidadesPorEstadoAceite', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: status })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                status: status,
+                id_institucion: instSeleccionada.aceite
+            })
         })
             .then(res => res.json())
             .then(data => {
@@ -1236,6 +1544,8 @@ document.addEventListener('DOMContentLoaded', function () {
             })
             .catch(err => { console.error(err); renderizarTablaAceiteVacia('Error al cargar.'); });
     }
+
+    window.cargarUnidadesPorEstadoAceite = cargarUnidadesPorEstadoAceite;
 
     aceiteElements.estadoAceiteUnidadesSearch?.addEventListener('input', function () {
         filtrarYRenderizarUnidadesAceite();
@@ -1322,11 +1632,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...';
         btn.disabled = true;
-        // Usar 'todos' para obtener todas las unidades activas con sus datos de aceite
-        // El backend no filtra por estado si el valor no es 'requerido', 'proximo' u 'ok'
+
         fetch('?url=Publico/getUnidadesPorEstadoAceite', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({ status: 'todos' })
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({
+                status: 'todos',
+                id_institucion: instSeleccionada.aceite
+            })
         })
             .then(response => response.json())
             .then(data => {
@@ -1345,7 +1658,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         else if (diff <= 1000) categoria = 'Próximo';
                         else categoria = 'Bien';
                     }
-                    // Solo incluir si la categoría está en los filtros seleccionados
                     if (filtros.includes(categoria)) categorized[categoria].push(unidad);
                 });
                 const items = [];
@@ -1372,7 +1684,15 @@ document.addEventListener('DOMContentLoaded', function () {
                     'Requerido': categorized['Requerido'].length, 'Próximo': categorized['Próximo'].length,
                     'Bien': categorized['Bien'].length, 'Sin Registro': categorized['Sin Registro'].length
                 };
-                const reporteData = { items: items, counts: counts, filtro: filtros.join(', ') };
+
+                const nombreInstitucion = getNombreInstitucionPorId(instSeleccionada.aceite);
+
+                const reporteData = {
+                    items: items,
+                    counts: counts,
+                    filtro: filtros.join(', '),
+                    nombre_institucion: nombreInstitucion
+                };
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '../../data/flota/reporteaceite.php';
@@ -1397,119 +1717,17 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    function cargarEstadoFlota() {
-        fetch('?url=Publico/getEstadoFlota', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.data) {
-                    if (flotaElements.unidadesTotal) flotaElements.unidadesTotal.textContent = data.data.total || 0;
-                    if (flotaElements.unidadesOperativas) flotaElements.unidadesOperativas.textContent = data.data.operativas || 0;
-                    if (flotaElements.unidadesInoperativas) flotaElements.unidadesInoperativas.textContent = data.data.inoperativas || 0;
-                    if (flotaElements.unidadesMantenimiento) flotaElements.unidadesMantenimiento.textContent = data.data.en_mantenimiento || 0;
-                    if (flotaElements.unidadesCriticas) flotaElements.unidadesCriticas.textContent = data.data.criticas || 0;
-                }
-            })
-            .catch(err => console.error('Error estado flota:', err));
-    }
-
     // ============================================
-    // MOVIMIENTOS DEL SISTEMA
+    // EVENT LISTENERS GENERALES
     // ============================================
-    function hideMovSpinner() {
-        try {
-            const spinner = document.getElementById('loadingSpinner');
-            if (spinner) spinner.style.display = 'none';
-        } catch (e) { console.warn(e); }
-    }
-
-    function cargarMovimientos() {
-        const spinner = document.getElementById('loadingSpinner');
-        if (spinner) spinner.style.display = 'flex';
-        const emptyState = document.getElementById('emptyState');
-        if (emptyState) emptyState.style.display = 'none';
-        const tipoMovimiento = document.getElementById('tipoMovimiento')?.value || 'todos';
-        const requestData = {
-            fechaInicio: (document.getElementById('fechaInicio')?.value) || '',
-            fechaFin: (document.getElementById('fechaFin')?.value) || '',
-            tipoMovimiento: tipoMovimiento
-        };
-        fetch('?url=Publico/getMovimientosData', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify(requestData)
-        })
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            })
-            .then(data => {
-                const spinner = document.getElementById('loadingSpinner');
-                if (spinner) spinner.style.display = 'none';
-                if (data.success && Array.isArray(data.data)) {
-                    let allData = data.data;
-                    if (tipoMovimiento === 'aceite') {
-                        allData = allData.map(mov => {
-                            if (mov.tipo === 'Cambio Aceite' && mov.observacion) {
-                                const obs = mov.observacion;
-                                const kmMatch = obs.match(/KM\s*[:=]\s*([\d.,]+)/i);
-                                const proxMatch = obs.match(/Pr[óo]x\s*[:=]\s*([\d.,]+)/i);
-                                const kmActual = kmMatch ? parseFloat(kmMatch[1].replace(/[.,]/g, '')) : 0;
-                                let kmProximo = proxMatch ? parseFloat(proxMatch[1].replace(/[.,]/g, '')) : 0;
-                                if (kmProximo <= 0 && kmActual > 0) kmProximo = kmActual + 5000;
-                                const kmFaltaAceite = kmProximo > 0 ? kmProximo - kmActual : 0;
-                                let estadoAceite = 'Sin registro';
-                                if (kmActual > 0) {
-                                    if (kmFaltaAceite <= 0) estadoAceite = 'Requerido';
-                                    else if (kmFaltaAceite <= 1000) estadoAceite = 'Próximo';
-                                    else estadoAceite = 'OK';
-                                }
-                                return { ...mov, km_actual: kmActual, ultimo_cambio_km: kmActual > 0 ? kmActual : 0, proximo_cambio_km: kmProximo, estado_aceite: estadoAceite };
-                            }
-                            return mov;
-                        });
-                        allData = allData.filter(mov => {
-                            if (mov.tipo === 'Cambio Aceite') {
-                                const km = parseInt(mov.km_actual || 0);
-                                const ultimoCambio = parseInt(mov.ultimo_cambio_km || 0);
-                                return km > 0 || ultimoCambio > 0;
-                            }
-                            return true;
-                        });
-                    }
-                    allMovimientos = allData;
-                    if (movimientosTable) {
-                        movimientosTable.clear();
-                        movimientosTable.rows.add(allMovimientos);
-                        movimientosTable.draw();
-                    }
-                    if (allMovimientos.length === 0) showMovimientosEmptyState();
-                } else {
-                    showMovimientosEmptyState();
-                }
-            })
-            .catch(error => {
-                console.error('Error cargando movimientos:', error);
-                const spinner = document.getElementById('loadingSpinner');
-                if (spinner) spinner.style.display = 'none';
-                showMovimientosEmptyState();
-            })
-            .finally(() => {
-                const spinner = document.getElementById('loadingSpinner');
-                if (spinner) spinner.style.display = 'none';
-            });
-    }
-
-    function applyMovimientosFilters() {
-        const searchTerm = movElements.movimientosSearch?.value?.toLowerCase().trim() || '';
-        if (movimientosTable) movimientosTable.search(searchTerm).draw();
-    }
-
-    function showMovimientosEmptyState() {
-        hideMovSpinner();
-        try {
-            if (movimientosTable) movimientosTable.clear().draw();
-        } catch (e) { console.error(e); }
+    const tipoMovimientoSelect = document.getElementById('tipoMovimiento');
+    if (tipoMovimientoSelect) {
+        tipoMovimientoSelect.addEventListener('change', function () {
+            allMovimientos = [];
+            filteredMovimientos = [];
+            initMovimientosDataTable();
+            cargarMovimientos();
+        });
     }
 
     movElements.btnFiltrar?.addEventListener('click', function () {
@@ -1520,82 +1738,7 @@ document.addEventListener('DOMContentLoaded', function () {
     movElements.movimientosSearch?.addEventListener('input', applyMovimientosFilters);
 
     // ============================================
-    // ESTADO ACEITE Y RESUMEN FLOTA
-    // ============================================
-    function cargarEstadoAceite() {
-        fetch('?url=Publico/getEstadoAceite', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.data) {
-                    if (aceiteElements.aceiteOK) aceiteElements.aceiteOK.textContent = data.data.ok || 0;
-                    if (aceiteElements.aceiteProximo) aceiteElements.aceiteProximo.textContent = data.data.proximo || 0;
-                    if (aceiteElements.aceiteRequerido) aceiteElements.aceiteRequerido.textContent = data.data.requerido || 0;
-                }
-            })
-            .catch(err => console.error('Error estado aceite:', err));
-    }
-
-    function cargarResumenFlota() {
-        fetch('?url=Publico/getResumenFlota', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({})
-        })
-            .then(res => res.json())
-            .then(data => {
-                if (data.success && data.data) {
-                    allFleetSummary = data.data;
-                    filteredFleetSummary = [...allFleetSummary];
-                    renderFleetSummaryTable();
-                }
-            })
-            .catch(err => console.error('Error resumen flota:', err));
-    }
-
-    function filtrarResumenFlota() {
-        const query = fleetElements.fleetSearch?.value?.toLowerCase().trim() || '';
-        if (!query) {
-            filteredFleetSummary = [...allFleetSummary];
-        } else {
-            filteredFleetSummary = allFleetSummary.filter(item => {
-                const searchStr = `${item.marca_modelo || ''} ${item.transmision || ''} ${item.combustible || ''}`.toLowerCase();
-                return searchStr.includes(query);
-            });
-        }
-        renderFleetSummaryTable();
-    }
-
-    function renderFleetSummaryTable() {
-        if (!fleetElements.tbodyFleetSummary) return;
-        fleetElements.tbodyFleetSummary.innerHTML = '';
-
-        // Limpiar selecciones previas al recargar
-        selectedFleetGroups.clear();
-
-        filteredFleetSummary.forEach((item, index) => {
-            const tr = document.createElement('tr');
-            const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
-            const isSelected = selectedFleetGroups.has(key);
-            tr.innerHTML = `
-                <td class="text-center">
-                    <input class="form-check-input" type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleFleetGroup(${index}, this)">
-                </td>
-                <td><small class="fw-bold">${item.marca_modelo}</small></td>
-                <td><small>${item.transmision || '-'}</small></td>
-                <td><small>${item.combustible || '-'}</small></td>
-                <td class="text-center"><small class="fw-bold">${item.total || 0}</small></td>
-                <td class="text-center"><small class="text-success">${item.operativas || 0}</small></td>
-                <td class="text-center"><small class="text-danger">${item.inoperativas || 0}</small></td>
-            `;
-            fleetElements.tbodyFleetSummary.appendChild(tr);
-        });
-
-        // Inicializar resumen lateral vacío
-        actualizarResumenSeleccionados();
-    }
-
-    // ============================================
-    // ESTACIÓN - VENTAS
+    // ESTACIÓN - VENTAS (NO MODIFICADO)
     // ============================================
     const estacionElements = {
         fechaInicio: document.getElementById('estacionFechaInicio'),
@@ -1609,13 +1752,11 @@ document.addEventListener('DOMContentLoaded', function () {
     let allEstacionData = [];
     let estacionChart = null;
 
-    // Fechas por defecto para estación
     if (estacionElements.fechaInicio && estacionElements.fechaFin) {
         estacionElements.fechaFin.value = todayStr;
         estacionElements.fechaInicio.value = firstDayStr;
     }
 
-    // Cargar estaciones para el select
     function cargarEstacionesSelect() {
         fetch('?url=Publico/getVentasEstacionData', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -1638,7 +1779,6 @@ document.addEventListener('DOMContentLoaded', function () {
             .catch(err => console.error('Error cargando estaciones:', err));
     }
 
-    // Inicializar DataTable para estación
     function initEstacionDataTable() {
         if (typeof $ === 'undefined' || !$.fn.DataTable) return;
 
@@ -1706,7 +1846,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Cargar datos de ventas de estación
     function cargarVentasEstacion() {
         const fechaInicio = estacionElements.fechaInicio?.value || firstDayStr;
         const fechaFin = estacionElements.fechaFin?.value || todayStr;
@@ -1728,7 +1867,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         estacionTable.rows.add(allEstacionData);
                         estacionTable.draw();
                     }
-                    // Renderizar gráfico después de cargar datos
                     renderEstacionChart();
                 } else {
                     if (estacionTable) {
@@ -1746,15 +1884,11 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    // Filtrar tabla de estación
     function applyEstacionFilters() {
         const searchTerm = estacionElements.estacionSearch?.value?.toLowerCase().trim() || '';
         if (estacionTable) estacionTable.search(searchTerm).draw();
     }
 
-    // ============================================
-    // GRÁFICOS DE ESTACIÓN
-    // ============================================
     function renderEstacionChart() {
         const ctx = document.getElementById('estacionChart');
         const emptyMsg = document.getElementById('estacionChartEmpty');
@@ -1769,7 +1903,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (emptyMsg) emptyMsg.style.display = 'none';
         ctx.style.display = 'block';
 
-        // Destruir gráfico anterior si existe
         if (estacionChart) {
             estacionChart.destroy();
         }
@@ -1782,7 +1915,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
         switch (chartType) {
             case 'litros_dia':
-                // Agrupar por fecha
                 const litrosPorDia = {};
                 allEstacionData.forEach(item => {
                     const fecha = item.fecha;
@@ -1861,7 +1993,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
         }
 
-        // Formatear labels de fecha para mejor visualización
         const formattedLabels = labels.map(l => {
             if (chartType === 'litros_dia' || chartType === 'ventas_dia') {
                 const d = new Date(l + 'T00:00:00');
@@ -1920,18 +2051,27 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Event listener para cambio de tipo de gráfico
     document.getElementById('estacionChartType')?.addEventListener('change', renderEstacionChart);
 
-    // Event listeners para estación
     estacionElements.btnFiltrar?.addEventListener('click', cargarVentasEstacion);
     estacionElements.estacionSearch?.addEventListener('input', applyEstacionFilters);
     estacionElements.estacionSelect?.addEventListener('change', cargarVentasEstacion);
 
-    // Cargar estaciones e inicializar
     cargarEstacionesSelect();
     initEstacionDataTable();
     cargarVentasEstacion();
+
+    // ============================================
+    // CARGA INICIAL: PRIMERO INSTITUCIONES, LUEGO EL RESTO
+    // ============================================
+    (async function() {
+        await cargarInstituciones();
+        cargarEstadoFlota();
+        cargarEstadoAceite();
+        cargarResumenFlota();
+        initMovimientosDataTable();
+        cargarMovimientos();
+    })();
 });
 
 // ============================================
@@ -1986,7 +2126,6 @@ $(document).off('click', '#movimientosTable tbody tr').on('click', '#movimientos
 });
 
 $(document).off('click', '#fleetSummaryTable tbody tr').on('click', '#fleetSummaryTable tbody tr', function (e) {
-    // No hacer nada si se hizo clic en el checkbox directamente (ya maneja su propio evento)
     if ($(e.target).is('input[type="checkbox"]') || $(e.target).closest('input[type="checkbox"]').length) return;
 
     const checkbox = $(this).find('input[type="checkbox"]').first();

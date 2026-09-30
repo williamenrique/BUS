@@ -23,6 +23,21 @@ class Publico extends Controllers {
     }
     
     /**
+     * Devuelve la lista de instituciones activas para los selectores.
+     */
+    public function getInstituciones() {
+        try {
+            $instituciones = $this->model->getInstituciones();
+            $arrResponse = ['success' => true, 'data' => $instituciones];
+        } catch (Exception $e) {
+            $arrResponse = ['success' => false, 'message' => 'Error: ' . $e->getMessage(), 'data' => []];
+        }
+        header('Content-Type: application/json');
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+    
+    /**
      * Get initial data for the dashboard - AJAX endpoint
      */
     public function getMovimientosData() {
@@ -33,12 +48,13 @@ class Publico extends Controllers {
             $fechaInicio = $input['fechaInicio'] ?? date('Y-m-d', strtotime('-30 days'));
             $fechaFin = $input['fechaFin'] ?? date('Y-m-d');
             $tipoMovimiento = $input['tipoMovimiento'] ?? 'todos';
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
             
             $movimientos = [];
             
             // 1. Despachos de Almacén
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'despachos') {
-                $despachos = $this->model->getDespachosPublic($fechaInicio, $fechaFin);
+                $despachos = $this->model->getDespachosPublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($despachos as $d) {
                     $movimientos[] = [
                         'tipo' => 'Despacho Almacén',
@@ -59,7 +75,7 @@ class Publico extends Controllers {
             
             // 2. Mantenimientos de Flota
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'mantenimientos') {
-                $mantenimientos = $this->model->getMantenimientosPublic($fechaInicio, $fechaFin);
+                $mantenimientos = $this->model->getMantenimientosPublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($mantenimientos as $m) {
                     $movimientos[] = [
                         'tipo' => 'Mantenimiento Flota',
@@ -80,7 +96,7 @@ class Publico extends Controllers {
             
             // 3. Cambios de Aceite
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'aceite') {
-                $aceites = $this->model->getCambiosAceitePublic($fechaInicio, $fechaFin);
+                $aceites = $this->model->getCambiosAceitePublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($aceites as $a) {
                     $movimientos[] = [
                         'tipo' => 'Cambio Aceite',
@@ -101,7 +117,7 @@ class Publico extends Controllers {
             
             // 4. Kilometraje Flota
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'kilometraje') {
-                $kilometrajes = $this->model->getKilometrajePublic($fechaInicio, $fechaFin);
+                $kilometrajes = $this->model->getKilometrajePublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($kilometrajes as $k) {
                     $movimientos[] = [
                         'tipo' => 'Actualización KM',
@@ -159,6 +175,8 @@ class Publico extends Controllers {
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $idAceite = $input['idAceite'] ?? null;
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
             if (!$idAceite) {
                 $arrResponse['message'] = 'ID de aceite requerido';
                 header('Content-Type: application/json');
@@ -172,6 +190,8 @@ class Publico extends Controllers {
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
+            // Agregar nombre de institución
+            $detalle['nombre_institucion'] = $this->model->getNombreInstitucion($idInstitucion);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $detalle];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -189,6 +209,8 @@ class Publico extends Controllers {
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $idMantenimiento = $input['idMantenimiento'] ?? null;
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
             if (!$idMantenimiento) {
                 $arrResponse['message'] = 'ID de mantenimiento requerido';
                 header('Content-Type: application/json');
@@ -202,6 +224,7 @@ class Publico extends Controllers {
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
+            $detalle['nombre_institucion'] = $this->model->getNombreInstitucion($idInstitucion);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $detalle];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -219,6 +242,8 @@ class Publico extends Controllers {
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $idKilometraje = $input['idKilometraje'] ?? null;
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
             if (!$idKilometraje) {
                 $arrResponse['message'] = 'ID de kilometraje requerido';
                 header('Content-Type: application/json');
@@ -232,6 +257,7 @@ class Publico extends Controllers {
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
+            $detalle['nombre_institucion'] = $this->model->getNombreInstitucion($idInstitucion);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $detalle];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -247,6 +273,9 @@ class Publico extends Controllers {
         $fechaInicio = $input['fechaInicio'] ?? date('Y-m-d', strtotime('-30 days'));
         $fechaFin = $input['fechaFin'] ?? date('Y-m-d');
         $tipoMovimiento = $input['tipoMovimiento'] ?? 'todos';
+        $idInstitucion = intval($input['id_institucion'] ?? 1);
+        
+        $nombreInstitucion = $this->model->getNombreInstitucion($idInstitucion);
         
         $options = new Options();
         $options->set('defaultFont', 'Helvetica');
@@ -274,7 +303,7 @@ class Publico extends Controllers {
                 @page { margin: 15mm 10mm; }
                 body { font-family: Helvetica, Arial, sans-serif; font-size: 8px; color: #333; line-height: 1.3; }
                 .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
-                .header h1 { margin: 0; font-size: 14px; color: #2c3e50; }
+                .header h1 { margin: 0; font-size: 14px; color: #2c3e50; text-transform: uppercase; }
                 .header h2 { margin: 5px 0 0 0; font-size: 11px; font-weight: normal; color: #555; }
                 .header p { margin: 3px 0; font-size: 9px; color: #777; }
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 7px; }
@@ -286,7 +315,7 @@ class Publico extends Controllers {
         </head>
         <body>
             <div class="header">
-                <h1>SERVICIO SOCIALISTA DE ABASTECIMIENTO DEL ESTADO YARACUY</h1>
+                <h1>' . htmlspecialchars($nombreInstitucion) . '</h1>
                 <h2>Reporte de ' . $titulo . '</h2>
                 <p>' . $periodo . ' | Generado: ' . date('d/m/Y H:i:s') . '</p>
             </div>
@@ -329,22 +358,11 @@ class Publico extends Controllers {
     public function getEstadoFlota() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         try {
-            $query = "SELECT f.status_unidad, COUNT(*) as total FROM table_flota f WHERE f.status_unidad BETWEEN 1 AND 4 GROUP BY f.status_unidad";
-            $statusCounts = $this->model->select_all($query);
-            $operativas = 0; $inoperativas = 0; $enMantenimiento = 0; $criticas = 0;
-            foreach ($statusCounts as $row) {
-                switch ($row['status_unidad']) {
-                    case 1: $operativas = (int)$row['total']; break;
-                    case 2: $inoperativas = (int)$row['total']; break;
-                    case 3: $enMantenimiento = (int)$row['total']; break;
-                    case 4: $criticas = (int)$row['total']; break;
-                }
-            }
-            $total = $operativas + $inoperativas + $enMantenimiento + $criticas;
-            $arrResponse = ['success' => true, 'message' => 'OK', 'data' => [
-                'total' => $total, 'operativas' => $operativas, 'inoperativas' => $inoperativas,
-                'en_mantenimiento' => $enMantenimiento, 'criticas' => $criticas
-            ]];
+            $input = json_decode(file_get_contents("php://input"), true);
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
+            $data = $this->model->getEstadoFlota($idInstitucion);
+            $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $data];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
         }
@@ -356,25 +374,11 @@ class Publico extends Controllers {
     public function getEstadoAceite() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         try {
-            $query = "SELECT tf.id_flota,
-                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = tf.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as kilometraje_actual,
-                COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = tf.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as proximo_cambio_km
-                FROM table_flota tf WHERE tf.status_unidad = 1";
-            $aceites = $this->model->select_all($query);
-            $requerido = 0; $proximo = 0; $ok = 0;
-            foreach ($aceites as $row) {
-                $kmActual = (int)$row['kilometraje_actual'];
-                $kmProximo = (int)$row['proximo_cambio_km'];
-                $diferencia = $kmProximo - $kmActual;
-                if ($kmProximo > 0) {
-                    if ($diferencia <= 0) $requerido++;
-                    elseif ($diferencia <= 1000) $proximo++;
-                    else $ok++;
-                }
-            }
-            $arrResponse = ['success' => true, 'message' => 'OK', 'data' => [
-                'requerido' => $requerido, 'proximo' => $proximo, 'ok' => $ok
-            ]];
+            $input = json_decode(file_get_contents("php://input"), true);
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
+            $data = $this->model->getEstadoAceite($idInstitucion);
+            $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $data];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
         }
@@ -386,28 +390,11 @@ class Publico extends Controllers {
     public function getResumenFlota() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         try {
-            $query = "SELECT fm.marca_unidad as marca, fmo.modelo_unidad as modelo,
-                CONCAT(fm.marca_unidad, ' ', fmo.modelo_unidad) as marca_modelo,
-                f.transmision, f.tipo_combustible as combustible, f.status_unidad, COUNT(*) as total
-                FROM table_flota f
-                JOIN table_flota_marca fm ON f.id_marca = fm.id_marca
-                JOIN table_flota_modelo fmo ON f.id_modelo = fmo.id_modelo
-                WHERE f.status_unidad IN (1, 2, 3, 5)
-                GROUP BY fm.marca_unidad, fmo.modelo_unidad, f.transmision, f.tipo_combustible, f.status_unidad
-                ORDER BY fm.marca_unidad, fmo.modelo_unidad";
-            $results = $this->model->select_all($query);
-            $grouped = [];
-            foreach ($results as $row) {
-                $key = $row['marca_modelo'] . '|' . $row['transmision'] . '|' . $row['combustible'];
-                if (!isset($grouped[$key])) {
-                    $grouped[$key] = ['marca_modelo' => $row['marca_modelo'], 'transmision' => $row['transmision'],
-                        'combustible' => $row['combustible'], 'total' => 0, 'operativas' => 0, 'inoperativas' => 0];
-                }
-                $grouped[$key]['total'] += (int)$row['total'];
-                if ($row['status_unidad'] == 1) $grouped[$key]['operativas'] += (int)$row['total'];
-                else $grouped[$key]['inoperativas'] += (int)$row['total'];
-            }
-            $arrResponse = ['success' => true, 'message' => 'OK', 'data' => array_values($grouped)];
+            $input = json_decode(file_get_contents("php://input"), true);
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
+            $data = $this->model->getResumenFlota($idInstitucion);
+            $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $data];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
         }
@@ -421,6 +408,8 @@ class Publico extends Controllers {
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $idFlota = $input['idFlota'] ?? null;
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
             if (!$idFlota) {
                 $arrResponse['message'] = 'ID de flota requerido';
                 header('Content-Type: application/json');
@@ -434,6 +423,9 @@ class Publico extends Controllers {
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
+            // Agregar el nombre de la institución a la info de la unidad
+            $unidadInfo['nombre_institucion'] = $this->model->getNombreInstitucion($idInstitucion);
+            
             $postData = $input;
             $historialData = $this->model->selectHistorialUnidad($idFlota, $postData, 1000);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => [
@@ -479,23 +471,16 @@ class Publico extends Controllers {
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $status = $input['status'] ?? null;
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
             if (!$status) {
                 $arrResponse['message'] = 'Status requerido';
                 header('Content-Type: application/json');
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
-            $query = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.fecha_creacion,
-                fm.marca_unidad AS marca_unidad, fmo.modelo_unidad AS modelo_unidad,
-                f.transmision, f.tipo_combustible, f.status_unidad,
-                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as km_actual,
-                COALESCE((SELECT ah.kilometraje_cambio FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as ultimo_cambio_aceite,
-                COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as proximo_cambio_aceite
-                FROM table_flota f
-                INNER JOIN table_flota_marca fm ON f.id_marca = fm.id_marca
-                INNER JOIN table_flota_modelo fmo ON f.id_modelo = fmo.id_modelo
-                WHERE f.status_unidad = ? ORDER BY f.id_unidad";
-            $unidades = $this->model->select_all($query, [$status]);
+            
+            $unidades = $this->model->getUnidadesPorEstado($status, $idInstitucion);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $unidades];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -510,39 +495,16 @@ class Publico extends Controllers {
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $status = $input['status'] ?? null;
+            $idInstitucion = intval($input['id_institucion'] ?? 1);
+            
             if (!$status) {
                 $arrResponse['message'] = 'Status requerido';
                 header('Content-Type: application/json');
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
-            $query = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.fecha_creacion,
-                fm.marca_unidad AS marca_unidad, fmo.modelo_unidad AS modelo_unidad,
-                f.transmision, f.tipo_combustible, f.status_unidad,
-                COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as km_actual,
-                COALESCE((SELECT ah.kilometraje_cambio FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as ultimo_cambio_aceite,
-                COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) as proximo_cambio_aceite
-                FROM table_flota f
-                INNER JOIN table_flota_marca fm ON f.id_marca = fm.id_marca
-                INNER JOIN table_flota_modelo fmo ON f.id_modelo = fmo.id_modelo
-                WHERE f.status_unidad = 1";
             
-            if ($status === 'requerido') {
-                $query .= " AND (EXISTS (SELECT 1 FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota AND ah.kilometraje_cambio > 0)
-                    AND (COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
-                    COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) <= 0))";
-            } elseif ($status === 'proximo') {
-                $query .= " AND ((COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
-                    COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) > 0)
-                    AND (COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
-                    COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) <= 1000))";
-            } elseif ($status === 'ok') {
-                $query .= " AND ((COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END FROM table_flota_aceite_historial ah WHERE ah.id_flota = f.id_flota ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1), 0) - 
-                    COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = f.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) > 1000))";
-            }
-            
-            $query .= " ORDER BY f.id_unidad";
-            $unidades = $this->model->select_all($query);
+            $unidades = $this->model->getUnidadesPorEstadoAceite($status, $idInstitucion);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $unidades];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -554,6 +516,7 @@ class Publico extends Controllers {
     
     /**
      * Get ventas de estación for public view with filters
+     * NO MODIFICADO - Estación no aplica institución
      */
     public function getVentasEstacionData() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
@@ -563,13 +526,9 @@ class Publico extends Controllers {
             $fechaFin = $input['fechaFin'] ?? date('Y-m-d');
             $estacionId = $input['estacionId'] ?? null;
             
-            // Obtener todas las estaciones para el select
             $estaciones = $this->model->getEstacionesPublic();
-            
-            // Obtener ventas filtradas
             $ventas = $this->model->getVentasEstacionPublic($fechaInicio, $fechaFin, $estacionId);
             
-            // Agrupar por fecha y estación
             $grouped = [];
             foreach ($ventas as $venta) {
                 $fecha = $venta['fecha_venta'];
@@ -590,7 +549,6 @@ class Publico extends Controllers {
                 $grouped[$key]['total_litros'] += (float)$venta['litros'];
                 $grouped[$key]['total_ventas'] += 1;
                 
-                // Agrupar por vendedor
                 $vendedor = $venta['usuario_nick'] ?? 'N/A';
                 if (!isset($grouped[$key]['vendedores'][$vendedor])) {
                     $grouped[$key]['vendedores'][$vendedor] = ['litros' => 0, 'ventas' => 0];
@@ -598,7 +556,6 @@ class Publico extends Controllers {
                 $grouped[$key]['vendedores'][$vendedor]['litros'] += (float)$venta['litros'];
                 $grouped[$key]['vendedores'][$vendedor]['ventas'] += 1;
                 
-                // Agrupar por tipo de vehículo
                 $tipoVehiculo = $venta['tipo_vehiculo'] ?? 'N/A';
                 if (!isset($grouped[$key]['tipos_vehiculo'][$tipoVehiculo])) {
                     $grouped[$key]['tipos_vehiculo'][$tipoVehiculo] = ['cantidad' => 0, 'litros' => 0];
@@ -607,10 +564,8 @@ class Publico extends Controllers {
                 $grouped[$key]['tipos_vehiculo'][$tipoVehiculo]['litros'] += (float)$venta['litros'];
             }
             
-            // Convertir a array indexado
             $data = array_values($grouped);
             
-            // Convertir objetos vendedores y tipos_vehiculo a arrays
             foreach ($data as &$item) {
                 $item['vendedores'] = array_map(function($v, $k) {
                     return ['nombre' => $k, 'litros' => $v['litros'], 'ventas' => $v['ventas']];

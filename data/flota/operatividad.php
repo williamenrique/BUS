@@ -1,9 +1,8 @@
 <?php
 /**
  * Archivo: operatividad.php
- * Descripción: Script independiente para generar el reporte de operatividad en PDF.
- *              Recibe una lista de IDs de unidades vía POST, consulta sus datos
- *              a través del FlotaModel y utiliza Dompdf para renderizar el documento.
+ * Reporte de operatividad de flota en PDF.
+ * El cuadro de resumen (Operatividad, Inoperativa, Crítica, Total) va alineado a la izquierda.
  */
 
 // 1. Validación de la Petición
@@ -11,22 +10,29 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || empty($_POST['reporteData'])) {
     die("Acceso no autorizado o sin datos.");
 }
 
-// Decodificar los datos completos enviados desde JS
 $summaryData = json_decode($_POST['reporteData'], true);
 
 if (empty($summaryData) || !is_array($summaryData)) {
     die("Datos de resumen no válidos.");
 }
 
+// Nombre de la institución (enviado desde el JS)
+$nombreInstitucion = !empty($_POST['nombreInstitucion']) 
+    ? htmlspecialchars($_POST['nombreInstitucion'], ENT_QUOTES, 'UTF-8') 
+    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+
+// Título del reporte (va al header)
+$tituloReporte = 'REPORTE DE OPERATIVIDAD DE FLOTA';
+
 // 2. Carga del Entorno y Dependencias
 require_once '../../system/core/Config/config.system.php';
 require_once '../../system/core/Helpers/Helpers.php';
-require_once '../dompdf/autoload.inc.php'; // Autoloader de Dompdf
+require_once '../dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-// 3. Calcular totales generales desde los datos de resumen
+// 3. Calcular totales
 $conteo_status = [
     'operativas' => array_sum(array_column($summaryData, 'operativas')),
     'inoperativas' => array_sum(array_column($summaryData, 'inoperativas')),
@@ -40,10 +46,10 @@ $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
 
-// Importar encabezado estandarizado
+// 5. Importar encabezado (usa $nombreInstitucion y $tituloReporte)
 require_once '../encabezado.php';
 
-// 5. Construir el contenido HTML del PDF
+// 6. Construir el HTML
 $html = '
 <!DOCTYPE html>
 <html lang="es">
@@ -54,19 +60,20 @@ $html = '
     <style>
         .table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .table th, .table td { border: 1px solid #ccc; padding: 5px; text-align: left; }
-        th { background-color: #f2f2f2; font-size: 11px; }
-        .status-group { margin-bottom: 25px; page-break-inside: avoid; }
-        .status-title { 
-            background-color: #333; 
-            color: white; 
-            padding: 8px; 
-            font-size: 14px; 
-            font-weight: bold;
-            border-radius: 4px;
-            margin-bottom: 5px;
+        .table th { background-color: #f2f2f2; font-size: 11px; }
+
+        /* Cuadro de resumen alineado a la IZQUIERDA */
+        .summary-box { 
+            border: 1px solid #333; 
+            padding: 10px; 
+            margin-top: 20px;
+            margin-bottom: 25px; 
+            margin-left: 0; 
+            margin-right: auto;
+            border-radius: 5px; 
+            width: 40%; 
         }
-        .summary-box { border: 1px solid #333; padding: 10px; margin-bottom: 20px; border-radius: 5px; width: 30%; margin-right: auto; }
-        .summary-box table { width: 100%; }
+        .summary-box table { width: 100%; border-collapse: collapse; }
         .summary-box td { border: none; padding: 5px; font-size: 12px; }
     </style>
 </head>
@@ -74,7 +81,6 @@ $html = '
     ' . $headerHtml . '
     ' . $footerHtml . '
 
-    <div style="text-align: center; font-size: 16px; font-weight: bold; margin-bottom: 40px;">REPORTE DE OPERATIVIDAD DE FLOTA</div>
     <div class="summary-box">
         <table>
             <tr>
@@ -98,7 +104,7 @@ $html = '
 
     <table class="table">
         <thead>
-            <tr style="text-align: left;">
+            <tr>
                 <th>Grupo (Modelo / Combustible / Transmisión)</th>
                 <th style="text-align: center;">Cantidad</th>
                 <th style="text-align: center;">Operativas</th>
@@ -122,7 +128,6 @@ foreach ($summaryData as $group) {
 $html .= '
         </tbody>
     </table>
-
 </body>
 </html>';
 
@@ -130,5 +135,4 @@ $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();
 $dompdf->stream("Reporte_Operatividad_" . date('Y-m-d') . ".pdf", ["Attachment" => false]);
-
 ?>

@@ -22,7 +22,10 @@ class Menu extends Controllers{
         $this->views->getViews($this, "menu", $data);
     }
 
-    // Los métodos del controlador se mantienen iguales (solo cambia el modelo)
+    // =================================================================
+    // PERMISOS DE USUARIOS
+    // =================================================================
+
     public function cargar_usuarios(){
         try {
             $usuarios = $this->model->cargar_usuarios();
@@ -45,11 +48,14 @@ class Menu extends Controllers{
         die();
     }
     
+    /**
+     * Devuelve el árbol COMPLETO de menús + rutas para la UI de asignación.
+     * Ya no hay submenús separados: todo es un árbol.
+     */
     public function get_all_menus(){
         try {
-            $menus = $this->model->get_all_menus();
-            $submenus = $this->model->get_all_submenus();
-            $arrResponse = array('status' => true, 'data' => array('menus' => $menus, 'submenus' => $submenus));
+            $arbol = $this->model->get_all_menus_for_permissions();
+            $arrResponse = array('status' => true, 'data' => $arbol);
         } catch (Exception $e) {
             $arrResponse = array('status' => false, 'msg' => 'Error al cargar menús: ' . $e->getMessage());
         }
@@ -68,6 +74,11 @@ class Menu extends Controllers{
         die();
     }
     
+    /**
+     * Actualiza los permisos de un usuario.
+     * Recibe: { user_id, permissions: [menu_id, menu_id, ...] }
+     * (El frontend manda solo los IDs de menús marcados)
+     */
     public function update_user_permissions(){
         try {
             $data = json_decode(file_get_contents('php://input'), true);
@@ -76,14 +87,25 @@ class Menu extends Controllers{
                 throw new Exception("Datos incompletos");
             }
             
-            $usuario_id = $data['user_id'];
+            $usuario_id = intval($data['user_id']);
             $permisos = $data['permissions'];
             
-            if (!is_numeric($usuario_id) || !is_array($permisos)) {
+            if ($usuario_id <= 0 || !is_array($permisos)) {
                 throw new Exception("Datos inválidos");
             }
             
-            $result = $this->model->update_user_permissions($usuario_id, $permisos);
+            // Los permisos vienen como array de menu_id (int) o array de objetos
+            // Normalizamos a un array de IDs
+            $menuIds = [];
+            foreach ($permisos as $permiso) {
+                if (is_array($permiso) && isset($permiso['menu_id'])) {
+                    $menuIds[] = intval($permiso['menu_id']);
+                } elseif (is_numeric($permiso)) {
+                    $menuIds[] = intval($permiso);
+                }
+            }
+            
+            $result = $this->model->update_user_permissions($usuario_id, $menuIds);
 
             if ($result) {
                 $arrResponse = array('status' => true, 'msg' => 'Permisos actualizados correctamente');
@@ -98,13 +120,48 @@ class Menu extends Controllers{
         die();
     }
 
-    // Métodos de gestión de menús (se mantienen iguales)
+    // =================================================================
+    // CRUD DE MENÚS
+    // =================================================================
+
+    /**
+     * Lista todos los menús en formato árbol para la UI.
+     */
+    public function listar_menus(){
+        try {
+            $menus = $this->model->getMenusTree();
+            $arrResponse = array('status' => true, 'data' => $menus);
+        } catch (Exception $e) {
+            $arrResponse = array('status' => false, 'msg' => 'Error al cargar menús: ' . $e->getMessage());
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    /**
+     * Lista todos los menús en formato plano con rutas (para selectores).
+     */
+    public function listar_menus_plano(){
+        try {
+            $menus = $this->model->getMenusConRutas();
+            $arrResponse = array('status' => true, 'data' => $menus);
+        } catch (Exception $e) {
+            $arrResponse = array('status' => false, 'msg' => 'Error al cargar menús: ' . $e->getMessage());
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    /**
+     * Crea un menú nuevo.
+     * Datos esperados: menu_padre_id, menu_nombre, menu_icono, menu_ruta, menu_orden, menu_scope, rutas[]
+     */
     public function crear_menu(){
         try {
             $data = json_decode(file_get_contents('php://input'), true);
             
-            if(empty($data['menu_nombre']) || empty($data['menu_icono'])){
-                $arrResponse = array('status' => false, 'msg' => 'Nombre e icono son obligatorios');
+            if(empty($data['menu_nombre'])){
+                $arrResponse = array('status' => false, 'msg' => 'El nombre del menú es obligatorio');
                 echo json_encode($arrResponse);
                 die();
             }
@@ -123,11 +180,14 @@ class Menu extends Controllers{
         die();
     }
 
+    /**
+     * Actualiza un menú existente.
+     */
     public function actualizar_menu(){
         try {
             $data = json_decode(file_get_contents('php://input'), true);
             
-            if(empty($data['menu_id']) || empty($data['menu_nombre']) || empty($data['menu_icono'])){
+            if(empty($data['menu_id']) || empty($data['menu_nombre'])){
                 $arrResponse = array('status' => false, 'msg' => 'Datos incompletos');
                 echo json_encode($arrResponse);
                 die();
@@ -147,6 +207,9 @@ class Menu extends Controllers{
         die();
     }
 
+    /**
+     * Elimina (desactiva) un menú.
+     */
     public function eliminar_menu(){
         try {
             $data = json_decode(file_get_contents('php://input'), true);
@@ -171,44 +234,17 @@ class Menu extends Controllers{
         die();
     }
 
-    public function listar_menus(){
+    /**
+     * Obtiene los detalles de un menú (para edición).
+     */
+    public function get_menu($menu_id){
         try {
-            $menus = $this->model->getMenus();
-            
-            // Obtener submenús para cada menú
-            foreach ($menus as &$menu) {
-                // CORRECIÓN: Usar menu_es_desplegable en lugar de menu_tiene_submenu
-                if ($menu['menu_es_desplegable']) {
-                    $menu['submenus'] = $this->model->getSubmenusByMenu($menu['menu_id']);
-                } else {
-                    $menu['submenus'] = []; // Asegurar que siempre tenga el array
-                }
-            }
-            
-            $arrResponse = array('status' => true, 'data' => $menus);
-        } catch (Exception $e) {
-            $arrResponse = array('status' => false, 'msg' => 'Error al cargar menús: ' . $e->getMessage());
-        }
-        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        die();
-    }
-
-    public function crear_submenu(){
-        try {
-            $data = json_decode(file_get_contents('php://input'), true);
-            
-            if(empty($data['submenu_nombre']) || empty($data['submenu_pagina']) || empty($data['submenu_link']) || empty($data['menu_id'])){
-                $arrResponse = array('status' => false, 'msg' => 'Todos los campos son obligatorios');
-                echo json_encode($arrResponse);
-                die();
-            }
-            
-            $result = $this->model->insertSubmenu($data);
-            
-            if($result > 0){
-                $arrResponse = array('status' => true, 'msg' => 'Submenú creado correctamente', 'submenu_id' => $result);
+            $menu = $this->model->getMenuById($menu_id);
+            if ($menu) {
+                $menu['rutas'] = $this->model->getRutasByMenu($menu_id);
+                $arrResponse = array('status' => true, 'data' => $menu);
             } else {
-                $arrResponse = array('status' => false, 'msg' => 'Error al crear submenú');
+                $arrResponse = array('status' => false, 'msg' => 'Menú no encontrado');
             }
         } catch (Exception $e) {
             $arrResponse = array('status' => false, 'msg' => 'Error: ' . $e->getMessage());
@@ -217,20 +253,43 @@ class Menu extends Controllers{
         die();
     }
 
-    public function actualizar_submenu(){
+    /**
+     * Lista los menús candidatos a ser padre (raíces o cualquier menú existente).
+     */
+    public function get_menus_padres(){
+        try {
+            $menus = $this->model->getMenus();
+            $arrResponse = array('status' => true, 'data' => $menus);
+        } catch (Exception $e) {
+            $arrResponse = array('status' => false, 'msg' => 'Error: ' . $e->getMessage());
+        }
+        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
+        die();
+    }
+
+    // =================================================================
+    // RUTAS (patrones de activación)
+    // =================================================================
+
+    /**
+     * Agrega un patrón de ruta a un menú.
+     */
+    public function agregar_ruta(){
         try {
             $data = json_decode(file_get_contents('php://input'), true);
             
-            if(empty($data['submenu_id']) || empty($data['submenu_nombre']) || empty($data['submenu_pagina']) || empty($data['submenu_link'])){
+            if(empty($data['menu_id']) || empty($data['patron'])){
                 $arrResponse = array('status' => false, 'msg' => 'Datos incompletos');
                 echo json_encode($arrResponse);
                 die();
             }
-            $result = $this->model->updateSubmenu($data);
-            if($result){
-                $arrResponse = array('status' => true, 'msg' => 'Submenú actualizado correctamente');
+            
+            $result = $this->model->insertRuta($data['menu_id'], $data['patron']);
+            
+            if($result > 0){
+                $arrResponse = array('status' => true, 'msg' => 'Ruta agregada correctamente', 'ruta_id' => $result);
             } else {
-                $arrResponse = array('status' => false, 'msg' => 'Error al actualizar submenú');
+                $arrResponse = array('status' => false, 'msg' => 'Error al agregar ruta');
             }
         } catch (Exception $e) {
             $arrResponse = array('status' => false, 'msg' => 'Error: ' . $e->getMessage());
@@ -239,36 +298,28 @@ class Menu extends Controllers{
         die();
     }
 
-    public function eliminar_submenu(){
+    /**
+     * Elimina un patrón de ruta.
+     */
+    public function eliminar_ruta(){
         try {
             $data = json_decode(file_get_contents('php://input'), true);
             
-            if(empty($data['submenu_id'])){
-                $arrResponse = array('status' => false, 'msg' => 'ID de submenú requerido');
+            if(empty($data['ruta_id'])){
+                $arrResponse = array('status' => false, 'msg' => 'ID de ruta requerido');
                 echo json_encode($arrResponse);
                 die();
             }
-
-            $result = $this->model->deleteSubmenu($data['submenu_id']);
+            
+            $result = $this->model->eliminarRuta($data['ruta_id']);
             
             if($result){
-                $arrResponse = array('status' => true, 'msg' => 'Submenú eliminado correctamente');
+                $arrResponse = array('status' => true, 'msg' => 'Ruta eliminada correctamente');
             } else {
-                $arrResponse = array('status' => false, 'msg' => 'Error al eliminar submenú');
+                $arrResponse = array('status' => false, 'msg' => 'Error al eliminar ruta');
             }
         } catch (Exception $e) {
             $arrResponse = array('status' => false, 'msg' => 'Error: ' . $e->getMessage());
-        }
-        echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
-        die();
-    }
-
-    public function get_submenus_by_menu($menu_id){
-        try {
-            $submenus = $this->model->getSubmenusByMenu($menu_id);
-            $arrResponse = array('status' => true, 'data' => $submenus);
-        } catch (Exception $e) {
-            $arrResponse = array('status' => false, 'msg' => 'Error al cargar submenús: ' . $e->getMessage());
         }
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
