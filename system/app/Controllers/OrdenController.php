@@ -45,16 +45,10 @@ class Orden extends Controllers{
         return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 
-    /**
-     * Resuelve institución.
-     */
     private function resolverInstitucion($institucion = 'actual') {
         return ($institucion === 'taller') ? 2 : 1;
     }
 
-    /**
-     * Helper: lee id_institucion de GET/POST con fallback.
-     */
     private function obtenerInstitucionDeRequest(): int {
         if (isset($_GET['id_institucion'])) return intval($_GET['id_institucion']);
         if (isset($_POST['id_institucion'])) return intval($_POST['id_institucion']);
@@ -65,9 +59,6 @@ class Orden extends Controllers{
     /********* VISTAS *********************************/
     /**************************************************/
 
-    /**
-     * Vista de órdenes SSLMTY.
-     */
     public function orden($institucion = 'actual'){
         if (!$this->validateSession()) {
             header("Location:".base_url().'login');
@@ -90,9 +81,6 @@ class Orden extends Controllers{
         $this->views->getViews($this, "orden", $data);
     }
 
-    /**
-     * Wrapper Taller.
-     */
     public function ordenTaller() {
         $this->orden('taller');
     }
@@ -231,20 +219,40 @@ class Orden extends Controllers{
                 throw new Exception('Debe seleccionar Unidad, Operador, Mecánico y Despachador.');
             }
 
+            // Obtener nombres (para compatibilidad con columnas varchar)
             $operadorData = $this->ordenModel->selectPersonal($idOper);
             $mecanicoData = $this->ordenModel->selectPersonal($idMec);
             $despachadorData = $this->ordenModel->selectPersonal($idDesp);
 
-            $strOper = !empty($operadorData) ? strtoupper($operadorData['personal_nombre'] . ' ' . $operadorData['personal_apellido']) : 'N/A';
-            $strMec = !empty($mecanicoData) ? strtoupper($mecanicoData['personal_nombre'] . ' ' . $mecanicoData['personal_apellido']) : 'N/A';
-            $strDesp = !empty($despachadorData) ? strtoupper($despachadorData['personal_nombre'] . ' ' . $despachadorData['personal_apellido']) : 'N/A';
+            $strOper = !empty($operadorData) 
+                ? strtoupper(trim($operadorData['personal_nombre'] . ' ' . 
+                    ($operadorData['personal_apellido'] != '0' ? $operadorData['personal_apellido'] : ''))) 
+                : 'SIN OPERADOR';
+            $strMec = !empty($mecanicoData) 
+                ? strtoupper(trim($mecanicoData['personal_nombre'] . ' ' . 
+                    ($mecanicoData['personal_apellido'] != '0' ? $mecanicoData['personal_apellido'] : ''))) 
+                : 'SIN MECÁNICO';
+            $strDesp = !empty($despachadorData) 
+                ? strtoupper(trim($despachadorData['personal_nombre'] . ' ' . 
+                    ($despachadorData['personal_apellido'] != '0' ? $despachadorData['personal_apellido'] : ''))) 
+                : 'SIN DESPACHADOR';
 
             if ($idDespacho > 0) {
-                $this->ordenModel->updateDespacho($idDespacho, $intUnidad, $strOper, $strMec, $strDesp, $srtObs, $strDate);
+                $this->ordenModel->updateDespacho(
+                    $idDespacho, $intUnidad, 
+                    $strOper, $strMec, $strDesp,
+                    $idOper, $idMec, $idDesp,
+                    $srtObs, $strDate
+                );
                 $this->ordenModel->revertirYLimpiar($idDespacho);
                 $msg = 'Orden actualizada correctamente';
             } else {
-                $idDespacho = $this->ordenModel->insertDespacho($intUnidad, $strOper, $strMec, $strDesp, $intIdUser, $srtObs, $strDate);
+                $idDespacho = $this->ordenModel->insertDespacho(
+                    $intUnidad, 
+                    $strOper, $strMec, $strDesp,
+                    $idOper, $idMec, $idDesp,
+                    $intIdUser, $srtObs, $strDate
+                );
                 $msg = 'Orden registrada correctamente con ID: ' . $idDespacho;
             }
 

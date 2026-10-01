@@ -374,9 +374,11 @@ class FlotaModel extends Mysql {
                     'status_id', s.idstatus, 
                     'motivo', s.textCambio,
                     'status_texto', CASE s.idstatus 
-                                        WHEN 1 THEN 'Activo' 
-                                        WHEN 0 THEN 'Inactivo' 
-                                        WHEN 2 THEN 'En Mantenimiento' 
+                                        WHEN 0 THEN 'Desincorporada' 
+                                        WHEN 1 THEN 'Operativa' 
+                                        WHEN 2 THEN 'Inoperativa' 
+                                        WHEN 3 THEN 'Mantenimiento' 
+                                        WHEN 4 THEN 'Crítica' 
                                         ELSE 'Desconocido' 
                                     END
                 ) as detalles,

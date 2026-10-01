@@ -4,13 +4,14 @@ let allFlotaData = []; // Almacenará todos los datos de la flota para los filtr
 // ID de la institución activa (leído del hidden input en la vista)
 const idInstitucion = document.getElementById('id_institucion')?.value || 1;
 
+// Mapa de estados UNIFICADO con la base de datos real
+// 0: Desincorporada | 1: Operativa | 2: Inoperativa | 3: Mantenimiento | 4: Crítica
 const statusMap = {
     0: { text: 'Desincorporada', color: 'badge-secondary' },
     1: { text: 'Operativa', color: 'badge-success' },
     2: { text: 'Inoperativa', color: 'badge-warning' },
     3: { text: 'Mantenimiento', color: 'badge-info' },
-    4: { text: 'Por Desincorporar', color: 'badge-purple' },
-    5: { text: 'Crítica', color: 'badge-danger' }
+    4: { text: 'Crítica', color: 'badge-danger' }
 };
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -284,6 +285,7 @@ function fntStatusUnidad(idFlota) {
                 const currentStatus = statusMap[unidad.status_unidad] || { text: 'Desconocido' };
                 document.querySelector("#statusActual").textContent = currentStatus.text;
 
+                // Construir las opciones del select usando statusMap (excluyendo el estado actual)
                 let optionsHtml = '';
                 for (const key in statusMap) {
                     if (key != unidad.status_unidad) {

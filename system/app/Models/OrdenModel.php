@@ -101,9 +101,6 @@ class OrdenModel extends Mysql {
     /********* CREACIÓN DE ÓRDENES ********************/
     /**************************************************/
 
-    /**
-     * Obtiene el siguiente número de orden para la institución activa.
-     */
     private function obtenerSiguienteNumeroOrden(): int {
         $sql = "SELECT COALESCE(MAX(numero_orden), 0) + 1 as siguiente 
                 FROM table_alm_despacho 
@@ -113,33 +110,61 @@ class OrdenModel extends Mysql {
     }
 
     /**
-     * Inserta un nuevo despacho en la institución activa.
-     * El numero_orden se calcula según la institución.
+     * Inserta un nuevo despacho con IDs de personal.
      */
-    public function insertDespacho(int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, int $intIdUser, string $srtObs, string $strDate){
+    public function insertDespacho(int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, 
+                                    int $idOper, int $idMec, int $idDesp,
+                                    int $intIdUser, string $srtObs, string $strDate){
         $numeroOrden = $this->obtenerSiguienteNumeroOrden();
         
         $queryInsert = "INSERT INTO table_alm_despacho
-                            (id_flota, operador, mecanico, despachador, fecha_despacho, user_id, observacion, status_despacho, id_institucion, numero_orden) 
-                        VALUES(?,?,?,?,?,?,?,?,?,?)";
+                            (id_flota, 
+                             operador, operador_id,
+                             mecanico, mecanico_id,
+                             despachador, despachador_id,
+                             fecha_despacho, user_id, observacion, status_despacho, 
+                             id_institucion, numero_orden) 
+                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
         $requestInsert = $this->insert($queryInsert, [
-            $intUnidad, $srtOper, $srtMec, $srtDesp, $strDate, $intIdUser, $srtObs, 1, 
+            $intUnidad,
+            $srtOper, $idOper,
+            $srtMec, $idMec,
+            $srtDesp, $idDesp,
+            $strDate, $intIdUser, $srtObs, 1, 
             $this->id_institucion, $numeroOrden
         ]);
         return $requestInsert;
     }
 
-    public function updateDespacho(int $idDespacho, int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, string $srtObs, string $strDate){
-        $sql = "UPDATE table_alm_despacho SET id_flota = ?, operador = ?, mecanico = ?, despachador = ?, fecha_despacho = ?, observacion = ? WHERE id_despacho = ? AND id_institucion = ?";
-        $arrData = [$intUnidad, $srtOper, $srtMec, $srtDesp, $strDate, $srtObs, $idDespacho, $this->id_institucion];
+    public function updateDespacho(int $idDespacho, int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, 
+                                    int $idOper, int $idMec, int $idDesp,
+                                    string $srtObs, string $strDate){
+        $sql = "UPDATE table_alm_despacho SET 
+                    id_flota = ?, 
+                    operador = ?, operador_id = ?,
+                    mecanico = ?, mecanico_id = ?,
+                    despachador = ?, despachador_id = ?,
+                    fecha_despacho = ?, 
+                    observacion = ? 
+                WHERE id_despacho = ? AND id_institucion = ?";
+        $arrData = [
+            $intUnidad, 
+            $srtOper, $idOper,
+            $srtMec, $idMec,
+            $srtDesp, $idDesp,
+            $strDate, 
+            $srtObs, 
+            $idDespacho, 
+            $this->id_institucion
+        ];
         return $this->update($sql, $arrData);
     }
 
+    /**
+     * Obtiene una orden para editar (ahora con IDs directos).
+     */
     public function selectOrdenForEdit(int $idDespacho){
-        $sql = "SELECT d.*, 
-                    (SELECT id_personal FROM table_personal WHERE CONCAT(personal_nombre, ' ', personal_apellido) = d.operador LIMIT 1) as operador_id,
-                    (SELECT id_personal FROM table_personal WHERE CONCAT(personal_nombre, ' ', personal_apellido) = d.mecanico LIMIT 1) as mecanico_id,
-                    (SELECT id_personal FROM table_personal WHERE CONCAT(personal_nombre, ' ', personal_apellido) = d.despachador LIMIT 1) as despachador_id
+        $sql = "SELECT d.* 
                 FROM table_alm_despacho d 
                 WHERE d.id_despacho = ? 
                   AND d.id_institucion = ?";
@@ -190,6 +215,10 @@ class OrdenModel extends Mysql {
     /********* CONSULTA Y BÚSQUEDA ********************/
     /**************************************************/
 
+    /**
+     * Obtiene todas las órdenes. Usa COALESCE para mostrar el nombre
+     * desde table_personal si hay ID, o el guardado si no.
+     */
     public function selectOrdenes(): array
     {
         $sql = "SELECT 
@@ -199,12 +228,17 @@ class OrdenModel extends Mysql {
                     f.id_unidad, 
                     m.marca_unidad, 
                     mo.modelo_unidad,
-                    d.operador AS operador_nombre,
+                    COALESCE(
+                        CONCAT(p_op.personal_nombre, ' ', NULLIF(p_op.personal_apellido, '0')),
+                        d.operador
+                    ) AS operador_nombre,
+                    d.operador_id,
                     (SELECT COUNT(*) FROM table_alm_relacion_despacho rd WHERE rd.id_despacho = d.id_despacho) AS total_articulos
                 FROM table_alm_despacho d
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_flota_marca m ON f.id_marca = m.id_marca
                 INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
                 WHERE d.status_despacho = 1
                   AND d.id_institucion = ?
                 ORDER BY d.numero_orden DESC";
@@ -231,9 +265,18 @@ class OrdenModel extends Mysql {
                     f.id_unidad, 
                     m.marca_unidad, 
                     mo.modelo_unidad,
-                    d.operador AS operador_nombre,
-                    d.mecanico AS mecanico_nombre,
-                    d.despachador AS despachador_nombre,
+                    COALESCE(
+                        CONCAT(p_op.personal_nombre, ' ', NULLIF(p_op.personal_apellido, '0')),
+                        d.operador
+                    ) AS operador_nombre,
+                    COALESCE(
+                        CONCAT(p_mec.personal_nombre, ' ', NULLIF(p_mec.personal_apellido, '0')),
+                        d.mecanico
+                    ) AS mecanico_nombre,
+                    COALESCE(
+                        CONCAT(p_desp.personal_nombre, ' ', NULLIF(p_desp.personal_apellido, '0')),
+                        d.despachador
+                    ) AS despachador_nombre,
                     (SELECT COUNT(*) FROM table_alm_relacion_despacho rd WHERE rd.id_despacho = d.id_despacho) AS total_articulos,
                     u.usuario_nick as usuario_registro
                 FROM table_alm_despacho d
@@ -241,6 +284,9 @@ class OrdenModel extends Mysql {
                 INNER JOIN table_flota_marca m ON f.id_marca = m.id_marca
                 INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
                 INNER JOIN table_usuarios u ON d.user_id = u.usuario_id
+                LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
+                LEFT JOIN table_personal p_mec ON d.mecanico_id = p_mec.id_personal
+                LEFT JOIN table_personal p_desp ON d.despachador_id = p_desp.id_personal
                 WHERE d.status_despacho = 1
                   AND d.id_institucion = ?";
 
@@ -273,15 +319,27 @@ class OrdenModel extends Mysql {
         return $this->select_all($sql, $params);
     }
 
+    /**
+     * Obtiene un despacho. Usa COALESCE para los nombres.
+     */
     public function selectDepacho(int $strCod){
         $sql = "SELECT 
                     desp.id_despacho, 
                     desp.numero_orden,
                     desp.fecha_despacho, 
                     desp.observacion,
-                    desp.operador AS operador_nombre,
-                    desp.mecanico AS mecanico_nombre,
-                    desp.despachador AS despachador_nombre,
+                    COALESCE(
+                        CONCAT(p_op.personal_nombre, ' ', NULLIF(p_op.personal_apellido, '0')),
+                        desp.operador
+                    ) AS operador_nombre,
+                    COALESCE(
+                        CONCAT(p_mec.personal_nombre, ' ', NULLIF(p_mec.personal_apellido, '0')),
+                        desp.mecanico
+                    ) AS mecanico_nombre,
+                    COALESCE(
+                        CONCAT(p_desp.personal_nombre, ' ', NULLIF(p_desp.personal_apellido, '0')),
+                        desp.despachador
+                    ) AS despachador_nombre,
                     flota.id_unidad, flota.vim_unidad,
                     modelo.modelo_unidad, 
                     marca.marca_unidad,
@@ -292,6 +350,9 @@ class OrdenModel extends Mysql {
                 INNER JOIN table_personal p ON usuario.usuario_id_personal = p.id_personal
                 INNER JOIN table_flota_modelo modelo ON modelo.id_modelo = flota.id_modelo
                 INNER JOIN table_flota_marca marca ON marca.id_marca = flota.id_marca 
+                LEFT JOIN table_personal p_op ON desp.operador_id = p_op.id_personal
+                LEFT JOIN table_personal p_mec ON desp.mecanico_id = p_mec.id_personal
+                LEFT JOIN table_personal p_desp ON desp.despachador_id = p_desp.id_personal
                 WHERE desp.id_despacho = ?
                   AND desp.id_institucion = ?";
         return $this->select($sql, [$strCod, $this->id_institucion]);
