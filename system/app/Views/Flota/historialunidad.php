@@ -15,11 +15,9 @@
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <?php if ($data['id_institucion'] == 2): ?>
-                            <li class="breadcrumb-item"><a href="<?= base_url() ?>flota/taller"><?= $data['nombre_institucion'] ?></a></li>
-                        <?php else: ?>
-                            <li class="breadcrumb-item"><a href="<?= base_url() ?>flota"><?= $data['nombre_institucion'] ?></a></li>
-                        <?php endif; ?>
+
+                        <li class="breadcrumb-item"><a href="<?= base_url() ?>flota/taller">FLota</a></li>
+
                         <li class="breadcrumb-item active">Historial</li>
                     </ol>
                 </div>
@@ -32,32 +30,36 @@
             <!-- Cabecera de la página -->
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Unidad: <span class="font-weight-bold"><?= $data['unidad']['id_unidad'] ?></span></h3>
+                    <h3 class="card-title">Unidad: <span
+                            class="font-weight-bold"><?= $data['unidad']['id_unidad'] ?></span></h3>
                     <div class="card-tools">
                         <span class="badge badge-info p-2 mr-2">
                             <i class="fas fa-building mr-1"></i> <?= $data['nombre_institucion'] ?>
                         </span>
                         <?php if ($data['id_institucion'] == 2): ?>
-                            <a href="<?= base_url() ?>flota/taller" class="btn btn-sm btn-secondary">
-                                <i class="fas fa-arrow-left mr-1"></i> Volver al Taller
-                            </a>
+                        <a href="<?= base_url() ?>flota/taller" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver al Taller
+                        </a>
                         <?php else: ?>
-                            <a href="<?= base_url() ?>flota" class="btn btn-sm btn-secondary">
-                                <i class="fas fa-arrow-left mr-1"></i> Volver a la Flota
-                            </a>
+                        <a href="<?= base_url() ?>flota" class="btn btn-sm btn-secondary">
+                            <i class="fas fa-arrow-left mr-1"></i> Volver a la Flota
+                        </a>
                         <?php endif; ?>
                     </div>
                 </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3">
-                            <strong>Marca:</strong><p class="text-muted"><?= $data['unidad']['marca_unidad'] ?></p>
+                            <strong>Marca:</strong>
+                            <p class="text-muted"><?= $data['unidad']['marca_unidad'] ?></p>
                         </div>
                         <div class="col-md-3">
-                            <strong>Modelo:</strong><p class="text-muted"><?= $data['unidad']['modelo_unidad'] ?></p>
+                            <strong>Modelo:</strong>
+                            <p class="text-muted"><?= $data['unidad']['modelo_unidad'] ?></p>
                         </div>
                         <div class="col-md-3">
-                            <strong>VIN:</strong><p class="text-muted"><?= $data['unidad']['vim_unidad'] ?></p>
+                            <strong>VIN:</strong>
+                            <p class="text-muted"><?= $data['unidad']['vim_unidad'] ?></p>
                         </div>
                         <div class="col-md-3">
                             <strong>Kilometraje Actual:</strong>
@@ -96,12 +98,16 @@
                             </div>
                             <div class="col-md-3 form-group">
                                 <label for="filtroTermino">Orden / Término</label>
-                                <input type="text" id="filtroTermino" name="filtroTermino" placeholder="Ej: #123, Repuesto..." class="form-control">
+                                <input type="text" id="filtroTermino" name="filtroTermino"
+                                    placeholder="Ej: #123, Repuesto..." class="form-control">
                             </div>
                             <div class="col-md-2 form-group">
-                                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i> Buscar</button>
-                                <button type="button" id="btnLimpiarFiltros" class="btn btn-secondary btn-block mt-2">Limpiar</button>
-                                <button type="button" id="btnExportarPDF" class="btn btn-danger btn-block mt-2"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+                                <button type="submit" class="btn btn-primary btn-block"><i class="fas fa-search"></i>
+                                    Buscar</button>
+                                <button type="button" id="btnLimpiarFiltros"
+                                    class="btn btn-secondary btn-block mt-2">Limpiar</button>
+                                <button type="button" id="btnExportarPDF" class="btn btn-danger btn-block mt-2"><i
+                                        class="fas fa-file-pdf"></i> Exportar PDF</button>
                             </div>
                         </div>
                         <!-- Contadores de Resultados -->
@@ -109,10 +115,18 @@
                             <div class="col-12">
                                 <div class="d-flex flex-wrap align-items-center" style="gap: 10px;">
                                     <span class="text-muted mr-2"><strong>Resumen:</strong></span>
-                                    <span class="badge badge-primary p-2" style="font-size: 0.9rem;"><i class="fas fa-file-invoice mr-1"></i> Ordenes: <span id="count_despacho">0</span></span>
-                                    <span class="badge badge-warning p-2" style="font-size: 0.9rem;"><i class="fas fa-oil-can mr-1"></i> Aceite: <span id="count_aceite">0</span></span>
-                                    <span class="badge badge-secondary p-2" style="font-size: 0.9rem;"><i class="fas fa-exchange-alt mr-1"></i> Cambios Estado: <span id="count_status">0</span></span>
-                                    <span class="badge badge-dark p-2" style="font-size: 0.9rem;"><i class="fas fa-list-ol mr-1"></i> Total Eventos: <span id="count_total">0</span></span>
+                                    <span class="badge badge-primary p-2" style="font-size: 0.9rem;"><i
+                                            class="fas fa-file-invoice mr-1"></i> Ordenes: <span
+                                            id="count_despacho">0</span></span>
+                                    <span class="badge badge-warning p-2" style="font-size: 0.9rem;"><i
+                                            class="fas fa-oil-can mr-1"></i> Aceite: <span
+                                            id="count_aceite">0</span></span>
+                                    <span class="badge badge-secondary p-2" style="font-size: 0.9rem;"><i
+                                            class="fas fa-exchange-alt mr-1"></i> Cambios Estado: <span
+                                            id="count_status">0</span></span>
+                                    <span class="badge badge-dark p-2" style="font-size: 0.9rem;"><i
+                                            class="fas fa-list-ol mr-1"></i> Total Eventos: <span
+                                            id="count_total">0</span></span>
                                 </div>
                             </div>
                         </div>
@@ -153,18 +167,20 @@ document.addEventListener('DOMContentLoaded', function() {
         const response = await originalFetch(...args);
         const clone = response.clone(); // Clonamos la respuesta para no afectarla
         const url = args[0] ? args[0].toString() : '';
-        
+
         // Si la petición es al historial de unidad
         if (url.includes('Flota/getHistorialUnidad')) {
             clone.json().then(data => {
                 if (data.success && data.data.counts) {
                     const counts = data.data.counts;
                     // Actualizamos los contadores en la vista
-                    document.getElementById('count_despacho').textContent = counts.despacho || 0;
+                    document.getElementById('count_despacho').textContent = counts.despacho ||
+                    0;
                     document.getElementById('count_aceite').textContent = counts.aceite || 0;
                     document.getElementById('count_status').textContent = counts.status || 0;
                     // Actualizamos el contador total con el valor que ya nos envía el backend
-                    document.getElementById('count_total').textContent = data.data.total_items || 0;
+                    document.getElementById('count_total').textContent = data.data
+                        .total_items || 0;
                     // Mostramos el contenedor
                     document.getElementById('resumenResultados').style.display = 'block';
                 }
@@ -188,15 +204,24 @@ document.getElementById('btnExportarPDF').addEventListener('click', async functi
         title: 'Generando PDF...',
         text: 'Por favor espere mientras se procesan los datos.',
         allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading() }
+        didOpen: () => {
+            Swal.showLoading()
+        }
     });
 
     try {
         // 1. Obtener todos los datos (sin paginación) desde el controlador
         const response = await fetch(base_url + 'Flota/getHistorialUnidadPrint/' + idFlota, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fechaInicio, fechaFin, filtroTipo, filtroTermino })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                fechaInicio,
+                fechaFin,
+                filtroTipo,
+                filtroTermino
+            })
         });
         const result = await response.json();
 
@@ -230,7 +255,7 @@ document.getElementById('btnExportarPDF').addEventListener('click', async functi
             document.body.appendChild(form);
             form.submit();
             document.body.removeChild(form);
-            
+
             Swal.close();
         } else {
             Swal.fire('Error', 'No se pudieron obtener los datos para el reporte.', 'error');

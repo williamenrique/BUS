@@ -16,7 +16,7 @@
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <li class="breadcrumb-item active"><?= $data['nombre_institucion'] ?></li>
+                        <li class="breadcrumb-item active">Flota</li>
                     </ol>
                 </div>
             </div>
@@ -73,25 +73,36 @@
                             <label>Incluir en Reporte:</label>
                             <div class="form-group d-flex flex-wrap">
                                 <div class="custom-control custom-checkbox mr-4">
-                                    <input class="custom-control-input" type="checkbox" id="checkRequerido" value="Requerido" checked>
-                                    <label for="checkRequerido" class="custom-control-label text-danger font-weight-bold">Requerido</label>
+                                    <input class="custom-control-input" type="checkbox" id="checkRequerido"
+                                        value="Requerido" checked>
+                                    <label for="checkRequerido"
+                                        class="custom-control-label text-danger font-weight-bold">Requerido</label>
                                 </div>
                                 <div class="custom-control custom-checkbox mr-4">
-                                    <input class="custom-control-input" type="checkbox" id="checkProximo" value="Próximo" checked>
-                                    <label for="checkProximo" class="custom-control-label text-warning font-weight-bold">Próximo</label>
+                                    <input class="custom-control-input" type="checkbox" id="checkProximo"
+                                        value="Próximo" checked>
+                                    <label for="checkProximo"
+                                        class="custom-control-label text-warning font-weight-bold">Próximo</label>
                                 </div>
                                 <div class="custom-control custom-checkbox mr-4">
-                                    <input class="custom-control-input" type="checkbox" id="checkBien" value="Bien" checked>
-                                    <label for="checkBien" class="custom-control-label text-success font-weight-bold">Bien</label>
+                                    <input class="custom-control-input" type="checkbox" id="checkBien" value="Bien"
+                                        checked>
+                                    <label for="checkBien"
+                                        class="custom-control-label text-success font-weight-bold">Bien</label>
                                 </div>
                                 <div class="custom-control custom-checkbox">
-                                    <input class="custom-control-input" type="checkbox" id="checkSinRegistro" value="Sin Registro" checked>
-                                    <label for="checkSinRegistro" class="custom-control-label text-secondary font-weight-bold">Sin Registro</label>
+                                    <input class="custom-control-input" type="checkbox" id="checkSinRegistro"
+                                        value="Sin Registro" checked>
+                                    <label for="checkSinRegistro"
+                                        class="custom-control-label text-secondary font-weight-bold">Sin
+                                        Registro</label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-4">
-                            <button type="button" class="btn btn-danger btn-block" onclick="fntGenerarReporteAceite()"><i class="fas fa-print"></i> Generar Reporte PDF</button>
+                            <button type="button" class="btn btn-danger btn-block"
+                                onclick="fntGenerarReporteAceite()"><i class="fas fa-print"></i> Generar Reporte
+                                PDF</button>
                         </div>
                     </div>
                 </div>
@@ -143,7 +154,8 @@
                     <input type="hidden" id="id_flota_km" name="id_flota_km">
                     <div class="form-group">
                         <label for="kilometraje_actual">Kilometraje Actual</label>
-                        <input type="number" id="kilometraje_actual" name="kilometraje_actual" class="form-control" placeholder="Ej: 150000" required>
+                        <input type="number" id="kilometraje_actual" name="kilometraje_actual" class="form-control"
+                            placeholder="Ej: 150000" required>
                     </div>
                 </form>
             </div>
@@ -171,11 +183,13 @@
                     <input type="hidden" id="kilometraje_anterior_aceite" name="kilometraje_anterior_aceite">
                     <div class="form-group">
                         <label for="fecha_cambio_aceite">Fecha del Cambio</label>
-                        <input type="date" id="fecha_cambio_aceite" name="fecha_cambio_aceite" class="form-control" required>
+                        <input type="date" id="fecha_cambio_aceite" name="fecha_cambio_aceite" class="form-control"
+                            required>
                     </div>
                     <div class="form-group">
                         <label for="kilometraje_cambio">Kilometraje del Cambio</label>
-                        <input type="number" id="kilometraje_cambio" name="kilometraje_cambio" class="form-control" placeholder="Ej: 145000" required>
+                        <input type="number" id="kilometraje_cambio" name="kilometraje_cambio" class="form-control"
+                            placeholder="Ej: 145000" required>
                     </div>
                     <p class="text-muted text-sm">Al registrar, el próximo cambio se calculará a 5,000 KM.</p>
                 </form>
@@ -199,8 +213,10 @@
                 </button>
             </div>
             <div class="modal-body">
-                <p>¿Qué tipo de registro desea eliminar para la unidad <strong id="unidad_delete_label_confirm"></strong>?</p>
-                <p class="text-sm text-danger">Esta acción eliminará el registro más reciente y no se puede deshacer.</p>
+                <p>¿Qué tipo de registro desea eliminar para la unidad <strong
+                        id="unidad_delete_label_confirm"></strong>?</p>
+                <p class="text-sm text-danger">Esta acción eliminará el registro más reciente y no se puede deshacer.
+                </p>
                 <div class="d-flex flex-column mt-3">
                     <button type="button" id="btnDeleteKilometraje" class="btn btn-danger mb-2">
                         <i class="fas fa-tachometer-alt mr-2"></i> Eliminar Kilometraje Actual

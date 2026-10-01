@@ -14,7 +14,7 @@
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <li class="breadcrumb-item active"><?= $data['nombre_institucion'] ?></li>
+                        <li class="breadcrumb-item active">Flota</li>
                     </ol>
                 </div>
             </div>
@@ -40,7 +40,8 @@
                                 <div class="card-header">
                                     <h3 class="card-title">Reporte de Operatividad</h3>
                                     <div class="card-tools">
-                                        <button type="button" class="btn btn-tool" data-card-widget="collapse" id="toggleReportSection">
+                                        <button type="button" class="btn btn-tool" data-card-widget="collapse"
+                                            id="toggleReportSection">
                                             <i class="fas fa-minus"></i>
                                         </button>
                                     </div>
@@ -54,30 +55,54 @@
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text"><i class="fas fa-search"></i></span>
                                                 </div>
-                                                <input type="text" id="filtro-grupos-input" class="form-control" placeholder="Buscar grupo por modelo, combustible...">
+                                                <input type="text" id="filtro-grupos-input" class="form-control"
+                                                    placeholder="Buscar grupo por modelo, combustible...">
                                             </div>
-                                            <div id="reporte-filtros" class="border rounded p-2" style="max-height: 250px; overflow-y: auto;">
+                                            <div id="reporte-filtros" class="border rounded p-2"
+                                                style="max-height: 250px; overflow-y: auto;">
                                                 <p class="text-muted">Cargando filtros...</p>
                                             </div>
                                         </div>
                                         <!-- Columna de Vista Previa -->
                                         <div class="col-md-6">
                                             <h5>2. Vista Previa del Reporte</h5>
-                                            <div id="reporte-vista-previa" class="border rounded p-3 bg-light" style="min-height: 200px;">
+                                            <div id="reporte-vista-previa" class="border rounded p-3 bg-light"
+                                                style="min-height: 200px;">
                                                 <div id="resumen-operatividad" class="row text-center text-white mb-3">
-                                                    <div class="col"><div class="p-2 bg-success rounded">Op.<br><strong id="total-operativas">0</strong></div></div>
-                                                    <div class="col"><div class="p-2 bg-warning rounded">Inop.<br><strong id="total-inoperativas">0</strong></div></div>
-                                                    <div class="col"><div class="p-2 bg-danger rounded">Crít.<br><strong id="total-criticas">0</strong></div></div>
-                                                    <div class="col"><div class="p-2 bg-dark rounded">Total<br><strong id="total-unidades-seleccionadas">0</strong></div></div>
+                                                    <div class="col">
+                                                        <div class="p-2 bg-success rounded">Op.<br><strong
+                                                                id="total-operativas">0</strong></div>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="p-2 bg-warning rounded">Inop.<br><strong
+                                                                id="total-inoperativas">0</strong></div>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="p-2 bg-danger rounded">Crít.<br><strong
+                                                                id="total-criticas">0</strong></div>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="p-2 bg-dark rounded">Total<br><strong
+                                                                id="total-unidades-seleccionadas">0</strong></div>
+                                                    </div>
                                                 </div>
                                                 <div style="max-height: 150px; overflow-y: auto;">
-                                                    <table id="tabla-unidades-seleccionadas" class="table table-sm table-bordered d-none">
+                                                    <table id="tabla-unidades-seleccionadas"
+                                                        class="table table-sm table-bordered d-none">
                                                         <thead class="thead-light">
-                                                            <tr><th>Grupo</th><th class="text-center">Cant.</th><th class="text-center">Op.</th><th class="text-center">Inop.</th><th class="text-center">Crít.</th></tr>
+                                                            <tr>
+                                                                <th>Grupo</th>
+                                                                <th class="text-center">Cant.</th>
+                                                                <th class="text-center">Op.</th>
+                                                                <th class="text-center">Inop.</th>
+                                                                <th class="text-center">Crít.</th>
+                                                            </tr>
                                                         </thead>
                                                         <tbody></tbody>
                                                     </table>
-                                                    <p id="placeholder-vista-previa" class="text-center text-muted pt-4">Seleccione grupos para ver el resumen aquí.</p>
+                                                    <p id="placeholder-vista-previa"
+                                                        class="text-center text-muted pt-4">Seleccione grupos para ver
+                                                        el resumen aquí.</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -127,7 +152,8 @@
             <div class="modal-body">
                 <form id="formFlota" name="formFlota">
                     <input type="hidden" id="id_flota" name="id_flota" value="">
-                    <input type="hidden" id="id_institucion_form" name="id_institucion" value="<?= $data['id_institucion'] ?>">
+                    <input type="hidden" id="id_institucion_form" name="id_institucion"
+                        value="<?= $data['id_institucion'] ?>">
                     <div class="form-row">
                         <div class="form-group col-md-6">
                             <label for="id_unidad">Identificador Unidad</label>
@@ -155,7 +181,8 @@
                         </div>
                         <div class="form-group col-md-6">
                             <label for="fecha_creacion">Año de Fabricación</label>
-                            <input type="number" class="form-control" id="fecha_creacion" name="fecha_creacion" placeholder="YYYY" min="1900" max="2099">
+                            <input type="number" class="form-control" id="fecha_creacion" name="fecha_creacion"
+                                placeholder="YYYY" min="1900" max="2099">
                         </div>
                     </div>
                     <div class="form-row">
@@ -179,7 +206,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                <button type="submit" id="btnActionForm" class="btn btn-primary" form="formFlota"><span id="btnText">Guardar</span></button>
+                <button type="submit" id="btnActionForm" class="btn btn-primary" form="formFlota"><span
+                        id="btnText">Guardar</span></button>
             </div>
         </div>
     </div>
