@@ -55,9 +55,9 @@ class BienesTallerModel extends Mysql {
             $data['grupo_id'],
             $data['subgrupo_id'],
             $data['seccion_id'],
-            $data['descripcion_bien'],
+            strtoupper($data['descripcion_bien']),
             $data['fecha_adquisicion'],
-            $data['status_bien'],
+            strtoupper($data['status_bien']),
             $data['user_id']
         );
         $request_insert = $this->insert($query_insert, $arrData);
@@ -84,9 +84,9 @@ class BienesTallerModel extends Mysql {
             $data['grupo_id'],
             $data['subgrupo_id'],
             $data['seccion_id'],
-            $data['descripcion_bien'],
+            strtoupper($data['descripcion_bien']),
             $data['fecha_adquisicion'],
-            $data['status_bien'],
+            strtoupper($data['status_bien']),
             $data['id_bien_taller']
         );
         $request = $this->update($sql, $arrData);

@@ -127,10 +127,10 @@ class OrdenModel extends Mysql {
                         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
         $requestInsert = $this->insert($queryInsert, [
             $intUnidad,
-            $srtOper, $idOper,
-            $srtMec, $idMec,
-            $srtDesp, $idDesp,
-            $strDate, $intIdUser, $srtObs, 1, 
+            strtoupper($srtOper), $idOper,
+            strtoupper($srtMec), $idMec,
+            strtoupper($srtDesp), $idDesp,
+            $strDate, $intIdUser, strtoupper($srtObs), 1, 
             $this->id_institucion, $numeroOrden
         ]);
         return $requestInsert;
@@ -149,11 +149,11 @@ class OrdenModel extends Mysql {
                 WHERE id_despacho = ? AND id_institucion = ?";
         $arrData = [
             $intUnidad, 
-            $srtOper, $idOper,
-            $srtMec, $idMec,
-            $srtDesp, $idDesp,
+            strtoupper($srtOper), $idOper,
+            strtoupper($srtMec), $idMec,
+            strtoupper($srtDesp), $idDesp,
             $strDate, 
-            $srtObs, 
+            strtoupper($srtObs), 
             $idDespacho, 
             $this->id_institucion
         ];

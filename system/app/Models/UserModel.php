@@ -39,11 +39,11 @@ class UserModel extends Mysql {
                 WHERE id_personal = (SELECT usuario_id_personal FROM table_usuarios WHERE usuario_id = ?)";
 
         $arrData = [
-            $data['usuario_nombres'],
-            $data['usuario_apellidos'],
+            strtoupper($data['usuario_nombres']),
+            strtoupper($data['usuario_apellidos']),
             $data['usuario_email'],
             $data['usuario_telefono'],
-            $data['usuario_direccion'], 
+            strtoupper($data['usuario_direccion']), 
             $id_usuario
         ];
         return $this->update($sql, $arrData) !== false;
@@ -100,11 +100,11 @@ class UserModel extends Mysql {
                                         personal_direccion = ?
                                     WHERE id_personal = ?";
             $arr_personal = [
-                $personalData['nombre'],
-                $personalData['apellido'],
+                strtoupper($personalData['nombre']),
+                strtoupper($personalData['apellido']),
                 $personalData['email'],
                 $personalData['telefono'],
-                $personalData['direccion'],
+                strtoupper($personalData['direccion']),
                 $personalData['id_personal']
             ];
             $this->update($sql_update_personal, $arr_personal);
@@ -196,8 +196,8 @@ class UserModel extends Mysql {
                                 personal_email = ?, personal_tlf = ?, personal_direccion = ?
                              WHERE id_personal = (SELECT usuario_id_personal FROM table_usuarios WHERE usuario_id = ?)";
             $arr_personal = [
-                $data['personal_cedula'], $data['personal_nombre'], $data['personal_apellido'],
-                $data['personal_email'], $data['personal_tlf'], $data['personal_direccion'],
+                $data['personal_cedula'], strtoupper($data['personal_nombre']), strtoupper($data['personal_apellido']),
+                $data['personal_email'], $data['personal_tlf'], strtoupper($data['personal_direccion']),
                 $data['usuario_id']
             ];
             $this->update($sql_personal, $arr_personal);
@@ -234,11 +234,11 @@ class UserModel extends Mysql {
     public function insertDepartamento(string $nombre, string $descripcion, int $status) {
         $return = 0;
         $sql = "SELECT * FROM table_departamentos WHERE departamento_nombre = ?";
-        $request = $this->select_all($sql, [$nombre]);
+        $request = $this->select_all($sql, [strtoupper($nombre)]);
 
         if (empty($request)) {
             $query_insert = "INSERT INTO table_departamentos(departamento_nombre, departamento_descripcion, departamento_status) VALUES(?,?,?)";
-            $arrData = [$nombre, $descripcion, $status];
+            $arrData = [strtoupper($nombre), $descripcion, $status];
             $request_insert = $this->insert($query_insert, $arrData);
             $return = $request_insert;
         } else {
@@ -249,7 +249,7 @@ class UserModel extends Mysql {
 
     public function updateDepartamento(int $iddepto, string $nombre, string $descripcion, int $status) {
         $sql = "UPDATE table_departamentos SET departamento_nombre = ?, departamento_descripcion = ?, departamento_status = ? WHERE departamento_id = ?";
-        $arrData = [$nombre, $descripcion, $status, $iddepto];
+        $arrData = [strtoupper($nombre), $descripcion, $status, $iddepto];
         return $this->update($sql, $arrData);
     }
 
@@ -282,11 +282,11 @@ class UserModel extends Mysql {
     public function insertRol(string $nombre, string $descripcion, int $status) {
         $return = 0;
         $sql = "SELECT * FROM table_per_roles WHERE rol_nombre = ?";
-        $request = $this->select_all($sql, [$nombre]);
+        $request = $this->select_all($sql, [strtoupper($nombre)]);
 
         if (empty($request)) {
             $query_insert = "INSERT INTO table_per_roles(rol_nombre, rol_descripcion, rol_status) VALUES(?,?,?)";
-            $arrData = [$nombre, $descripcion, $status];
+            $arrData = [strtoupper($nombre), $descripcion, $status];
             $request_insert = $this->insert($query_insert, $arrData);
             $return = $request_insert;
         } else {
@@ -297,7 +297,7 @@ class UserModel extends Mysql {
 
     public function updateRol(int $idrol, string $nombre, string $descripcion, int $status) {
         $sql = "UPDATE table_per_roles SET rol_nombre = ?, rol_descripcion = ?, rol_status = ? WHERE rol_id = ?";
-        $arrData = [$nombre, $descripcion, $status, $idrol];
+        $arrData = [strtoupper($nombre), $descripcion, $status, $idrol];
         return $this->update($sql, $arrData);
     }
 

@@ -84,11 +84,11 @@ class ProductoModel extends Mysql {
                 WHERE producto = ? 
                   AND id_enlace_producto = ? 
                   AND id_institucion = ?";
-        $request = $this->select_all($sql, [$srtArticlo, $intModelo, $this->id_institucion]);
+        $request = $this->select_all($sql, [strtoupper($srtArticlo), $intModelo, $this->id_institucion]);
 
         if(empty($request)){
             $sql_insert_prod = "INSERT INTO table_alm_producto(id_enlace_producto, id_ubicacion, producto, tag_producto, present_producto, status_producto, id_institucion) VALUES (?,?,?,?,?,1,?)";
-            $arrData_prod = [$intModelo, $intUbicacion, $srtArticlo, $intOptionArticulo, $strPresentArticulo, $this->id_institucion];
+            $arrData_prod = [$intModelo, $intUbicacion, strtoupper($srtArticlo), $intOptionArticulo, strtoupper($strPresentArticulo), $this->id_institucion];
             $id_producto = $this->insert($sql_insert_prod, $arrData_prod);
 
             if($id_producto > 0){
@@ -325,7 +325,7 @@ class ProductoModel extends Mysql {
                         AND id_enlace_producto = ? 
                         AND id_producto != ? 
                         AND id_institucion = ?";
-        $request_check = $this->select($sql_check, [$data['producto'], $data['id_enlace_producto'], $idProducto, $this->id_institucion]);
+        $request_check = $this->select($sql_check, [strtoupper($data['producto']), $data['id_enlace_producto'], $idProducto, $this->id_institucion]);
 
         if (!empty($request_check)) {
             return 'exist';
@@ -335,7 +335,7 @@ class ProductoModel extends Mysql {
                          SET producto = ?, id_enlace_producto = ?, id_ubicacion = ?, present_producto = ?, tag_producto = ?
                          WHERE id_producto = ? 
                            AND id_institucion = ?";
-        $arrData_producto = [$data['producto'], $data['id_enlace_producto'], $data['id_ubicacion'], $data['present_producto'], $data['tag_producto'], $idProducto, $this->id_institucion];
+        $arrData_producto = [strtoupper($data['producto']), $data['id_enlace_producto'], $data['id_ubicacion'], strtoupper($data['present_producto']), $data['tag_producto'], $idProducto, $this->id_institucion];
         $request_producto = $this->update($sql_producto, $arrData_producto);
 
         $sql_relacion = "UPDATE table_alm_relacion_producto 
@@ -345,8 +345,7 @@ class ProductoModel extends Mysql {
         $arrData_relacion = [$data['id_proveedor'], $data['cant_producto'], $idProducto, $this->id_institucion];
         $request_relacion = $this->update($sql_relacion, $arrData_relacion);
 
-        return $request_producto || $request_relacion;
-    }
+        return $request_producto || $request_relacion;    }
 
     /**************************************************/
     /********* INVENTARIO *****************************/

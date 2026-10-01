@@ -23,7 +23,7 @@ class PersonalModel extends Mysql {
 			$requestInsert = 'exist'; // Devolvemos 'exist' si la cédula ya está registrada
 		} else {
 			$queryInsert = "INSERT INTO table_personal(personal_cedula, personal_nombre, personal_apellido, personal_cargo, personal_tlf, personal_email, personal_direccion, personal_tag, personal_status) VALUES(?,?,?,?,?,?,?,?,?)";
-			$arrData = array($this->intIdentificacion, $this->strNombre, $this->strApellido, $this->intlistRolId, $this->intTxtTlf, $this->strEmail, $this->strDireccion, $this->intTagPersonal, $this->intListStatus);
+			$arrData = array($this->intIdentificacion, strtoupper($this->strNombre), strtoupper($this->strApellido), $this->intlistRolId, $this->intTxtTlf, $this->strEmail, strtoupper($this->strDireccion), $this->intTagPersonal, $this->intListStatus);
 			$requestInsert = $this->insert($queryInsert,$arrData);
 		}
 		return $requestInsert;
@@ -106,7 +106,7 @@ class PersonalModel extends Mysql {
 		} else {
 
 		$sql = "UPDATE table_personal SET personal_cedula = ?, personal_nombre = ?, personal_apellido = ?, personal_cargo = ?, personal_tlf = ?, personal_email = ?, personal_direccion = ?, personal_tag = ?, personal_status = ? WHERE id_personal= ?";
-		$arrData = array($this->intIdentificacion, $this->strNombre, $this->strApellido, $this->intlistRolId, $this->intTxtTlf, $this->strEmail, $this->strDireccion, $this->intTagPersonal, $this->intListStatus, $this->intIdPersonal);
+		$arrData = array($this->intIdentificacion, strtoupper($this->strNombre), strtoupper($this->strApellido), $this->intlistRolId, $this->intTxtTlf, $this->strEmail, strtoupper($this->strDireccion), $this->intTagPersonal, $this->intListStatus, $this->intIdPersonal);
 		$request = $this->update($sql, $arrData);
 		return $request;
 	}

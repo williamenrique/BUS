@@ -106,14 +106,14 @@ class FlotaModel extends Mysql {
                     (id_unidad, id_marca, id_modelo, vim_unidad, fecha_creacion, cap_pasajero, tipo_combustible, transmision, status_unidad, id_institucion) 
                 VALUES (?,?,?,?,?,?,?,?,?,?)";
         $arrData = [
-            $data['id_unidad'], 
+            strtoupper($data['id_unidad']), 
             $data['id_marca'], 
             $data['id_modelo'], 
-            $data['vim_unidad'],
+            strtoupper($data['vim_unidad']),
             $data['fecha_creacion'], 
             $data['cap_pasajero'], 
-            $data['tipo_combustible'],
-            $data['transmision'], 
+            strtoupper($data['tipo_combustible']),
+            strtoupper($data['transmision']), 
             $data['status_unidad'],
             $this->id_institucion
         ];
@@ -128,9 +128,9 @@ class FlotaModel extends Mysql {
     public function updateFlota(array $data): bool {
         $sql = "UPDATE table_flota SET id_unidad = ?, id_marca = ?, id_modelo = ?, vim_unidad = ?, fecha_creacion = ?, cap_pasajero = ?, tipo_combustible = ?, transmision = ? WHERE id_flota = ?";
         $arrData = [
-            $data['id_unidad'], $data['id_marca'], $data['id_modelo'], $data['vim_unidad'],
-            $data['fecha_creacion'], $data['cap_pasajero'], $data['tipo_combustible'],
-            $data['transmision'], $data['id_flota']
+            strtoupper($data['id_unidad']), $data['id_marca'], $data['id_modelo'], strtoupper($data['vim_unidad']),
+            $data['fecha_creacion'], $data['cap_pasajero'], strtoupper($data['tipo_combustible']),
+            strtoupper($data['transmision']), $data['id_flota']
         ];
         return $this->update($sql, $arrData);
     }
