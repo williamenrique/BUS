@@ -10,13 +10,13 @@
             <div class="row mb-2">
                 <div class="col-sm-6">
                     <h1><i class="fas fa-dolly-flatbed"></i> <?= $data['page_title'] ?>
-                        <span class="badge badge-info ml-2"><?= $data['nombre_institucion'] ?></span>
+
                     </h1>
                 </div>
                 <div class="col-sm-6">
                     <ol class="breadcrumb float-sm-right">
                         <li class="breadcrumb-item"><a href="<?= base_url() ?>dashboard">Inicio</a></li>
-                        <li class="breadcrumb-item active"><?= $data['nombre_institucion'] ?></li>
+                        <li class="breadcrumb-item active">Orden de Despacho</li>
                     </ol>
                 </div>
             </div>
@@ -29,11 +29,13 @@
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
-                        <span class="font-weight-bold">Progreso de órdenes este mes - <?= $data['nombre_institucion'] ?></span>
+                        <span class="font-weight-bold">Progreso de órdenes este mes -
+                            <?= $data['nombre_institucion'] ?></span>
                         <span id="progressPercentage" class="font-weight-bold">0%</span>
                     </div>
                     <div class="progress">
-                        <div id="progressBarFill" class="progress-bar bg-primary" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div id="progressBarFill" class="progress-bar bg-primary" role="progressbar" style="width: 0%"
+                            aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
                     <div class="text-center mt-1">
                         <span id="progressCurrent" class="text-muted text-sm">0 órdenes</span>
@@ -93,8 +95,10 @@
                                         </select>
                                     </div>
                                     <div class="col-md-4 form-group">
-                                        <label for="listDespachador"><i class="fas fa-clipboard-check"></i> Despachador *</label>
-                                        <select id="listDespachador" name="listDespachador" class="form-control" required>
+                                        <label for="listDespachador"><i class="fas fa-clipboard-check"></i> Despachador
+                                            *</label>
+                                        <select id="listDespachador" name="listDespachador" class="form-control"
+                                            required>
                                             <option value="0">Cargando despachadores...</option>
                                         </select>
                                     </div>
@@ -114,14 +118,17 @@
                                         <div class="input-group">
                                             <input type="number" id="txtCant" min="1" step="1" class="form-control">
                                             <div class="input-group-append">
-                                                <button type="button" id="btnAgrega" class="btn btn-primary"><i class="fas fa-plus"></i></button>
+                                                <button type="button" id="btnAgrega" class="btn btn-primary"><i
+                                                        class="fas fa-plus"></i></button>
                                             </div>
                                         </div>
                                         <div class="d-flex justify-content-between mt-1">
-                                            <small class="text-muted">Disponible: <span id="stockDisponible">0</span></small>
+                                            <small class="text-muted">Disponible: <span
+                                                    id="stockDisponible">0</span></small>
                                             <input type="hidden" id="cantDispo">
                                         </div>
-                                        <div id="stockValidation" class="text-danger text-sm mt-1" style="display: none;"></div>
+                                        <div id="stockValidation" class="text-danger text-sm mt-1"
+                                            style="display: none;"></div>
                                     </div>
                                 </div>
                                 <table class="table table-bordered table-striped table-sm">
@@ -142,12 +149,15 @@
 
                                 <div class="form-group mt-4">
                                     <label for="txtObs"><i class="fas fa-sticky-note"></i> Observaciones</label>
-                                    <textarea id="txtObs" name="txtObs" rows="3" class="form-control" placeholder="Observaciones..."></textarea>
+                                    <textarea id="txtObs" name="txtObs" rows="3" class="form-control"
+                                        placeholder="Observaciones..."></textarea>
                                 </div>
 
                                 <div class="text-right">
-                                    <button type="button" class="btn btn-secondary"><i class="fas fa-times"></i> Cancelar</button>
-                                    <button type="submit" id="btnGenerar" class="btn btn-success"><i class="fas fa-paper-plane"></i> Generar Orden</button>
+                                    <button type="button" class="btn btn-secondary"><i class="fas fa-times"></i>
+                                        Cancelar</button>
+                                    <button type="submit" id="btnGenerar" class="btn btn-success"><i
+                                            class="fas fa-paper-plane"></i> Generar Orden</button>
                                 </div>
                             </form>
                         </div>
@@ -155,8 +165,10 @@
 
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas - <?= $data['nombre_institucion'] ?></h3>
-                            <button id="btnImprimirLote" class="btn btn-warning btn-sm float-right" disabled><i class="fas fa-print"></i> Imprimir Seleccionados (0/2)</button>
+                            <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas -
+                                <?= $data['nombre_institucion'] ?></h3>
+                            <button id="btnImprimirLote" class="btn btn-warning btn-sm float-right" disabled><i
+                                    class="fas fa-print"></i> Imprimir Seleccionados (0/2)</button>
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
@@ -186,10 +198,14 @@
                         </div>
                         <div class="card-body">
                             <ul class="list-group list-group-unbordered mb-3">
-                                <li class="list-group-item"><b>Fecha</b> <a class="float-right" id="fechaDespacho">No seleccionada</a></li>
-                                <li class="list-group-item"><b>Operador</b> <a class="float-right" id="operador">No seleccionado</a></li>
-                                <li class="list-group-item"><b>Mecánico</b> <a class="float-right" id="mecanico">No seleccionado</a></li>
-                                <li class="list-group-item"><b>Despachador</b> <a class="float-right" id="despachador">No seleccionado</a></li>
+                                <li class="list-group-item"><b>Fecha</b> <a class="float-right" id="fechaDespacho">No
+                                        seleccionada</a></li>
+                                <li class="list-group-item"><b>Operador</b> <a class="float-right" id="operador">No
+                                        seleccionado</a></li>
+                                <li class="list-group-item"><b>Mecánico</b> <a class="float-right" id="mecanico">No
+                                        seleccionado</a></li>
+                                <li class="list-group-item"><b>Despachador</b> <a class="float-right"
+                                        id="despachador">No seleccionado</a></li>
                             </ul>
                             <hr>
                             <strong><i class="fas fa-boxes"></i> Totales</strong>
@@ -208,7 +224,8 @@
                             <form id="formBuscarDesp">
                                 <div class="form-group">
                                     <label for="txtCod">Número de Orden</label>
-                                    <input type="text" id="txtCod" name="txtCod" class="form-control" placeholder="Ej: 1001">
+                                    <input type="text" id="txtCod" name="txtCod" class="form-control"
+                                        placeholder="Ej: 1001">
                                 </div>
                                 <div class="form-group">
                                     <label for="txtFecha">Fecha</label>
@@ -216,13 +233,16 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="txtUnidad">Unidad</label>
-                                    <input type="text" id="txtUnidad" name="txtUnidad" class="form-control" placeholder="ID de unidad">
+                                    <input type="text" id="txtUnidad" name="txtUnidad" class="form-control"
+                                        placeholder="ID de unidad">
                                 </div>
                                 <div class="form-group">
                                     <label for="txtArt">Artículo</label>
-                                    <input type="text" id="txtArt" name="txtArt" class="form-control" placeholder="Nombre del artículo">
+                                    <input type="text" id="txtArt" name="txtArt" class="form-control"
+                                        placeholder="Nombre del artículo">
                                 </div>
-                                <button type="submit" class="btn btn-indigo btn-block"><i class="fas fa-search"></i> Buscar</button>
+                                <button type="submit" class="btn btn-indigo btn-block"><i class="fas fa-search"></i>
+                                    Buscar</button>
                             </form>
                             <div id="searchResultsContainer" class="mt-3"></div>
                         </div>
