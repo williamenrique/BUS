@@ -1,6 +1,11 @@
 let dailyChart = null;
 let monthlyChart = null;
 
+// Institución activa en el dashboard (para admin)
+let dashboardInstitucionActual = null;
+let esAdminDashboard = false;
+let institucionesDisponibles = [];
+
 // Espera a que el DOM esté completamente cargado
 document.addEventListener('DOMContentLoaded', function () {
 
@@ -12,10 +17,9 @@ document.addEventListener('DOMContentLoaded', function () {
             const stationId = this.value;
 
             if (!stationId || stationId === "") {
-                return; // No hacer nada si se selecciona la opción por defecto
+                return;
             }
 
-            // Mostrar una alerta de carga
             Swal.fire({
                 title: 'Actualizando Estación',
                 text: 'Por favor, espere...',
@@ -26,12 +30,9 @@ document.addEventListener('DOMContentLoaded', function () {
             });
 
             const formData = new FormData();
-            // La variable `userId` debe estar definida globalmente en tu vista (home.php)
-            // junto con `userDepartment` y `userRole`.
             formData.append('idEstacion', stationId);
             formData.append('idUsuario', userId);
 
-            // Petición AJAX para actualizar la estación, apuntando al controlador correcto
             fetch(base_url + 'home/setStation', {
                 method: 'POST',
                 body: formData
@@ -46,7 +47,6 @@ document.addEventListener('DOMContentLoaded', function () {
                             showConfirmButton: false,
                             timer: 2000
                         }).then(() => {
-                            // Redireccionar a la página de registro de estación
                             window.location.href = base_url + 'estacion/registrar';
                         });
                     } else {
@@ -61,8 +61,6 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // --- LÓGICA PARA EL AVISO DE SELECCIÓN DE ESTACIÓN ---
-    // Las variables `userDepartment` y `userEstacionId` se definen globalmente en footer.php.
-    // Si el usuario es de Estación y no tiene una asignada (ID 0), se muestra la alerta.
     if (userDepartment === 'ESTACION') {
         Swal.fire({
             title: 'Seleccione su Estación',
@@ -77,13 +75,12 @@ document.addEventListener('DOMContentLoaded', function () {
         }).then((result) => {
             let stationId = null;
             if (result.isConfirmed) {
-                stationId = 1; // ID para E/S Táchira
+                stationId = 1;
             } else if (result.isDenied) {
-                stationId = 2; // ID para E/S Gran Parada
+                stationId = 2;
             }
 
             if (stationId) {
-                // Muestra la alerta de carga
                 Swal.fire({
                     title: 'Configurando Estación',
                     text: 'Por favor, espere...',
@@ -97,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 formData.append('idEstacion', stationId);
                 formData.append('idUsuario', userId);
 
-                // Petición AJAX para guardar la estación
                 fetch(base_url + 'home/setStation', {
                     method: 'POST',
                     body: formData
@@ -105,7 +101,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     .then(response => response.json())
                     .then(data => {
                         if (data.status) {
-                            // Si es exitoso, redirecciona a la página de registro
                             window.location.href = base_url + 'estacion/registrar';
                         } else {
                             Swal.fire('Error', data.msg, 'error');
@@ -119,119 +114,524 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
     // --- FIN DE LA LÓGICA DE AVISO ---
-
 });
 
-document.addEventListener('DOMContentLoaded', function () {
-    // La variable `userDepartment` se define en home.php
-    // y nos dice qué dashboard se está mostrando. La variable `userRole` nos da el rol.
+/**
+ * Segunda inicialización: carga de datos del dashboard por departamento.
+ */
+document.addEventListener('DOMContentLoaded', async function () {
     if (typeof userDepartment === 'undefined' || typeof userRole === 'undefined') {
-        return; // Salir si las variables no están definidas
+        return;
     }
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Lógica unificada para cargar los datos del dashboard correspondiente.
-    // El administrador puede ver varios dashboards, así que comprobamos cada uno.
+    // Configurar el selector de institución si es admin de Sistema
+    await setupInstitucionSelector();
 
-    if (userDepartment === 'ALMACEN' || userRole === 'ADMINISTRADOR') {
-        if (document.querySelector('#dashboard-almacen')) loadAlmacenData();
+    // LÓGICA DE CARGA DE DASHBOARDS
+    if (document.querySelector('#dashboard-almacen')) loadAlmacenData();
+    if (document.querySelector('#dashboard-operaciones')) loadOperacionesData();
+    if (document.querySelector('#dashboard-estacion')) {
+        loadEstacionData();
+        populateMonthSelects();
+        loadDailySales();
     }
-    if (userDepartment === 'OPERACIONES' || userRole === 'ADMINISTRADOR') {
-        if (document.querySelector('#dashboard-operaciones')) loadOperacionesData();
-    }
-    if (userDepartment === 'ESTACION' || userRole === 'ADMINISTRADOR') {
-        if (document.querySelector('#dashboard-estacion')) {
-            loadEstacionData();
-            populateMonthSelects();
-            loadDailySales();
-        }
-    }
-    if (userDepartment === 'BIENES' || userRole === 'ADMINISTRADOR') {
-        if (document.querySelector('#dashboard-bienes')) loadBienesData();
-    }
-    if (userDepartment === 'COMPRAS' || userRole === 'ADMINISTRADOR') {
-        if (document.querySelector('#dashboard-compras')) loadComprasData();
-    }
+    if (document.querySelector('#dashboard-bienes')) loadBienesData();
+    if (document.querySelector('#dashboard-compras')) loadComprasData();
 
     // Funciones que solo se ejecutan para el rol de Administrador
     if (userRole === 'ADMINISTRADOR') {
         setupActiveUsersSection();
         setupInactiveUsersSection();
     }
-    // --- FIN DE LA CORRECCIÓN ---
 });
 
+/**
+ * Configura el selector de institución global.
+ * SOLO el departamento de Sistema/Sistemas ve el selector.
+ * Un Administrador de otro departamento NO lo ve.
+ */
+async function setupInstitucionSelector() {
+    const departamentoActual = (typeof userDepartment !== 'undefined') ? userDepartment.toUpperCase() : '';
+    
+    // SOLO el departamento de Sistema/Sistemas ve el selector de institución.
+    const esAdmin = (departamentoActual === 'SISTEMA' || departamentoActual === 'SISTEMAS');
+    
+    if (!esAdmin) {
+        dashboardInstitucionActual = 1;
+        esAdminDashboard = false;
+        return;
+    }
+
+    esAdminDashboard = true;
+
+    try {
+        const response = await fetch(base_url + 'Home/getInstituciones');
+        const result = await response.json();
+        
+        if (result.success && result.data.length > 0) {
+            institucionesDisponibles = result.data;
+            dashboardInstitucionActual = parseInt(result.data[0].id_institucion, 10);
+            
+            const selectorHtml = `
+                <div class="card card-outline card-primary mb-3" id="dashboard-institucion-card">
+                    <div class="card-body py-2">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-building fa-2x text-primary mr-3"></i>
+                                <div>
+                                    <h5 class="mb-0">Dashboard Institucional</h5>
+                                    <small class="text-muted">Seleccione la institución a visualizar</small>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <label class="mr-2 mb-0 font-weight-bold">Institución:</label>
+                                <select id="dashboard-institucion-selector" class="form-control" style="min-width: 250px;">
+                                    ${result.data.map(inst => 
+                                        `<option value="${inst.id_institucion}">${inst.nombre}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const contentWrapper = document.querySelector('.content-wrapper');
+            if (contentWrapper) {
+                const firstSection = contentWrapper.querySelector('section.content');
+                if (firstSection) {
+                    firstSection.insertAdjacentHTML('afterbegin', selectorHtml);
+                } else {
+                    contentWrapper.insertAdjacentHTML('afterbegin', selectorHtml);
+                }
+            }
+            
+            const selector = document.getElementById('dashboard-institucion-selector');
+            if (selector) {
+                selector.addEventListener('change', function () {
+                    dashboardInstitucionActual = parseInt(this.value, 10);
+                    recargarDashboard();
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error cargando instituciones para el selector:', error);
+    }
+}
+
+/**
+ * Recarga los datos de todos los dashboards visibles.
+ */
+function recargarDashboard() {
+    if (document.querySelector('#dashboard-almacen')) loadAlmacenData();
+    if (document.querySelector('#dashboard-operaciones')) loadOperacionesData();
+    if (document.querySelector('#dashboard-bienes')) loadBienesData();
+    if (document.querySelector('#dashboard-compras')) loadComprasData();
+    // Estación no aplica institución
+}
 
 
 /**
- * Carga los datos para el dashboard de Almacén.
+ * =====================================================================
+ * DASHBOARD DE ALMACÉN
+ * =====================================================================
  */
+
 function loadAlmacenData() {
-    fetch(base_url + 'Home/getAlmacenData')
+    const idInst = dashboardInstitucionActual || 1;
+    
+    fetch(base_url + 'Home/getAlmacenData?id_institucion=' + idInst)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 const almacen = data.data;
 
-                // 1. Litros Mes Actual
-                const lubActual = document.querySelector('#lubricantes-actual');
-                if (lubActual) lubActual.textContent = `${parseFloat(almacen.consumibles.mes_actual || 0).toFixed(2)} Lts.`;
+                setText('almacen-productos-sin-stock', almacen.productos_sin_stock ?? 0);
+                setText('almacen-productos-stock-bajo', almacen.productos_stock_bajo ?? 0);
+                setText('almacen-ordenes-pendientes', almacen.orders_aprobadas ? almacen.orders_aprobadas.total_aprobadas : 0);
+                setText('almacen-total-productos', almacen.total_productos ?? 0);
 
-                // 2. Litros Mes Anterior
-                const lubAnterior = document.querySelector('#lubricantes-anterior');
-                if (lubAnterior) lubAnterior.textContent = `${parseFloat(almacen.consumibles.mes_anterior || 0).toFixed(2)} Lts.`;
+                const lubActual = almacen.consumibles ? parseFloat(almacen.consumibles.mes_actual || 0) : 0;
+                setText('almacen-lubricantes-actual', lubActual.toFixed(2) + ' Lts');
 
-                // 3. Órdenes Aprobadas
-                const ordAprobadas = document.querySelector('#ordenes-aprobadas');
-                if (ordAprobadas) {
-                    const totalAprobadas = almacen.orders_aprobadas ? almacen.orders_aprobadas.total_aprobadas : 0;
-                    ordAprobadas.textContent = totalAprobadas;
-                }
+                const lubAnterior = almacen.consumibles ? parseFloat(almacen.consumibles.mes_anterior || 0) : 0;
+                setText('almacen-lubricantes-anterior', lubAnterior.toFixed(2) + ' Lts');
 
-                // 4. Órdenes Despachadas
-                // Selector corregido: en la vista el id es "ordenes-despacho"
-                const ordDespachadas = document.querySelector('#ordenes-despacho');
-                if (ordDespachadas) {
-                    const totalDespachadas = almacen.orders_despachadas ? almacen.orders_despachadas.total_despachadas : 0;
-                    ordDespachadas.textContent = `${totalDespachadas} Ord.`;
-                }
-
-                const topProductElem = document.querySelector('#top-producto-mes');
-                if (topProductElem && almacen.top_product) {
-                    topProductElem.textContent = `${almacen.top_product.producto} (${almacen.top_product.total_despachado} Und.)`;
-                } else if (topProductElem) {
-                    topProductElem.textContent = 'N/A';
-                }
+                const ordDesp = almacen.orders_despachadas ? almacen.orders_despachadas.total_despachadas : 0;
+                setText('almacen-ordenes-despacho', ordDesp);
             }
         })
         .catch(error => console.error('Error cargando datos de almacén:', error));
+
+    // Cargar las tablas
+    loadTopProductosAlmacen();
+    loadUltimasOrdenesAlmacen();
+}
+
+function loadTopProductosAlmacen() {
+    const idInst = dashboardInstitucionActual || 1;
+    const tbody = document.getElementById('tabla-top-productos');
+    
+    if (!tbody) return;
+
+    fetch(base_url + 'Home/getTopProductosAlmacen?id_institucion=' + idInst)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                let html = '';
+                data.data.forEach((item, index) => {
+                    html += `
+                        <tr>
+                            <td class="text-center font-weight-bold">${index + 1}</td>
+                            <td>${item.producto}</td>
+                            <td><small class="text-muted">${item.enlace_producto || '-'}</small></td>
+                            <td><small class="text-muted">${item.ubicacion || '-'}</small></td>
+                            <td class="text-center font-weight-bold text-primary">
+                                ${parseFloat(item.total_despachado).toFixed(2)} ${item.present_producto || 'Und'}
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle mr-1"></i>No hay productos despachados este mes.
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando top productos:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-danger py-3">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Error al cargar los datos.
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+function loadUltimasOrdenesAlmacen() {
+    const idInst = dashboardInstitucionActual || 1;
+    const tbody = document.getElementById('tabla-ultimas-ordenes');
+    
+    if (!tbody) return;
+
+    fetch(base_url + 'Home/getUltimasOrdenesAlmacen?id_institucion=' + idInst)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                let html = '';
+                data.data.forEach(item => {
+                    const estadoBadge = getEstadoOrdenBadge(item.estado_orden);
+                    html += `
+                        <tr>
+                            <td class="text-center font-weight-bold">#${item.numero_orden}</td>
+                            <td>${item.fecha_despacho}</td>
+                            <td>${item.id_unidad} - ${item.modelo_unidad}</td>
+                            <td><small>${item.operador || 'N/A'}</small></td>
+                            <td class="text-center">
+                                <span class="badge badge-info">${item.total_articulos} art.</span>
+                            </td>
+                            <td class="text-center">${estadoBadge}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle mr-1"></i>No hay órdenes registradas.
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando últimas órdenes:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger py-3">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Error al cargar los datos.
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+
+/**
+ * =====================================================================
+ * DASHBOARD DE COMPRAS
+ * =====================================================================
+ */
+
+function loadComprasData() {
+    const idInst = dashboardInstitucionActual || 1;
+
+    // 1. Cargar los contadores generales
+    fetch(base_url + 'Home/getComprasData?id_institucion=' + idInst)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const compras = data.data;
+
+                // Cards de alerta
+                setText('compras-requisiciones-pendientes', compras.requisiciones_pendientes ?? 0);
+                setText('compras-ordenes-aprobadas', compras.ordenes_aprobadas ?? 0);
+                setText('compras-articulos-sin-stock', compras.articulos_sin_stock ?? 0);
+                setText('compras-articulos-stock-bajo', compras.articulos_stock_bajo ?? 0);
+
+                // Cards de movimientos del mes
+                setText('compras-ordenes-despachadas-mes', compras.ordenes_despachadas_mes ?? 0);
+                setText('compras-ordenes-costeadas-mes', compras.ordenes_costeadas_mes ?? 0);
+
+                // Montos
+                const totalDivisa = parseFloat(compras.total_divisa_mes || 0);
+                setText('compras-total-divisa-mes', '$' + totalDivisa.toLocaleString('es-VE', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }));
+
+                const totalBs = parseFloat(compras.total_bs_mes || 0);
+                setText('compras-total-bs-mes', 'Bs. ' + totalBs.toLocaleString('es-VE', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                }));
+            }
+        })
+        .catch(error => console.error('Error cargando datos de compras:', error));
+
+    // 2. Cargar las tablas
+    loadTopProductosCosteados();
+    loadUltimasRequisiciones();
+    loadUltimasComprasCosteadas();
 }
 
 /**
- * Carga los datos para el dashboard de Operaciones.
+ * Top 10 productos costeados del mes.
  */
+function loadTopProductosCosteados() {
+    const idInst = dashboardInstitucionActual || 1;
+    const tbody = document.getElementById('tabla-top-productos-costeados');
+    
+    if (!tbody) return;
+
+    fetch(base_url + 'Home/getTopProductosCosteados?id_institucion=' + idInst)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                let html = '';
+                data.data.forEach((item, index) => {
+                    const totalDivisa = parseFloat(item.total_divisa || 0);
+                    const totalBs = parseFloat(item.total_bs || 0);
+
+                    html += `
+                        <tr>
+                            <td class="text-center font-weight-bold">${index + 1}</td>
+                            <td>${item.producto}</td>
+                            <td><small class="text-muted">${item.proveedor || '-'}</small></td>
+                            <td><small class="text-muted">${item.enlace_producto || '-'}</small></td>
+                            <td class="text-center">
+                                <span class="badge badge-info">${item.veces_costeadas}</span>
+                            </td>
+                            <td class="text-center font-weight-bold text-primary">
+                                $${totalDivisa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td class="text-center font-weight-bold text-success">
+                                Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle mr-1"></i>No hay productos costeados este mes.
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando top productos costeados:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="text-center text-danger py-3">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Error al cargar los datos.
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+/**
+ * Últimas 10 requisiciones.
+ */
+function loadUltimasRequisiciones() {
+    const idInst = dashboardInstitucionActual || 1;
+    const tbody = document.getElementById('tabla-ultimas-requisiciones');
+    
+    if (!tbody) return;
+
+    fetch(base_url + 'Home/getUltimasRequisiciones?id_institucion=' + idInst)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                let html = '';
+                data.data.forEach(item => {
+                    const estadoBadge = getEstadoOrdenBadge(item.estado_orden);
+                    html += `
+                        <tr>
+                            <td class="text-center font-weight-bold">#${item.numero_orden}</td>
+                            <td>${item.fecha_despacho}</td>
+                            <td>${item.id_unidad} - ${item.modelo_unidad}</td>
+                            <td><small>${item.solicitante || 'N/A'}</small></td>
+                            <td class="text-center">
+                                <span class="badge badge-info">${item.total_articulos} art.</span>
+                            </td>
+                            <td class="text-center">${estadoBadge}</td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle mr-1"></i>No hay requisiciones registradas.
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando últimas requisiciones:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger py-3">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Error al cargar los datos.
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+/**
+ * Últimas 10 compras costeadas.
+ */
+function loadUltimasComprasCosteadas() {
+    const idInst = dashboardInstitucionActual || 1;
+    const tbody = document.getElementById('tabla-ultimas-compras-costeadas');
+    
+    if (!tbody) return;
+
+    fetch(base_url + 'Home/getUltimasComprasCosteadas?id_institucion=' + idInst)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                let html = '';
+                data.data.forEach(item => {
+                    const totalDivisa = parseFloat(item.total_divisa || 0);
+                    const totalBs = parseFloat(item.total_bs || 0);
+
+                    html += `
+                        <tr>
+                            <td class="text-center font-weight-bold">#${item.numero_orden}</td>
+                            <td>${item.fecha_despacho}</td>
+                            <td>${item.id_unidad} - ${item.modelo_unidad}</td>
+                            <td class="text-center">
+                                <span class="badge badge-info">${item.articulos_costeados} art.</span>
+                            </td>
+                            <td class="text-center font-weight-bold text-primary">
+                                $${totalDivisa.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td class="text-center font-weight-bold text-success">
+                                Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = html;
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-3">
+                            <i class="fas fa-info-circle mr-1"></i>No hay compras costeadas registradas.
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando últimas compras costeadas:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-danger py-3">
+                        <i class="fas fa-exclamation-triangle mr-1"></i>Error al cargar los datos.
+                    </td>
+                </tr>
+            `;
+        });
+}
+
+
+/**
+ * Helper: devuelve el badge del estado de la orden.
+ */
+function getEstadoOrdenBadge(estado) {
+    switch (parseInt(estado)) {
+        case 1: return '<span class="badge badge-secondary">Requisición</span>';
+        case 2: return '<span class="badge badge-warning text-dark">Aprobada</span>';
+        case 3: return '<span class="badge badge-success">Despachada</span>';
+        case 4: return '<span class="badge badge-danger">Rechazada</span>';
+        default: return '<span class="badge badge-light">N/A</span>';
+    }
+}
+
+/**
+ * Helper: asigna texto a un elemento por ID (con null check).
+ */
+function setText(elementId, value) {
+    const el = document.getElementById(elementId);
+    if (el) el.textContent = value;
+}
+
+
+/**
+ * =====================================================================
+ * DASHBOARD DE OPERACIONES (FLOTA)
+ * =====================================================================
+ */
+
 function loadOperacionesData() {
-    fetch(base_url + 'Home/getOperacionesData')
+    const url = base_url + 'Home/getOperacionesData?id_institucion=' + (dashboardInstitucionActual || 1);
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
                 const operaciones = data.data;
-                // Cards de estado
-                document.querySelector('#unidades-operativas').textContent = operaciones.status.operativas || 0;
-                document.querySelector('#unidades-inoperativas').textContent = operaciones.status.inoperativas || 0;
-                document.querySelector('#unidades-mantenimiento').textContent = operaciones.status.mantenimiento || 0;
-                document.querySelector('#unidades-criticas').textContent = operaciones.status.criticas || 0;
+                
+                setText('unidades-operativas', operaciones.status.operativas || 0);
+                setText('unidades-inoperativas', operaciones.status.inoperativas || 0);
+                setText('unidades-mantenimiento', operaciones.status.mantenimiento || 0);
+                setText('unidades-criticas', operaciones.status.criticas || 0);
 
-                // Cards de estado de aceite
                 if (operaciones.aceite_status) {
-                    document.querySelector('#aceite-requerido').textContent = operaciones.aceite_status.requerido || 0;
-                    document.querySelector('#aceite-proximo').textContent = operaciones.aceite_status.proximo || 0;
-                    document.querySelector('#aceite-ok').textContent = operaciones.aceite_status.ok || 0;
+                    setText('aceite-requerido', operaciones.aceite_status.requerido || 0);
+                    setText('aceite-proximo', operaciones.aceite_status.proximo || 0);
+                    setText('aceite-ok', operaciones.aceite_status.ok || 0);
                 }
-                // Tabla de resumen
+                
                 const tablaBody = document.querySelector('#tabla-resumen-flota');
 
-                // Inyectar botón para ir a Flota en el header de la tarjeta
                 if (tablaBody) {
                     const card = tablaBody.closest('.card');
                     if (card) {
@@ -264,16 +664,19 @@ function loadOperacionesData() {
                 } else {
                     html = '<tr><td colspan="6" class="text-center py-4">No hay datos de flota para mostrar.</td></tr>';
                 }
-                tablaBody.innerHTML = html;
+                if (tablaBody) tablaBody.innerHTML = html;
             }
         })
         .catch(error => console.error('Error cargando datos de operaciones:', error));
 }
 
+
 /**
- * Carga los datos para el dashboard de Estación.
- * Aquí puedes mover la lógica que tenías en `function.estacion.js`.
+ * =====================================================================
+ * DASHBOARD DE ESTACIÓN
+ * =====================================================================
  */
+
 async function loadEstacionData() {
     try {
         const response = await fetch(base_url + 'Home/getEstacionDashboardData');
@@ -281,43 +684,22 @@ async function loadEstacionData() {
 
         if (result.success && result.data) {
             const data = result.data;
-            const totalVentasElem = document.getElementById('totalVentasHoy');
-            const totalLitrosElem = document.getElementById('totalLitrosHoy');
-            const totalUser = document.getElementById('user_activo');
-
-            if (totalVentasElem) totalVentasElem.textContent = data.total_ventas || 0;
-            if (totalLitrosElem) totalLitrosElem.textContent = `${parseFloat(data.total_litros || 0).toFixed(2)} Lts`;
-            if (totalUser) totalUser.textContent = `${parseFloat(data.user_activo || 0)}`;
+            setText('totalVentasHoy', data.total_ventas || 0);
+            setText('totalLitrosHoy', `${parseFloat(data.total_litros || 0).toFixed(2)} Lts`);
+            setText('user_activo', `${parseFloat(data.user_activo || 0)}`);
         }
     } catch (error) {
         console.error('Error cargando datos de estación:', error);
     }
 }
 
-/**
- * Carga y muestra los datos para el dashboard de Compras.
- */
-async function loadComprasData() {
-    try {
-        const response = await fetch(base_url + 'Home/getComprasData');
-        const result = await response.json();
-
-        if (result.success) {
-            const data = result.data;
-            // Actualizar las tarjetas con los datos recibidos
-            document.getElementById('nuevas-requisiciones').textContent = data.requisiciones_pendientes || 0;
-            document.getElementById('articulos-sin-stock').textContent = data.articulos_sin_stock || 0;
-        } else {
-            console.error('Error al cargar datos de Compras:', result.message);
-        }
-    } catch (error) {
-        console.error('Error de conexión al cargar datos de Compras:', error);
-    }
-}
 
 /**
- * Carga los datos para el dashboard de Bienes.
+ * =====================================================================
+ * DASHBOARD DE BIENES
+ * =====================================================================
  */
+
 async function loadBienesData() {
     try {
         const response = await fetch(base_url + 'Home/getBienesDashboardData');
@@ -326,29 +708,29 @@ async function loadBienesData() {
         if (result.success && result.data) {
             const { summary, recent } = result.data;
 
-            // Actualizar tarjetas
-            document.getElementById('bienes-total').textContent = summary.total_bienes || 0;
-            document.getElementById('bienes-activos').textContent = summary.total_activos || 0;
-            document.getElementById('bienes-reparacion').textContent = summary.total_reparacion || 0;
-            document.getElementById('bienes-baja').textContent = summary.total_baja || 0;
+            setText('bienes-total', summary.total_bienes || 0);
+            setText('bienes-activos', summary.total_activos || 0);
+            setText('bienes-reparacion', summary.total_reparacion || 0);
+            setText('bienes-baja', summary.total_baja || 0);
 
-            // Actualizar tabla de bienes recientes
             const tablaBody = document.getElementById('tabla-bienes-recientes');
-            tablaBody.innerHTML = ''; // Limpiar tabla
+            if (tablaBody) {
+                tablaBody.innerHTML = '';
 
-            if (recent.length > 0) {
-                recent.forEach(item => {
-                    const row = `
-                        <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
-                            <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${item.descripcion_bien}</td>
-                            <td class="px-6 py-4">${item.departamento_bien}</td>
-                            <td class="px-6 py-4">${item.fecha_adquisicion}</td>
-                        </tr>
-                    `;
-                    tablaBody.innerHTML += row;
-                });
-            } else {
-                tablaBody.innerHTML = '<tr><td colspan="3" class="text-center py-4">No hay bienes registrados recientemente.</td></tr>';
+                if (recent.length > 0) {
+                    recent.forEach(item => {
+                        const row = `
+                            <tr class="bg-white dark:bg-gray-800 border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                <td class="px-6 py-4 font-medium text-gray-900 dark:text-white">${item.descripcion_bien}</td>
+                                <td class="px-6 py-4">${item.departamento_bien}</td>
+                                <td class="px-6 py-4">${item.fecha_adquisicion}</td>
+                            </tr>
+                        `;
+                        tablaBody.innerHTML += row;
+                    });
+                } else {
+                    tablaBody.innerHTML = '<tr><td colspan="3" class="text-center py-4">No hay bienes registrados recientemente.</td></tr>';
+                }
             }
         } else {
             console.error('Error en la respuesta del servidor para Bienes:', result.message);
@@ -358,42 +740,32 @@ async function loadBienesData() {
     }
 }
 
+
 /**
- * Configura la sección de usuarios activos, incluyendo el toggle y la carga de datos.
+ * =====================================================================
+ * SECCIONES DE USUARIOS (SOLO ADMIN)
+ * =====================================================================
  */
+
 function setupActiveUsersSection() {
     const activeUsersCard = $('#active-users-card');
 
     if (activeUsersCard.length > 0) {
-        // Usamos el evento 'expanded.lte.cardwidget' que AdminLTE dispara
-        // DESPUÉS de que la tarjeta se ha expandido. Esto es mucho más fiable.
         activeUsersCard.on('expanded.lte.cardwidget', function () {
-            // Solo cargamos los datos si la tarjeta está visible.
             loadActiveSessions();
         });
     }
 }
 
-/**
- * Configura la sección de gestión de todos los usuarios.
- */
 function setupInactiveUsersSection() {
-    // CORRECCIÓN: Usar el evento 'expanded.lte.cardwidget' de AdminLTE para cargar la tabla.
-    // El selector apunta a la tarjeta de gestión de usuarios.
     $('.card-purple').on('expanded.lte.cardwidget', function () {
-        // Verificamos que sea la tarjeta correcta antes de cargar la tabla.
         if ($(this).find('#all-users-table').length > 0) {
             loadAllUsersForAdmin();
         }
     });
 }
 
-
-/**
- * Carga y muestra la lista de todos los usuarios en una DataTable.
- */
 function loadAllUsersForAdmin() {
-    // Si la tabla ya es una DataTable, simplemente la recargamos y salimos.
     if ($.fn.DataTable.isDataTable('#all-users-table')) {
         $('#all-users-table').DataTable().ajax.reload();
         return;
@@ -401,10 +773,10 @@ function loadAllUsersForAdmin() {
 
     $('#all-users-table').DataTable({
         "processing": true,
-        "serverSide": false, // Como cargamos todos los datos de una vez, es false
+        "serverSide": false,
         "ajax": {
             "url": base_url + "Home/getAllUsersForAdmin",
-            "dataSrc": "data" // Asegura que DataTables busque los datos en la propiedad "data" de la respuesta JSON.
+            "dataSrc": "data"
         },
         "columns": [
             { "data": "usuario_id" },
@@ -447,10 +819,6 @@ function loadAllUsersForAdmin() {
     });
 }
 
-/**
- * Reactiva la cuenta de un usuario.
- * @param {number} userId - El ID del usuario.
- */
 function enableUser(userId) {
     Swal.fire({
         title: '¿Reactivar Usuario?',
@@ -467,12 +835,12 @@ function enableUser(userId) {
                 const response = await fetch(base_url + 'User/updateStatus', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usuario_id: userId, usuario_status: 1 }) // 1 para Activo
+                    body: JSON.stringify({ usuario_id: userId, usuario_status: 1 })
                 });
                 const res = await response.json();
                 notifi(res.message, res.success ? 'success' : 'error');
                 if (res.success) {
-                    $('#all-users-table').DataTable().ajax.reload(); // Recargar la tabla
+                    $('#all-users-table').DataTable().ajax.reload();
                 }
             } catch (error) {
                 notifi('Ocurrió un error en la operación.', 'error');
@@ -481,19 +849,12 @@ function enableUser(userId) {
     });
 }
 
-/**
- * Carga y muestra la lista de usuarios con sesiones activas.
- * Esta función solo se ejecuta para el dashboard de Sistema/Admin.
- */
 async function loadActiveSessions() {
-    console.log('Ejecutando loadActiveSessions()...'); // <-- AQUÍ ESTÁ LA PRUEBA
-
     const listContainer = document.getElementById('active-users-list');
     const noUsersMessage = document.getElementById('no-active-users');
 
     if (!listContainer || !noUsersMessage) return;
 
-    // Mostrar estado de carga
     listContainer.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin"></i> Cargando...</div>';
     noUsersMessage.style.display = 'none';
 
@@ -501,13 +862,11 @@ async function loadActiveSessions() {
         const response = await fetch(base_url + 'Home/getActiveUsers');
         const result = await response.json();
 
-        listContainer.innerHTML = ''; // Limpiar lista
+        listContainer.innerHTML = '';
 
         if (result.success && result.data.length > 0) {
             noUsersMessage.style.display = 'none';
             result.data.forEach(user => {
-                // CORRECCIÓN: Nuevo diseño de tarjeta de usuario más limpio y robusto.
-                // --- INICIO DE LA MODIFICACIÓN ---
                 const userCard = `
                     <li class="list-group-item d-flex justify-content-between align-items-center">
                         <div class="d-flex align-items-center">
@@ -528,7 +887,6 @@ async function loadActiveSessions() {
                         </div>
                     </li>
                 `;
-                // --- FIN DE LA MODIFICACIÓN ---
                 listContainer.innerHTML += userCard;
             });
         } else {
@@ -542,10 +900,6 @@ async function loadActiveSessions() {
     }
 }
 
-/**
- * Fuerza el cierre de sesión de un usuario.
- * @param {string} userNick - El nick del usuario.
- */
 function forceLogout(userNick) {
     Swal.fire({
         title: '¿Cerrar Sesión?',
@@ -565,7 +919,7 @@ function forceLogout(userNick) {
                 const res = await response.json();
                 notifi(res.msg, res.status ? 'success' : 'error');
                 if (res.status) {
-                    loadActiveSessions(); // Recargar la lista
+                    loadActiveSessions();
                 }
             } catch (error) {
                 notifi('Ocurrió un error en la operación.', 'error');
@@ -574,10 +928,6 @@ function forceLogout(userNick) {
     });
 }
 
-/**
- * Desactiva la cuenta de un usuario.
- * @param {number} userId - El ID del usuario.
- */
 function disableUser(userId) {
     Swal.fire({
         title: '¿Desactivar Usuario?',
@@ -594,12 +944,12 @@ function disableUser(userId) {
                 const response = await fetch(base_url + 'User/updateStatus', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usuario_id: userId, usuario_status: 0 }) // 0 para Inactivo
+                    body: JSON.stringify({ usuario_id: userId, usuario_status: 0 })
                 });
                 const res = await response.json();
                 notifi(res.message, res.success ? 'success' : 'error');
                 if (res.success) {
-                    $('#all-users-table').DataTable().ajax.reload(); // Recargar la tabla de usuarios
+                    $('#all-users-table').DataTable().ajax.reload();
                 }
             } catch (error) {
                 notifi('Ocurrió un error en la operación.', 'error');
@@ -608,9 +958,13 @@ function disableUser(userId) {
     });
 }
 
+
 /**
- * Carga los meses disponibles en los selectores de fecha.
+ * =====================================================================
+ * GRÁFICOS DE ESTACIÓN
+ * =====================================================================
  */
+
 async function populateMonthSelects() {
     const startMonthSelect = document.getElementById('startMonth');
     const endMonthSelect = document.getElementById('endMonth');
@@ -631,8 +985,6 @@ async function populateMonthSelects() {
             });
             endMonthSelect.value = result.data[result.data.length - 1].mes;
             generateChartBtn.addEventListener('click', generateMonthlyChart);
-        } else {
-            //notifi('No se encontraron meses con ventas.', 'warning');
         }
     } catch (error) {
         console.error('Error al cargar los meses:', error);
@@ -640,9 +992,6 @@ async function populateMonthSelects() {
     }
 }
 
-/**
- * Carga y renderiza el gráfico de ventas diarias por usuario.
- */
 async function loadDailySales() {
     try {
         const response = await fetch(base_url + 'Home/getDailySales', { method: 'POST' });
@@ -658,10 +1007,6 @@ async function loadDailySales() {
     }
 }
 
-/**
- * Renderiza el gráfico de barras de ventas diarias.
- * @param {object} data - Datos de ventas.
- */
 function renderDailySalesChart(data) {
     const ctx = document.getElementById('dailySalesChart')?.getContext('2d');
     if (!ctx) return;
@@ -697,9 +1042,6 @@ function renderDailySalesChart(data) {
     });
 }
 
-/**
- * Genera el gráfico de dona con las ventas mensuales.
- */
 async function generateMonthlyChart() {
     const startMonth = document.getElementById('startMonth').value;
     const endMonth = document.getElementById('endMonth').value;
@@ -745,15 +1087,10 @@ async function generateMonthlyChart() {
     }
 }
 
-/**
- * Renderiza el gráfico de dona.
- * @param {Array} data - Datos de ventas mensuales.
- */
 function renderDoughnutChart(data) {
     const chartCanvas = document.getElementById('monthlyLitersChart');
     if (!chartCanvas) return;
 
-    // Formateador para números (es-ES usa puntos para miles y comas para decimales)
     const numberFormatter = new Intl.NumberFormat('es-ES', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
@@ -800,69 +1137,3 @@ function renderDoughnutChart(data) {
         }
     });
 }
-
-
-
-
-
-
-// Espera a que el DOM esté completamente cargado
-// document.addEventListener('DOMContentLoaded', function () {
-
-//     // Verificar si el selector de estación existe en la página
-//     const selectEstacion = document.querySelector('#selectEstacion');
-
-//     if (selectEstacion) {
-//         selectEstacion.addEventListener('change', function () {
-//             const stationId = this.value;
-
-//             if (!stationId || stationId === "") {
-//                 return; // No hacer nada si se selecciona la opción por defecto
-//             }
-
-//             // Mostrar una alerta de carga
-//             Swal.fire({
-//                 title: 'Actualizando Estación',
-//                 text: 'Por favor, espere...',
-//                 allowOutsideClick: false,
-//                 didOpen: () => {
-//                     Swal.showLoading();
-//                 }
-//             });
-
-//             const formData = new FormData();
-//             // La variable `userId` debe estar definida globalmente en tu vista (home.php)
-//             // junto con `userDepartment` y `userRole`.
-//             formData.append('idEstacion', stationId);
-//             formData.append('idUsuario', userId);
-
-//             // Petición AJAX para actualizar la estación, apuntando al controlador correcto
-//             fetch(base_url + 'home/setStation', {
-//                 method: 'POST',
-//                 body: formData
-//             })
-//                 .then(response => response.json())
-//                 .then(data => {
-//                     if (data.status) {
-//                         Swal.fire({
-//                             icon: 'success',
-//                             title: '¡Actualizado!',
-//                             text: data.msg,
-//                             showConfirmButton: false,
-//                             timer: 2000
-//                         }).then(() => {
-//                             // Recargar la página para reflejar los cambios en toda la UI
-//                             location.reload();
-//                         });
-//                     } else {
-//                         Swal.fire('Error', data.msg, 'error');
-//                     }
-//                 })
-//                 .catch(error => {
-//                     console.error('Error:', error);
-//                     Swal.fire('Error', 'Ocurrió un problema de conexión.', 'error');
-//                 });
-//         });
-//     }
-
-// });

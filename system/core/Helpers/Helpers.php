@@ -300,6 +300,71 @@ function redirect($url, $statusCode = 303) {
 
 /**
  * =====================================================================
+ * MULTI-INSTITUCIÓN: Helpers
+ * =====================================================================
+ */
+
+/**
+ * Determina la institución del usuario en sesión.
+ * 
+ * @return int
+ *   0 = Admin/Sistema (puede ver todas las instituciones)
+ *   1 = SSLMTY
+ *   2 = Taller
+ */
+function getUserInstitutionId() {
+    if (empty($_SESSION['userData'])) {
+        return 1;
+    }
+    
+    $departamentoId = intval($_SESSION['userData']['usuario_departamento_id'] ?? 0);
+    $departamentoNombre = strtoupper($_SESSION['userData']['departamento_nombre'] ?? '');
+    $rolNombre = strtoupper($_SESSION['userData']['rol_nombre'] ?? '');
+    
+    // Admin/Sistema: puede ver todas las instituciones
+    if ($departamentoId === 1 || $departamentoNombre === 'SISTEMA' || $departamentoNombre === 'SISTEMAS') {
+        return 0;
+    }
+    
+    // Taller: institución 2
+    if ($departamentoId === 8 || $departamentoNombre === 'TALLER') {
+        return 2;
+    }
+    
+    // Todos los demás departamentos: SSLMTY (institución 1)
+    return 1;
+}
+
+/**
+ * Determina si el usuario en sesión es administrador (Sistema).
+ * @return bool
+ */
+function isAdminUser() {
+    return getUserInstitutionId() === 0;
+}
+
+/**
+ * Fuerza la institución activa según el usuario en sesión.
+ * Si el usuario es admin, respeta el id_institucion que venga por parámetro.
+ * Si no lo es, fuerza la institución del usuario.
+ * 
+ * @param int $idInstitucionSolicitada El id que viene por URL/POST
+ * @return int El id de institución a usar
+ */
+function forceUserInstitution(int $idInstitucionSolicitada = 1) {
+    $userInstitucion = getUserInstitutionId();
+    
+    // Admin: respeta lo que se solicite
+    if ($userInstitucion === 0) {
+        return $idInstitucionSolicitada;
+    }
+    
+    // No admin: fuerza su institución
+    return $userInstitucion;
+}
+
+/**
+ * =====================================================================
  * RENDERIZADO DEL MENÚ LATERAL DINÁMICO
  * =====================================================================
  * Este es el corazón del nuevo sistema. Recibe el nick del usuario y 
@@ -355,7 +420,7 @@ function cargar_menu_dinamico($usuarioNick, $data = []) {
         $menuActual = buscar_menu_por_id($menusPlanos, $menuActivoId);
         while ($menuActual && !empty($menuActual['menu_padre_id'])) {
             $menusActivos[$menuActual['menu_padre_id']] = true;
-            $menusAbiertos[$menuActual['menu_padre_id']] = true; // Para que se despliegue
+            $menusAbiertos[$menuActual['menu_padre_id']] = true;
             $menuActual = buscar_menu_por_id($menusPlanos, $menuActual['menu_padre_id']);
         }
     }

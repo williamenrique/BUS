@@ -3,17 +3,17 @@ class HomeModel extends Mysql {
 	public function __construct(){
 		parent::__construct();
 	}
+
 	public function getAvailableMonths() {
 		$sql = "SELECT DISTINCT DATE_FORMAT(fecha_venta, '%Y-%m') AS mes
 				FROM table_es_venta
 				ORDER BY mes ASC";
-		// Solo retorna los datos, no imprime nada
 		return $this->select_all($sql);
 	}
+
 	public function getMonthlyLiters($startMonth, $endMonth) {
-		// Convertir los meses YYYY-MM a fechas válidas para la comparación
 		$startDate = date('Y-m-d', strtotime($startMonth . '-01'));
-		$endDate = date('Y-m-t', strtotime($endMonth . '-01')); // 't' da el último día del mes
+		$endDate = date('Y-m-t', strtotime($endMonth . '-01'));
 		$sql = "SELECT
 					DATE_FORMAT(v.fecha_venta, '%Y-%m') AS mes_venta,
 					COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
@@ -25,25 +25,30 @@ class HomeModel extends Mysql {
 					mes_venta ASC";
 		return $this->select_all($sql, [$startDate, $endDate]);
 	}
+
 	public function getEstacionDashboardData() {
         $fechaHoy = date('Y-m-d');
         
-        // Obtener resumen de ventas de hoy
         $sql_summary = "SELECT 
 				COUNT(ve.id_venta) as total_ventas,
 				COUNT(DISTINCT se.id) AS user_activo,
 				COALESCE(SUM(CAST(ve.litros AS DECIMAL(10,2))), 0) as total_litros,
 				COALESCE(SUM(CASE WHEN ve.id_tipo_pago = 1 THEN ve.monto * ve.tasa_dia ELSE ve.monto END), 0) as total_bs
 			FROM table_es_venta ve
-			LEFT JOIN table_usuario_sessions se ON ve.id_user = se.usuario_id -- Ajusta la condición de JOIN según tu esquema
+			LEFT JOIN table_usuario_sessions se ON ve.id_user = se.usuario_id
 			WHERE ve.fecha_venta = ?";
         return $this->select($sql_summary, [$fechaHoy]);
     }
-	public function getAlmacenDashboard() {
+
+    /**
+     * =====================================================================
+     * DASHBOARD DE ALMACÉN (multi-institución)
+     * =====================================================================
+     */
+	public function getAlmacenDashboard(int $idInstitucion = 1) {
         $mes_actual = date('Y-m');
         $mes_anterior = date('Y-m', strtotime('-1 month'));
         
-        // CORRECCIÓN: La consulta ahora usa dos placeholders que coinciden con los dos parámetros que se le pasan.
         $sql_consumibles = "SELECT
                                 COALESCE(SUM(CASE WHEN DATE_FORMAT(d.fecha_despacho, '%Y-%m') = ? THEN rd.cant_despacho ELSE 0 END), 0) as mes_actual,
                                 COALESCE(SUM(CASE WHEN DATE_FORMAT(d.fecha_despacho, '%Y-%m') = ? THEN rd.cant_despacho ELSE 0 END), 0) as mes_anterior
@@ -51,33 +56,291 @@ class HomeModel extends Mysql {
                             JOIN table_alm_despacho d ON rd.id_despacho = d.id_despacho
                             JOIN table_alm_producto p ON rd.id_producto = p.id_producto
                             JOIN table_alm_enlace_producto ep ON p.id_enlace_producto = ep.id_enlace_producto
-                            WHERE ep.enlace_producto = 'LUBRICANTES' AND d.status_despacho = 1";
+                            WHERE ep.enlace_producto = 'LUBRICANTES' 
+                              AND d.status_despacho = 1
+                              AND d.id_institucion = ?";
 
         $sql_top_product = "SELECT p.producto, SUM(rd.cant_despacho) as total_despachado
                             FROM table_alm_relacion_despacho rd
                             JOIN table_alm_producto p ON rd.id_producto = p.id_producto
                             JOIN table_alm_despacho d ON rd.id_despacho = d.id_despacho
-                            WHERE DATE_FORMAT(d.fecha_despacho, '%Y-%m') = ? AND d.status_despacho = 1
-                            GROUP BY p.id_producto, p.producto ORDER BY total_despachado DESC LIMIT 1";
+                            WHERE DATE_FORMAT(d.fecha_despacho, '%Y-%m') = ? 
+                              AND d.status_despacho = 1
+                              AND d.id_institucion = ?
+                            GROUP BY p.id_producto, p.producto 
+                            ORDER BY total_despachado DESC LIMIT 1";
 
-        // CORRECCIÓN: Contar órdenes despachadas (estado 3) en el mes actual
-        $sql_orders_despachadas = "SELECT COUNT(id_despacho) as total_despachadas FROM table_alm_despacho WHERE estado_orden = 3 AND status_despacho = 1 AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?";
-        // NUEVO: Contar órdenes aprobadas pendientes de despacho (estado 2)
-        $sql_orders_aprobadas = "SELECT COUNT(id_despacho) as total_aprobadas FROM table_alm_despacho WHERE estado_orden = 2 AND status_despacho = 1";
+        $sql_orders_despachadas = "SELECT COUNT(id_despacho) as total_despachadas 
+                                   FROM table_alm_despacho 
+                                   WHERE estado_orden = 3 
+                                     AND status_despacho = 1 
+                                     AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?
+                                     AND id_institucion = ?";
         
-        $data['consumibles'] = $this->select($sql_consumibles, [$mes_actual, $mes_anterior]);
-        $data['top_product'] = $this->select($sql_top_product, [$mes_actual]);
-        $data['orders_despachadas'] = $this->select($sql_orders_despachadas, [$mes_actual]);
-        $data['orders_aprobadas'] = $this->select($sql_orders_aprobadas);
+        $sql_orders_aprobadas = "SELECT COUNT(id_despacho) as total_aprobadas 
+                                 FROM table_alm_despacho 
+                                 WHERE estado_orden = 2 
+                                   AND status_despacho = 1
+                                   AND id_institucion = ?";
+
+        $sql_sin_stock = "SELECT COUNT(DISTINCT p.id_producto) as total
+                          FROM table_alm_producto p
+                          INNER JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                          WHERE p.status_producto = 1
+                            AND rp.cant_producto <= 0
+                            AND p.id_institucion = ?";
+
+        $sql_stock_bajo = "SELECT COUNT(DISTINCT p.id_producto) as total
+                           FROM table_alm_producto p
+                           INNER JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                           WHERE p.status_producto = 1
+                             AND rp.cant_producto > 0
+                             AND rp.cant_producto < 10
+                             AND p.id_institucion = ?";
+
+        $sql_total_productos = "SELECT COUNT(DISTINCT p.id_producto) as total
+                                FROM table_alm_producto p
+                                WHERE p.status_producto = 1
+                                  AND p.id_institucion = ?";
+
+        $data = [];
+        $data['consumibles'] = $this->select($sql_consumibles, [$mes_actual, $mes_anterior, $idInstitucion]);
+        $data['top_product'] = $this->select($sql_top_product, [$mes_actual, $idInstitucion]);
+        $data['orders_despachadas'] = $this->select($sql_orders_despachadas, [$mes_actual, $idInstitucion]);
+        $data['orders_aprobadas'] = $this->select($sql_orders_aprobadas, [$idInstitucion]);
+        $data['productos_sin_stock'] = $this->select($sql_sin_stock, [$idInstitucion])['total'] ?? 0;
+        $data['productos_stock_bajo'] = $this->select($sql_stock_bajo, [$idInstitucion])['total'] ?? 0;
+        $data['total_productos'] = $this->select($sql_total_productos, [$idInstitucion])['total'] ?? 0;
+
         return $data;
     }
-    public function getOperacionesDashboard() {
+
+    /**
+     * Top 10 productos más despachados en el mes actual.
+     */
+    public function getTopProductosDespachados(int $idInstitucion = 1, int $limit = 10): array {
+        $mes_actual = date('Y-m');
+        $sql = "SELECT 
+                    p.id_producto,
+                    p.producto,
+                    p.present_producto,
+                    e.enlace_producto,
+                    u.ubicacion,
+                    SUM(rd.cant_despacho) as total_despachado
+                FROM table_alm_relacion_despacho rd
+                INNER JOIN table_alm_producto p ON rd.id_producto = p.id_producto
+                INNER JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
+                INNER JOIN table_alm_despacho d ON rd.id_despacho = d.id_despacho
+                WHERE DATE_FORMAT(d.fecha_despacho, '%Y-%m') = ?
+                  AND d.status_despacho = 1
+                  AND d.id_institucion = ?
+                GROUP BY p.id_producto, p.producto, p.present_producto, e.enlace_producto, u.ubicacion
+                ORDER BY total_despachado DESC
+                LIMIT $limit";
+        return $this->select_all($sql, [$mes_actual, $idInstitucion]);
+    }
+
+    /**
+     * Últimas órdenes registradas.
+     */
+    public function getUltimasOrdenes(int $idInstitucion = 1, int $limit = 10): array {
+        $sql = "SELECT 
+                    d.id_despacho,
+                    d.numero_orden,
+                    d.fecha_despacho,
+                    d.operador,
+                    d.estado_orden,
+                    f.id_unidad,
+                    mo.modelo_unidad,
+                    (SELECT COUNT(*) FROM table_alm_relacion_despacho rd WHERE rd.id_despacho = d.id_despacho) AS total_articulos
+                FROM table_alm_despacho d
+                INNER JOIN table_flota f ON d.id_flota = f.id_flota
+                INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                WHERE d.status_despacho = 1
+                  AND d.id_institucion = ?
+                ORDER BY d.id_despacho DESC
+                LIMIT $limit";
+        return $this->select_all($sql, [$idInstitucion]);
+    }
+
+    /**
+     * =====================================================================
+     * DASHBOARD DE COMPRAS (multi-institución)
+     * =====================================================================
+     */
+
+    /**
+     * Datos generales del dashboard de Compras.
+     */
+    public function getComprasDashboardData(int $idInstitucion = 1): array {
+        $mes_actual = date('Y-m');
+
+        // 1. Requisiciones pendientes (estado 1)
+        $sql_requisiciones = "SELECT COUNT(id_despacho) as total 
+                              FROM table_alm_despacho 
+                              WHERE estado_orden = 1 
+                                AND status_despacho = 1
+                                AND id_institucion = ?";
+        $requisiciones = $this->select($sql_requisiciones, [$idInstitucion])['total'] ?? 0;
+
+        // 2. Órdenes aprobadas pendientes de despacho (estado 2)
+        $sql_aprobadas = "SELECT COUNT(id_despacho) as total 
+                          FROM table_alm_despacho 
+                          WHERE estado_orden = 2 
+                            AND status_despacho = 1
+                            AND id_institucion = ?";
+        $aprobadas = $this->select($sql_aprobadas, [$idInstitucion])['total'] ?? 0;
+
+        // 3. Artículos sin stock
+        $sql_sin_stock = "SELECT COUNT(DISTINCT p.id_producto) as total
+                          FROM table_alm_producto p
+                          INNER JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                          WHERE p.status_producto = 1
+                            AND rp.cant_producto <= 0
+                            AND p.id_institucion = ?";
+        $sin_stock = $this->select($sql_sin_stock, [$idInstitucion])['total'] ?? 0;
+
+        // 4. Artículos con stock bajo (< 10)
+        $sql_stock_bajo = "SELECT COUNT(DISTINCT p.id_producto) as total
+                           FROM table_alm_producto p
+                           INNER JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                           WHERE p.status_producto = 1
+                             AND rp.cant_producto > 0
+                             AND rp.cant_producto < 10
+                             AND p.id_institucion = ?";
+        $stock_bajo = $this->select($sql_stock_bajo, [$idInstitucion])['total'] ?? 0;
+
+        // 5. Órdenes despachadas del mes
+        $sql_despachadas_mes = "SELECT COUNT(id_despacho) as total 
+                                FROM table_alm_despacho 
+                                WHERE estado_orden = 3 
+                                  AND status_despacho = 1
+                                  AND DATE_FORMAT(fecha_despacho, '%Y-%m') = ?
+                                  AND id_institucion = ?";
+        $despachadas_mes = $this->select($sql_despachadas_mes, [$mes_actual, $idInstitucion])['total'] ?? 0;
+
+        // 6. Órdenes costeadas del mes
+        $sql_costeadas_mes = "SELECT COUNT(DISTINCT cp.id_despacho) as total
+                              FROM table_compras_costos cc
+                              INNER JOIN table_compras_pendientes cp ON cc.id_compra_pendiente = cp.id_compra_pendiente
+                              WHERE DATE_FORMAT(cc.fecha_costeo, '%Y-%m') = ?
+                                AND cc.id_institucion = ?";
+        $costeadas_mes = $this->select($sql_costeadas_mes, [$mes_actual, $idInstitucion])['total'] ?? 0;
+
+        // 7. Total Divisas del mes
+        $sql_total_divisa = "SELECT COALESCE(SUM(cc.monto_divisa), 0) as total
+                             FROM table_compras_costos cc
+                             WHERE DATE_FORMAT(cc.fecha_costeo, '%Y-%m') = ?
+                               AND cc.id_institucion = ?";
+        $total_divisa = $this->select($sql_total_divisa, [$mes_actual, $idInstitucion])['total'] ?? 0;
+
+        // 8. Total Bolívares del mes
+        $sql_total_bs = "SELECT COALESCE(SUM(cc.monto_bs), 0) as total
+                         FROM table_compras_costos cc
+                         WHERE DATE_FORMAT(cc.fecha_costeo, '%Y-%m') = ?
+                           AND cc.id_institucion = ?";
+        $total_bs = $this->select($sql_total_bs, [$mes_actual, $idInstitucion])['total'] ?? 0;
+
+        return [
+            'requisiciones_pendientes' => $requisiciones,
+            'ordenes_aprobadas' => $aprobadas,
+            'articulos_sin_stock' => $sin_stock,
+            'articulos_stock_bajo' => $stock_bajo,
+            'ordenes_despachadas_mes' => $despachadas_mes,
+            'ordenes_costeadas_mes' => $costeadas_mes,
+            'total_divisa_mes' => floatval($total_divisa),
+            'total_bs_mes' => floatval($total_bs)
+        ];
+    }
+
+    /**
+     * Top 10 productos costeados en el mes.
+     */
+    public function getTopProductosCosteados(int $idInstitucion = 1, int $limit = 10): array {
+        $mes_actual = date('Y-m');
+        $sql = "SELECT 
+                    p.id_producto,
+                    p.producto,
+                    p.present_producto,
+                    prov.empresa_proveedor AS proveedor,
+                    e.enlace_producto,
+                    COUNT(cc.id_costo) as veces_costeadas,
+                    SUM(cc.monto_divisa) as total_divisa,
+                    SUM(cc.monto_bs) as total_bs
+                FROM table_compras_costos cc
+                INNER JOIN table_compras_pendientes cp ON cc.id_compra_pendiente = cp.id_compra_pendiente
+                INNER JOIN table_alm_producto p ON cp.id_producto = p.id_producto
+                INNER JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                LEFT JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
+                LEFT JOIN table_proveedor prov ON rp.id_proveedor = prov.id_proveedor
+                WHERE DATE_FORMAT(cc.fecha_costeo, '%Y-%m') = ?
+                  AND cc.id_institucion = ?
+                GROUP BY p.id_producto, p.producto, p.present_producto, prov.empresa_proveedor, e.enlace_producto
+                ORDER BY total_divisa DESC
+                LIMIT $limit";
+        return $this->select_all($sql, [$mes_actual, $idInstitucion]);
+    }
+
+    /**
+     * Últimas 10 requisiciones (órdenes en estado 1).
+     */
+    public function getUltimasRequisiciones(int $idInstitucion = 1, int $limit = 10): array {
+        $sql = "SELECT 
+                    d.id_despacho,
+                    d.numero_orden,
+                    d.fecha_despacho,
+                    d.operador AS solicitante,
+                    d.estado_orden,
+                    f.id_unidad,
+                    mo.modelo_unidad,
+                    (SELECT COUNT(*) FROM table_alm_relacion_despacho rd WHERE rd.id_despacho = d.id_despacho) AS total_articulos
+                FROM table_alm_despacho d
+                INNER JOIN table_flota f ON d.id_flota = f.id_flota
+                INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                WHERE d.status_despacho = 1
+                  AND d.id_institucion = ?
+                ORDER BY d.id_despacho DESC
+                LIMIT $limit";
+        return $this->select_all($sql, [$idInstitucion]);
+    }
+
+    /**
+     * Últimas 10 compras costeadas.
+     */
+    public function getUltimasComprasCosteadas(int $idInstitucion = 1, int $limit = 10): array {
+        $sql = "SELECT 
+                    d.id_despacho,
+                    d.numero_orden,
+                    DATE_FORMAT(d.fecha_despacho, '%d-%m-%Y') as fecha_despacho,
+                    f.id_unidad,
+                    mo.modelo_unidad,
+                    COUNT(cc.id_costo) as articulos_costeados,
+                    SUM(cc.monto_divisa) as total_divisa,
+                    SUM(cc.monto_bs) as total_bs
+                FROM table_compras_costos cc
+                INNER JOIN table_compras_pendientes cp ON cc.id_compra_pendiente = cp.id_compra_pendiente
+                INNER JOIN table_alm_despacho d ON cp.id_despacho = d.id_despacho
+                INNER JOIN table_flota f ON d.id_flota = f.id_flota
+                INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                WHERE cc.id_institucion = ?
+                GROUP BY d.id_despacho, d.numero_orden, d.fecha_despacho, f.id_unidad, mo.modelo_unidad
+                ORDER BY d.id_despacho DESC
+                LIMIT $limit";
+        return $this->select_all($sql, [$idInstitucion]);
+    }
+
+    /**
+     * Dashboard de Operaciones (Flota) filtrado por institución.
+     */
+    public function getOperacionesDashboard(int $idInstitucion = 1) {
         $sql_status = "SELECT 
             SUM(CASE WHEN status_unidad = 1 THEN 1 ELSE 0 END) as operativas,
             SUM(CASE WHEN status_unidad = 2 THEN 1 ELSE 0 END) as inoperativas,
             SUM(CASE WHEN status_unidad = 3 THEN 1 ELSE 0 END) as mantenimiento,
             SUM(CASE WHEN status_unidad = 5 THEN 1 ELSE 0 END) as criticas
-            FROM table_flota";
+            FROM table_flota
+            WHERE id_institucion = ?";
 
         $sql_aceite_status = "SELECT 
             SUM(CASE 
@@ -100,60 +363,55 @@ class HomeModel extends Mysql {
                           WHERE km.id_flota = tf.id_flota 
                           ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC 
                           LIMIT 1), 0) as kilometraje_actual,
-                -- Se calcula el próximo cambio sumando 5000 al último cambio registrado
                 COALESCE((SELECT CASE WHEN ah.kilometraje_cambio > 0 THEN ah.kilometraje_cambio + 5000 ELSE 0 END
                           FROM table_flota_aceite_historial ah 
                           WHERE ah.id_flota = tf.id_flota 
                           ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC 
                           LIMIT 1), 0) as proximo_cambio_km
             FROM table_flota tf
-            WHERE tf.status_unidad = 1 -- Solo unidades activas
+            WHERE tf.status_unidad = 1
+              AND tf.id_institucion = ?
         ) as f";
 
-        $sql_grouped = "SELECT m.marca_unidad, mo.modelo_unidad, f.transmision, f.tipo_combustible, COUNT(f.id_flota) as total, 
+        $sql_grouped = "SELECT m.marca_unidad, mo.modelo_unidad, f.transmision, f.tipo_combustible, 
+            COUNT(f.id_flota) as total, 
             SUM(CASE WHEN f.status_unidad = 1 THEN 1 ELSE 0 END) as operativas,
             SUM(CASE WHEN f.status_unidad != 1 THEN 1 ELSE 0 END) as inoperativas
-            FROM table_flota f JOIN table_flota_marca m ON f.id_marca = m.id_marca JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo 
-            GROUP BY m.marca_unidad, mo.modelo_unidad, f.transmision, f.tipo_combustible ORDER BY total DESC";
+            FROM table_flota f 
+            JOIN table_flota_marca m ON f.id_marca = m.id_marca 
+            JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo 
+            WHERE f.id_institucion = ?
+            GROUP BY m.marca_unidad, mo.modelo_unidad, f.transmision, f.tipo_combustible 
+            ORDER BY total DESC";
 
         return [
-            'status' => $this->select($sql_status), 
-            'grouped' => $this->select_all($sql_grouped),
-            'aceite_status' => $this->select($sql_aceite_status)
+            'status' => $this->select($sql_status, [$idInstitucion]), 
+            'grouped' => $this->select_all($sql_grouped, [$idInstitucion]),
+            'aceite_status' => $this->select($sql_aceite_status, [$idInstitucion])
         ];
     }
-	// funciones para mostrar resumen por usuario en grafica de barras
+
     /**
-     * Obtiene los datos para el dashboard del departamento de Compras.
-     * @return array
+     * Dashboard de Compras filtrado por institución (compatibilidad).
      */
-    public function getComprasDashboard(): array {
-        // Contar requisiciones pendientes (estado_orden = 1 en table_alm_despacho)
-        $sql_requisiciones = "SELECT COUNT(id_despacho) as total 
-                              FROM table_alm_despacho 
-                              WHERE estado_orden = 1 AND status_despacho = 1";
-        $data['requisiciones_pendientes'] = $this->select($sql_requisiciones)['total'] ?? 0;
-
-        // Contar artículos con stock <= 0
-        $sql_stock_cero = "SELECT COUNT(p.id_producto) as total
-                           FROM table_alm_producto p
-                           JOIN table_alm_relacion_producto rp ON p.id_producto = rp.id_producto
-                           WHERE p.status_producto = 1 AND rp.cant_producto <= 0";
-        $data['articulos_sin_stock'] = $this->select($sql_stock_cero)['total'] ?? 0;
-
-        return $data;
+    public function getComprasDashboard(int $idInstitucion = 1): array {
+        $data = $this->getComprasDashboardData($idInstitucion);
+        // Retornar en el formato anterior para compatibilidad
+        return [
+            'requisiciones_pendientes' => $data['requisiciones_pendientes'],
+            'articulos_sin_stock' => $data['articulos_sin_stock']
+        ];
     }
+
 	public function getBienesDashboardData() {
-        // Resumen de bienes por estado
         $sql_summary = "SELECT
                             COUNT(id_bien) as total_bienes,
                             SUM(CASE WHEN status_bien IN ('EN USO', 'GUARDADO') THEN 1 ELSE 0 END) as total_activos,
                             SUM(CASE WHEN status_bien = 'DAÑADO' THEN 1 ELSE 0 END) as total_reparacion,
                             SUM(CASE WHEN status_bien = 'FALTANTE POR UBICAR' THEN 1 ELSE 0 END) as total_baja
                         FROM table_bienes_inventario
-                        WHERE status = 1"; // Solo bienes no eliminados lógicamente
+                        WHERE status = 1";
 
-        // Últimos 5 bienes agregados
         $sql_recent = "SELECT b.descripcion_bien, b.fecha_adquisicion, d.departamento_bien
                        FROM table_bienes_inventario b
                        JOIN table_bienes_departamentos d ON b.bien_depatamento_id = d.depatamento_bien_id
@@ -163,19 +421,18 @@ class HomeModel extends Mysql {
 
         return ['summary' => $this->select($sql_summary), 'recent' => $this->select_all($sql_recent)];
     }
+
 	public function getDailySalesByUser($fecha = null, $userRol = '', $userEstacionId = 0) {
 		if ($fecha === null) {
-			$fecha = date('d-m-y'); // Fecha actual en formato dd-mm-yy
+			$fecha = date('d-m-y');
 		}
 
 		$whereEstacion = "";
 		$params = [$fecha];
 
-		// Si el usuario es Administrador o de Sistema, muestra todos los de las estaciones.
 		if (strtoupper($userRol) === 'ADMINISTRADOR' || strtoupper($userRol) === 'SISTEMA') {
 			$whereEstacion = "AND u.usuario_estacion_id != 0";
 		} 
-		// Si el usuario pertenece a una estación, muestra solo los de su estación.
 		elseif ($userEstacionId != 0) {
 			$whereEstacion = "AND u.usuario_estacion_id = ?";
 			$params[] = $userEstacionId;
@@ -194,9 +451,10 @@ class HomeModel extends Mysql {
 		
 		return $this->select_all($sql, $params);
 	}
+
 	public function getDailySalesSummary($fecha = null) {
 		if ($fecha === null) {
-			$fecha = date('Y-m-d'); // Fecha actual en formato Y-m-d
+			$fecha = date('Y-m-d');
 		}
 		$sql = "SELECT 
 					COUNT(v.id_venta) as total_ventas,
@@ -209,13 +467,8 @@ class HomeModel extends Mysql {
 		return $this->select($sql, [$fecha]);
 	}
 
-	/**
-	 * Selecciona los usuarios que tienen una sesión activa registrada.
-	 * @return array Lista de usuarios activos con sus detalles.
-	 */
 	public function selectActiveUsers()
 	{
-		// CORRECCIÓN: Se añade el JOIN a table_personal para obtener los datos del usuario.
 		$sql = "SELECT
 					s.session_id,
 					s.usuario_id,
@@ -232,20 +485,15 @@ class HomeModel extends Mysql {
 				INNER JOIN table_personal p ON u.usuario_id_personal = p.id_personal
 				LEFT JOIN table_per_roles r ON u.usuario_rol_id = r.rol_id
 				LEFT JOIN table_departamentos d ON u.usuario_departamento_id = d.departamento_id
-				WHERE u.usuario_status = 1 -- Opcional: Muestra solo usuarios con status activo
+				WHERE u.usuario_status = 1
 				ORDER BY s.created_at DESC";
 		
 		$request = $this->select_all($sql);
 		return $request;
 	}
 
-	/**
-	 * Selecciona todos los usuarios para la gestión del administrador.
-	 * @return array Lista de todos los usuarios con su estado.
-	 */
 	public function selectAllUsersForAdmin()
 	{
-		// CORRECCIÓN: Se añade el JOIN a table_personal para obtener los datos del usuario.
 		$sql = "SELECT 
 					u.usuario_id,
 					u.usuario_nick,
@@ -262,24 +510,14 @@ class HomeModel extends Mysql {
 		return $this->select_all($sql);
 	}
 
-	/**
-	 * Obtiene un resumen de las notificaciones pendientes.
-	 * @return array Conteo total y las 5 solicitudes más recientes.
-	 */
 	public function getPendingNotifications(int $userId, string $userRole, string $userDepartmentName) {
-		// =================================================================
-		// INICIO DE LA LÓGICA CENTRALIZADA DE NOTIFICACIONES
-		// =================================================================
 		$notifications = [];
 		$totalCount = 0;
 		
-		// Determinar los permisos basados en el rol y departamento
-		// Solo el departamento de Sistemas puede ver las notificaciones.
 		$isSistemasAdmin = (strtoupper($userDepartmentName) === 'SISTEMAS' || strtoupper($userDepartmentName) === 'SISTEMA');
 		$isCompras = false;
 		$isAlmacen = false;
 
-		// 1. Notificaciones de nuevas requisiciones (visibles para Compras y Sistemas/Admin)
 		if ($isSistemasAdmin || $isCompras) {
 			$sql_requisiciones = "SELECT
 									id_notificacion,
@@ -295,7 +533,6 @@ class HomeModel extends Mysql {
 			}
 		}
 
-		// 2. Notificaciones de recuperación de cuenta de usuario (visibles solo para Sistemas/Admin)
 		if ($isSistemasAdmin) {
 			$sql_recovery = "SELECT
 								r.id as id_referencia,
@@ -312,7 +549,6 @@ class HomeModel extends Mysql {
 			}
 		}
 
-		// 3. Notificaciones de despachos pendientes (visibles para Almacén y Sistemas/Admin)
 		if ($isSistemasAdmin || $isAlmacen) {
 			$sql_despachos = "SELECT
 									id_notificacion,
@@ -328,14 +564,12 @@ class HomeModel extends Mysql {
 			}
 		}
 
-		// 3. Ordenar todas las notificaciones por fecha de creación descendente
 		if (!empty($notifications)) {
 			usort($notifications, function ($a, $b) {
 				return strtotime(str_replace('/', '-', $b['fecha_creacion'])) - strtotime(str_replace('/', '-', $a['fecha_creacion']));
 			});
 		}
 
-		// 4. Contar y limitar el número de notificaciones a mostrar
 		$totalCount = count($notifications);
 		$limited_notifications = array_slice($notifications, 0, 10);
 
@@ -343,28 +577,14 @@ class HomeModel extends Mysql {
 			'count' => $totalCount,
 			'notifications' => $limited_notifications
 		];
-		// =================================================================
-		// FIN DE LA LÓGICA CENTRALIZADA DE NOTIFICACIONES
-		// =================================================================
 	}
 
-	/**
-	 * Actualiza la estación de un usuario en la base de datos.
-	 * @param int $userId El ID del usuario a actualizar.
-	 * @param int $stationId El ID de la nueva estación.
-	 * @return bool True si la actualización fue exitosa, false en caso contrario.
-	 */
 	public function updateUserStation(int $userId, int $stationId): bool
 	{
 		$sql = "UPDATE table_usuarios SET usuario_estacion_id = ? WHERE usuario_id = ?";
 		return $this->update($sql, [$stationId, $userId]);
 	}
 
-	/**
-	 * Refresca los datos de la sesión del usuario y los actualiza en $_SESSION.
-	 * @param int $userId El ID del usuario.
-	 * @return array|false Los nuevos datos del usuario o false si no se encuentra.
-	 */
 	public function refreshSession(int $userId)
 	{
 		$sql = "SELECT u.usuario_id, u.usuario_nick, u.usuario_rol_id, r.rol_nombre, u.usuario_departamento_id, u.usuario_estacion_id, u.usuario_imagen, u.usuario_status,
@@ -379,6 +599,18 @@ class HomeModel extends Mysql {
 				WHERE u.usuario_id = ?";
 		$request = $this->select($sql, [$userId]);
 		if ($request) {
+			$departamentoId = intval($request['usuario_departamento_id'] ?? 0);
+			$departamentoNombre = strtoupper($request['departamento_nombre'] ?? '');
+			
+			if ($departamentoId === 1 || $departamentoNombre === 'SISTEMA' || $departamentoNombre === 'SISTEMAS') {
+				$request['id_institucion'] = 0;
+			} elseif ($departamentoId === 8 || $departamentoNombre === 'TALLER') {
+				$request['id_institucion'] = 2;
+			} else {
+				$request['id_institucion'] = 1;
+			}
+			$request['es_admin'] = ($request['id_institucion'] === 0);
+			
 			$_SESSION['userData'] = $request;
 		}
 		return $request;
