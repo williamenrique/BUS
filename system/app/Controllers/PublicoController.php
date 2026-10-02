@@ -63,9 +63,9 @@ class Publico extends Controllers {
                         'id_despacho' => $d['id_despacho'],
                         'unidad' => $d['id_unidad'] ?? 'N/A',
                         'id_flota' => $d['id_flota'] ?? null,
-                        'operador' => $d['operador'],
-                        'mecanico' => $d['mecanico'],
-                        'despachador' => $d['despachador'],
+                        'operador' => $d['operador_nombre'] ?? 'N/A',
+                        'mecanico' => $d['mecanico_nombre'] ?? 'N/A',
+                        'despachador' => $d['despachador_nombre'] ?? 'N/A',
                         'observacion' => $d['observacion'],
                         'estado' => $this->getEstadoDespacho($d['estado_orden']),
                         'detalles' => $d['productos'] ?? []

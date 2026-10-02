@@ -111,47 +111,47 @@ class OrdenModel extends Mysql {
 
     /**
      * Inserta un nuevo despacho con IDs de personal.
+     * Las columnas operador, mecanico, despachador (varchar) fueron eliminadas.
+     * Solo se guardan los IDs que referencian a table_personal.
      */
-    public function insertDespacho(int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, 
-                                    int $idOper, int $idMec, int $idDesp,
+    public function insertDespacho(int $intUnidad, int $idOper, int $idMec, int $idDesp,
                                     int $intIdUser, string $srtObs, string $strDate){
         $numeroOrden = $this->obtenerSiguienteNumeroOrden();
         
         $queryInsert = "INSERT INTO table_alm_despacho
                             (id_flota, 
-                             operador, operador_id,
-                             mecanico, mecanico_id,
-                             despachador, despachador_id,
+                             operador_id,
+                             mecanico_id,
+                             despachador_id,
                              fecha_despacho, user_id, observacion, status_despacho, 
                              id_institucion, numero_orden) 
-                        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)";
+                        VALUES(?,?,?,?,?,?,?,?,?,?)";
         $requestInsert = $this->insert($queryInsert, [
             $intUnidad,
-            strtoupper($srtOper), $idOper,
-            strtoupper($srtMec), $idMec,
-            strtoupper($srtDesp), $idDesp,
+            $idOper,
+            $idMec,
+            $idDesp,
             $strDate, $intIdUser, strtoupper($srtObs), 1, 
             $this->id_institucion, $numeroOrden
         ]);
         return $requestInsert;
     }
 
-    public function updateDespacho(int $idDespacho, int $intUnidad, string $srtOper, string $srtMec, string $srtDesp, 
-                                    int $idOper, int $idMec, int $idDesp,
+    public function updateDespacho(int $idDespacho, int $intUnidad, int $idOper, int $idMec, int $idDesp,
                                     string $srtObs, string $strDate){
         $sql = "UPDATE table_alm_despacho SET 
                     id_flota = ?, 
-                    operador = ?, operador_id = ?,
-                    mecanico = ?, mecanico_id = ?,
-                    despachador = ?, despachador_id = ?,
+                    operador_id = ?,
+                    mecanico_id = ?,
+                    despachador_id = ?,
                     fecha_despacho = ?, 
                     observacion = ? 
                 WHERE id_despacho = ? AND id_institucion = ?";
         $arrData = [
             $intUnidad, 
-            strtoupper($srtOper), $idOper,
-            strtoupper($srtMec), $idMec,
-            strtoupper($srtDesp), $idDesp,
+            $idOper,
+            $idMec,
+            $idDesp,
             $strDate, 
             strtoupper($srtObs), 
             $idDespacho, 
@@ -216,8 +216,8 @@ class OrdenModel extends Mysql {
     /**************************************************/
 
     /**
-     * Obtiene todas las órdenes. Usa COALESCE para mostrar el nombre
-     * desde table_personal si hay ID, o el guardado si no.
+     * Obtiene todas las órdenes. Usa CONCAT_WS para concatenar nombre y apellido
+     * saltando valores NULL, con fallback 'SIN OPERADOR'.
      */
     public function selectOrdenes(): array
     {
@@ -229,8 +229,8 @@ class OrdenModel extends Mysql {
                     m.marca_unidad, 
                     mo.modelo_unidad,
                     COALESCE(
-                        CONCAT(p_op.personal_nombre, ' ', NULLIF(p_op.personal_apellido, '0')),
-                        d.operador
+                        CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')),
+                        'SIN OPERADOR'
                     ) AS operador_nombre,
                     d.operador_id,
                     (SELECT COUNT(*) FROM table_alm_relacion_despacho rd WHERE rd.id_despacho = d.id_despacho) AS total_articulos
@@ -266,16 +266,16 @@ class OrdenModel extends Mysql {
                     m.marca_unidad, 
                     mo.modelo_unidad,
                     COALESCE(
-                        CONCAT(p_op.personal_nombre, ' ', NULLIF(p_op.personal_apellido, '0')),
-                        d.operador
+                        CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')),
+                        'SIN OPERADOR'
                     ) AS operador_nombre,
                     COALESCE(
-                        CONCAT(p_mec.personal_nombre, ' ', NULLIF(p_mec.personal_apellido, '0')),
-                        d.mecanico
+                        CONCAT_WS(' ', p_mec.personal_nombre, NULLIF(p_mec.personal_apellido, '0')),
+                        'SIN MECÁNICO'
                     ) AS mecanico_nombre,
                     COALESCE(
-                        CONCAT(p_desp.personal_nombre, ' ', NULLIF(p_desp.personal_apellido, '0')),
-                        d.despachador
+                        CONCAT_WS(' ', p_desp.personal_nombre, NULLIF(p_desp.personal_apellido, '0')),
+                        'SIN DESPACHADOR'
                     ) AS despachador_nombre,
                     (SELECT COUNT(*) FROM table_alm_relacion_despacho rd WHERE rd.id_despacho = d.id_despacho) AS total_articulos,
                     u.usuario_nick as usuario_registro
@@ -320,7 +320,9 @@ class OrdenModel extends Mysql {
     }
 
     /**
-     * Obtiene un despacho. Usa COALESCE para los nombres.
+     * Obtiene un despacho. Usa CONCAT_WS para concatenar nombre y apellido
+     * saltando valores NULL, con fallback por defecto.
+     * Las columnas operador, mecanico, despachador fueron eliminadas.
      */
     public function selectDepacho(int $strCod){
         $sql = "SELECT 
@@ -329,21 +331,21 @@ class OrdenModel extends Mysql {
                     desp.fecha_despacho, 
                     desp.observacion,
                     COALESCE(
-                        CONCAT(p_op.personal_nombre, ' ', NULLIF(p_op.personal_apellido, '0')),
-                        desp.operador
+                        CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')),
+                        'SIN OPERADOR'
                     ) AS operador_nombre,
                     COALESCE(
-                        CONCAT(p_mec.personal_nombre, ' ', NULLIF(p_mec.personal_apellido, '0')),
-                        desp.mecanico
+                        CONCAT_WS(' ', p_mec.personal_nombre, NULLIF(p_mec.personal_apellido, '0')),
+                        'SIN MECÁNICO'
                     ) AS mecanico_nombre,
                     COALESCE(
-                        CONCAT(p_desp.personal_nombre, ' ', NULLIF(p_desp.personal_apellido, '0')),
-                        desp.despachador
+                        CONCAT_WS(' ', p_desp.personal_nombre, NULLIF(p_desp.personal_apellido, '0')),
+                        'SIN DESPACHADOR'
                     ) AS despachador_nombre,
                     flota.id_unidad, flota.vim_unidad,
                     modelo.modelo_unidad, 
                     marca.marca_unidad,
-                    CONCAT(p.personal_nombre, ' ', p.personal_apellido) as usuario_registro
+                    CONCAT_WS(' ', p.personal_nombre, NULLIF(p.personal_apellido, '0')) as usuario_registro
                 FROM table_alm_despacho desp
                 INNER JOIN table_flota flota ON desp.id_flota = flota.id_flota
                 INNER JOIN table_usuarios usuario ON desp.user_id = usuario.usuario_id

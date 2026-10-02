@@ -143,13 +143,15 @@ class HomeModel extends Mysql {
 
     /**
      * Últimas órdenes registradas.
+     * La columna operador fue eliminada, se obtiene el nombre mediante JOIN con table_personal.
+     * Usa CONCAT_WS para concatenar nombre y apellido saltando valores NULL.
      */
     public function getUltimasOrdenes(int $idInstitucion = 1, int $limit = 10): array {
         $sql = "SELECT 
                     d.id_despacho,
                     d.numero_orden,
                     d.fecha_despacho,
-                    d.operador,
+                    CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')) AS operador_nombre,
                     d.estado_orden,
                     f.id_unidad,
                     mo.modelo_unidad,
@@ -157,6 +159,7 @@ class HomeModel extends Mysql {
                 FROM table_alm_despacho d
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
                 WHERE d.status_despacho = 1
                   AND d.id_institucion = ?
                 ORDER BY d.id_despacho DESC
@@ -284,13 +287,17 @@ class HomeModel extends Mysql {
 
     /**
      * Últimas 10 requisiciones (órdenes en estado 1).
+     * La columna operador fue eliminada, se obtiene el nombre mediante JOIN con table_personal.
      */
     public function getUltimasRequisiciones(int $idInstitucion = 1, int $limit = 10): array {
         $sql = "SELECT 
                     d.id_despacho,
                     d.numero_orden,
                     d.fecha_despacho,
-                    d.operador AS solicitante,
+                    COALESCE(
+                        CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')),
+                        'SIN SOLICITANTE'
+                    ) AS solicitante,
                     d.estado_orden,
                     f.id_unidad,
                     mo.modelo_unidad,
@@ -298,6 +305,7 @@ class HomeModel extends Mysql {
                 FROM table_alm_despacho d
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+                LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
                 WHERE d.status_despacho = 1
                   AND d.id_institucion = ?
                 ORDER BY d.id_despacho DESC

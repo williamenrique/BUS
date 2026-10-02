@@ -272,12 +272,13 @@ class ProductoModel extends Mysql {
 
         $sql = "SELECT 
                      d.id_despacho, d.fecha_despacho, rd.cant_despacho,
-                    f.id_unidad, m.modelo_unidad, d.operador AS operador_nombre
+                    f.id_unidad, m.modelo_unidad,
+                    CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')) AS operador_nombre
                 FROM table_alm_relacion_despacho rd
                 INNER JOIN table_alm_despacho d ON rd.id_despacho = d.id_despacho
                 INNER JOIN table_flota f ON d.id_flota = f.id_flota
                 INNER JOIN table_flota_modelo m ON f.id_modelo = m.id_modelo
-                LEFT JOIN table_personal p ON d.user_id = p.id_personal
+                LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
                 WHERE rd.id_producto = ? 
                   AND d.status_despacho = 1
                   AND d.id_institucion = ?

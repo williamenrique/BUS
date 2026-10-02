@@ -219,28 +219,13 @@ class Orden extends Controllers{
                 throw new Exception('Debe seleccionar Unidad, Operador, Mecánico y Despachador.');
             }
 
-            // Obtener nombres (para compatibilidad con columnas varchar)
-            $operadorData = $this->ordenModel->selectPersonal($idOper);
-            $mecanicoData = $this->ordenModel->selectPersonal($idMec);
-            $despachadorData = $this->ordenModel->selectPersonal($idDesp);
-
-            $strOper = !empty($operadorData) 
-                ? strtoupper(trim($operadorData['personal_nombre'] . ' ' . 
-                    ($operadorData['personal_apellido'] != '0' ? $operadorData['personal_apellido'] : ''))) 
-                : 'SIN OPERADOR';
-            $strMec = !empty($mecanicoData) 
-                ? strtoupper(trim($mecanicoData['personal_nombre'] . ' ' . 
-                    ($mecanicoData['personal_apellido'] != '0' ? $mecanicoData['personal_apellido'] : ''))) 
-                : 'SIN MECÁNICO';
-            $strDesp = !empty($despachadorData) 
-                ? strtoupper(trim($despachadorData['personal_nombre'] . ' ' . 
-                    ($despachadorData['personal_apellido'] != '0' ? $despachadorData['personal_apellido'] : ''))) 
-                : 'SIN DESPACHADOR';
+            // Las columnas operador, mecanico, despachador (varchar) fueron eliminadas.
+            // Solo se guardan los IDs que referencian a table_personal.
+            // Los nombres se obtienen mediante JOINs al consultar.
 
             if ($idDespacho > 0) {
                 $this->ordenModel->updateDespacho(
                     $idDespacho, $intUnidad, 
-                    $strOper, $strMec, $strDesp,
                     $idOper, $idMec, $idDesp,
                     $srtObs, $strDate
                 );
@@ -249,7 +234,6 @@ class Orden extends Controllers{
             } else {
                 $idDespacho = $this->ordenModel->insertDespacho(
                     $intUnidad, 
-                    $strOper, $strMec, $strDesp,
                     $idOper, $idMec, $idDesp,
                     $intIdUser, $srtObs, $strDate
                 );

@@ -319,9 +319,9 @@ function renderizarDetalleOrden(orden) {
                     <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Fecha</small><strong>${fechaFormateada}</strong></div></div></div>
                     <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Estado</small><span class="badge ${estadoClass}">${estadoTexto}</span></div></div></div>
                     <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Unidad</small><strong>${orden.id_unidad || 'N/A'}</strong></div></div></div>
-                    <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Operador</small><strong>${orden.operador || 'N/A'}</strong></div></div></div>
-                    <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Mecánico</small><strong>${orden.mecanico || 'N/A'}</strong></div></div></div>
-                    <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Despachador</small><strong>${orden.despachador || 'N/A'}</strong></div></div></div>
+                    <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Operador</small><strong>${orden.operador_nombre || 'N/A'}</strong></div></div></div>
+                    <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Mecánico</small><strong>${orden.mecanico_nombre || 'N/A'}</strong></div></div></div>
+                    <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Despachador</small><strong>${orden.despachador_nombre || 'N/A'}</strong></div></div></div>
                 </div>
                 ${orden.observacion ? `<div class="mb-3"><label class="form-label fw-bold">Observación:</label><div class="p-2 bg-light rounded">${orden.observacion}</div></div>` : ''}
                 <h6 class="fw-bold border-bottom pb-2"><i class="fas fa-boxes me-1"></i>Productos Despachados</h6>
@@ -350,11 +350,11 @@ function renderizarDetalleOrden(orden) {
                 marca_unidad: orden.marca_unidad || '',
                 modelo_unidad: orden.modelo_unidad || '',
                 vim_unidad: orden.vim_unidad || '',
-                operador_nombre: orden.operador || '',
-                mecanico_nombre: orden.mecanico || '',
-                despachador_nombre: orden.despachador || '',
+                operador_nombre: orden.operador_nombre || '',
+                mecanico_nombre: orden.mecanico_nombre || '',
+                despachador_nombre: orden.despachador_nombre || '',
                 observacion: orden.observacion || '',
-                usuario_registro: orden.usuario_registro || orden.despachador || 'Sistema',
+                usuario_registro: orden.usuario_registro || orden.despachador_nombre || 'Sistema',
                 articulos: (orden.productos || []).map(prod => ({
                     id_producto: prod.id_producto || '',
                     producto: prod.producto,
@@ -2064,7 +2064,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // ============================================
     // CARGA INICIAL: PRIMERO INSTITUCIONES, LUEGO EL RESTO
     // ============================================
-    (async function() {
+    (async function () {
         await cargarInstituciones();
         cargarEstadoFlota();
         cargarEstadoAceite();

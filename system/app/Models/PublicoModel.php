@@ -211,6 +211,9 @@ class PublicoModel extends Mysql {
      * Get despachos de almacén filtrados por institución.
      * Solo despachos cuyas unidades pertenezcan a la institución indicada.
      * NOTA: Si el despacho no tiene flota vinculada, NO se filtra.
+     * Las columnas operador, mecanico, despachador fueron eliminadas.
+     * Se obtienen los nombres mediante JOINs con table_personal usando los IDs.
+     * Usa CONCAT_WS para concatenar nombre y apellido saltando valores NULL.
      */
     public function getDespachosPublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
@@ -218,15 +221,21 @@ class PublicoModel extends Mysql {
                 d.id_despacho,
                 d.id_flota,
                 f.id_unidad,
-                d.operador,
-                d.mecanico,
-                d.despachador,
+                d.operador_id,
+                d.mecanico_id,
+                d.despachador_id,
+                CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')) AS operador_nombre,
+                CONCAT_WS(' ', p_mec.personal_nombre, NULLIF(p_mec.personal_apellido, '0')) AS mecanico_nombre,
+                CONCAT_WS(' ', p_desp.personal_nombre, NULLIF(p_desp.personal_apellido, '0')) AS despachador_nombre,
                 d.fecha_despacho,
                 d.observacion,
                 d.estado_orden,
                 d.status_despacho
             FROM table_alm_despacho d
             LEFT JOIN table_flota f ON d.id_flota = f.id_flota
+            LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
+            LEFT JOIN table_personal p_mec ON d.mecanico_id = p_mec.id_personal
+            LEFT JOIN table_personal p_desp ON d.despachador_id = p_desp.id_personal
             WHERE d.fecha_despacho BETWEEN ? AND ?
               AND (f.id_flota IS NULL OR f.id_institucion = ?)
             ORDER BY d.fecha_despacho DESC
@@ -672,6 +681,9 @@ class PublicoModel extends Mysql {
     /**
      * Get order details (orden de despacho) for public view.
      * NO se filtra por institución porque es un detalle específico.
+     * Las columnas operador, mecanico, despachador fueron eliminadas.
+     * Se obtienen los nombres mediante JOINs con table_personal usando los IDs.
+     * Usa CONCAT_WS para concatenar nombre y apellido saltando valores NULL.
      */
     public function getDetalleOrden($idDespacho) {
         $query = "
@@ -679,15 +691,21 @@ class PublicoModel extends Mysql {
                 d.id_despacho,
                 d.id_flota,
                 f.id_unidad,
-                d.operador,
-                d.mecanico,
-                d.despachador,
+                d.operador_id,
+                d.mecanico_id,
+                d.despachador_id,
+                CONCAT_WS(' ', p_op.personal_nombre, NULLIF(p_op.personal_apellido, '0')) AS operador_nombre,
+                CONCAT_WS(' ', p_mec.personal_nombre, NULLIF(p_mec.personal_apellido, '0')) AS mecanico_nombre,
+                CONCAT_WS(' ', p_desp.personal_nombre, NULLIF(p_desp.personal_apellido, '0')) AS despachador_nombre,
                 d.fecha_despacho,
                 d.observacion,
                 d.estado_orden,
                 d.status_despacho
             FROM table_alm_despacho d
             LEFT JOIN table_flota f ON d.id_flota = f.id_flota
+            LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
+            LEFT JOIN table_personal p_mec ON d.mecanico_id = p_mec.id_personal
+            LEFT JOIN table_personal p_desp ON d.despachador_id = p_desp.id_personal
             WHERE d.id_despacho = ?
         ";
         $orden = $this->select($query, [$idDespacho]);
