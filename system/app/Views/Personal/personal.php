@@ -55,12 +55,8 @@
                                     </div>
                                     <div class="col-md-3">
                                         <div class="form-group">
-                                            <label for="listTagPersonal">Enlace</label>
-                                            <select id="listTagPersonal" name="listTagPersonal" class="form-control">
-                                                <option value="0">SELECCIONE ENLACE</option>
-                                                <option value="1">INFORMATICA</option>
-                                                <option value="2">ALMACEN</option>
-                                            </select>
+                                            <label for="listDepartamento">Departamento</label>
+                                            <select id="listDepartamento" name="listDepartamento" class="form-control"></select>
                                         </div>
                                     </div>
                                     <div class="col-md-3">
@@ -105,6 +101,7 @@
                                         <th>Cédula</th>
                                         <th>Nombre Completo</th>
                                         <th>Cargo</th>
+                                        <th>Departamento</th>
                                         <th>Teléfono</th>
                                         <th>Email</th>
                                         <th class="text-center">Estado</th>
@@ -143,7 +140,7 @@
                         <tr><td><strong>Dirección:</strong></td><td id="viewDireccion"></td></tr>
                         <tr><td><strong>Email:</strong></td><td id="viewEmail"></td></tr>
                         <tr><td><strong>Teléfono:</strong></td><td id="viewTelefono"></td></tr>
-                        <tr><td><strong>Enlace:</strong></td><td id="viewTag"></td></tr>
+                        <tr><td><strong>Departamento:</strong></td><td id="viewTag"></td></tr>
                         <tr><td><strong>Estado:</strong></td><td id="viewStatus"></td></tr>
                     </tbody>
                 </table>

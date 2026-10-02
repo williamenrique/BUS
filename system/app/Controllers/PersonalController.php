@@ -107,6 +107,8 @@ class Personal extends Controllers{
             }
             // Concatenar nombre y apellido
             $arrData[$i]['personal_nombre'] = $arrData[$i]['personal_nombre'] . ' ' . $arrData[$i]['personal_apellido'];
+            // Agregar departamento
+            $arrData[$i]['departamento'] = $arrData[$i]['departamento_nombre'] ?? 'SIN DEPARTAMENTO';
             $arrData[$i]['personal_status'] = '<div class="text-center" onclick="fntStatusPersonal('.$arrData[$i]['id_personal'].')" style="cursor:pointer;">'.$status.'</div>';
 
             $btnView = '<button class="btn btn-info btn-sm" onClick="fntViewPersonal('.$arrData[$i]['id_personal'].')" title="Ver"><i class="far fa-eye"></i></button>';
@@ -165,7 +167,8 @@ class Personal extends Controllers{
                 $intTxtTlf = strClean($_POST['txtTelefono']);
                 $strEmail = strtolower(strClean($_POST['txtEmail']));
                 $strDireccion = strClean($_POST['txtDireccion']);
-                $intTagPersonal = intval($_POST['listTagPersonal']);
+                // Departamento es opcional (NULL para operadores/mecánicos)
+                $intDepartamento = !empty($_POST['listDepartamento']) ? intval($_POST['listDepartamento']) : null;
                 $intListStatus = intval($_POST['listStatus']);
 
                 if (empty($intIdentificacion) || empty($strNombre) || empty($strApellido) || $intlistRolId == 0) {
@@ -173,7 +176,7 @@ class Personal extends Controllers{
                 }
 
                 if ($idPersonal == 0) { // Lógica para CREAR
-                    $request_personal = $this->model->insertPersonal($intIdentificacion, $strNombre, $strApellido, $intlistRolId, $intTxtTlf, $strEmail, $strDireccion, $intTagPersonal, $intListStatus);
+                    $request_personal = $this->model->insertPersonal($intIdentificacion, $strNombre, $strApellido, $intlistRolId, $intTxtTlf, $strEmail, $strDireccion, $intDepartamento, $intListStatus);
                     if ($request_personal > 0) {
                         $arrResponse = ['success' => true, 'message' => 'Personal guardado correctamente.'];
                     } elseif ($request_personal == 'exist') {
@@ -182,7 +185,7 @@ class Personal extends Controllers{
                         throw new Exception('No es posible almacenar los datos.');
                     }
                 } else { // Lógica para ACTUALIZAR
-                    $request_personal = $this->model->updatePersona($idPersonal, $intIdentificacion, $strNombre, $strApellido, $intlistRolId, $intTxtTlf, $strEmail, $strDireccion, $intTagPersonal, $intListStatus);
+                    $request_personal = $this->model->updatePersona($idPersonal, $intIdentificacion, $strNombre, $strApellido, $intlistRolId, $intTxtTlf, $strEmail, $strDireccion, $intDepartamento, $intListStatus);
                     if ($request_personal === true) {
                         $arrResponse = ['success' => true, 'message' => 'Personal actualizado correctamente.'];
                     } elseif ($request_personal == 'exist') {
@@ -198,6 +201,21 @@ class Personal extends Controllers{
         }
         die();
         // --- FIN DE LA REESTRUCTURACIÓN ---
+    }
+
+    /**
+     * Obtiene los departamentos para el select.
+     */
+    public function getDepartamentos() {
+        $arrData = $this->model->selectDepartamentos();
+        $htmlOptions = '<option value="0">SELECCIONE DEPARTAMENTO (OPCIONAL)</option>';
+        if (count($arrData) > 0) {
+            foreach ($arrData as $depto) {
+                $htmlOptions .= '<option value="' . $depto['departamento_id'] . '">' . $depto['departamento_nombre'] . '</option>';
+            }
+        }
+        echo $htmlOptions;
+        die();
     }
 
     /**

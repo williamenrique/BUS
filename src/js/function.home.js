@@ -152,10 +152,10 @@ document.addEventListener('DOMContentLoaded', async function () {
  */
 async function setupInstitucionSelector() {
     const departamentoActual = (typeof userDepartment !== 'undefined') ? userDepartment.toUpperCase() : '';
-    
+
     // SOLO el departamento de Sistema/Sistemas ve el selector de institución.
     const esAdmin = (departamentoActual === 'SISTEMA' || departamentoActual === 'SISTEMAS');
-    
+
     if (!esAdmin) {
         dashboardInstitucionActual = 1;
         esAdminDashboard = false;
@@ -167,11 +167,11 @@ async function setupInstitucionSelector() {
     try {
         const response = await fetch(base_url + 'Home/getInstituciones');
         const result = await response.json();
-        
+
         if (result.success && result.data.length > 0) {
             institucionesDisponibles = result.data;
             dashboardInstitucionActual = parseInt(result.data[0].id_institucion, 10);
-            
+
             const selectorHtml = `
                 <div class="card card-outline card-primary mb-3" id="dashboard-institucion-card">
                     <div class="card-body py-2">
@@ -186,16 +186,16 @@ async function setupInstitucionSelector() {
                             <div class="d-flex align-items-center">
                                 <label class="mr-2 mb-0 font-weight-bold">Institución:</label>
                                 <select id="dashboard-institucion-selector" class="form-control" style="min-width: 250px;">
-                                    ${result.data.map(inst => 
-                                        `<option value="${inst.id_institucion}">${inst.nombre}</option>`
-                                    ).join('')}
+                                    ${result.data.map(inst =>
+                `<option value="${inst.id_institucion}">${inst.nombre}</option>`
+            ).join('')}
                                 </select>
                             </div>
                         </div>
                     </div>
                 </div>
             `;
-            
+
             const contentWrapper = document.querySelector('.content-wrapper');
             if (contentWrapper) {
                 const firstSection = contentWrapper.querySelector('section.content');
@@ -205,7 +205,7 @@ async function setupInstitucionSelector() {
                     contentWrapper.insertAdjacentHTML('afterbegin', selectorHtml);
                 }
             }
-            
+
             const selector = document.getElementById('dashboard-institucion-selector');
             if (selector) {
                 selector.addEventListener('change', function () {
@@ -239,7 +239,7 @@ function recargarDashboard() {
 
 function loadAlmacenData() {
     const idInst = dashboardInstitucionActual || 1;
-    
+
     fetch(base_url + 'Home/getAlmacenData?id_institucion=' + idInst)
         .then(response => response.json())
         .then(data => {
@@ -271,7 +271,7 @@ function loadAlmacenData() {
 function loadTopProductosAlmacen() {
     const idInst = dashboardInstitucionActual || 1;
     const tbody = document.getElementById('tabla-top-productos');
-    
+
     if (!tbody) return;
 
     fetch(base_url + 'Home/getTopProductosAlmacen?id_institucion=' + idInst)
@@ -318,7 +318,7 @@ function loadTopProductosAlmacen() {
 function loadUltimasOrdenesAlmacen() {
     const idInst = dashboardInstitucionActual || 1;
     const tbody = document.getElementById('tabla-ultimas-ordenes');
-    
+
     if (!tbody) return;
 
     fetch(base_url + 'Home/getUltimasOrdenesAlmacen?id_institucion=' + idInst)
@@ -333,7 +333,7 @@ function loadUltimasOrdenesAlmacen() {
                             <td class="text-center font-weight-bold">#${item.numero_orden}</td>
                             <td>${item.fecha_despacho}</td>
                             <td>${item.id_unidad} - ${item.modelo_unidad}</td>
-                            <td><small>${item.operador || 'N/A'}</small></td>
+                            <td><small>${item.operador_nombre || 'N/A'}</small></td>
                             <td class="text-center">
                                 <span class="badge badge-info">${item.total_articulos} art.</span>
                             </td>
@@ -419,7 +419,7 @@ function loadComprasData() {
 function loadTopProductosCosteados() {
     const idInst = dashboardInstitucionActual || 1;
     const tbody = document.getElementById('tabla-top-productos-costeados');
-    
+
     if (!tbody) return;
 
     fetch(base_url + 'Home/getTopProductosCosteados?id_institucion=' + idInst)
@@ -478,7 +478,7 @@ function loadTopProductosCosteados() {
 function loadUltimasRequisiciones() {
     const idInst = dashboardInstitucionActual || 1;
     const tbody = document.getElementById('tabla-ultimas-requisiciones');
-    
+
     if (!tbody) return;
 
     fetch(base_url + 'Home/getUltimasRequisiciones?id_institucion=' + idInst)
@@ -530,7 +530,7 @@ function loadUltimasRequisiciones() {
 function loadUltimasComprasCosteadas() {
     const idInst = dashboardInstitucionActual || 1;
     const tbody = document.getElementById('tabla-ultimas-compras-costeadas');
-    
+
     if (!tbody) return;
 
     fetch(base_url + 'Home/getUltimasComprasCosteadas?id_institucion=' + idInst)
@@ -618,7 +618,7 @@ function loadOperacionesData() {
         .then(data => {
             if (data.success) {
                 const operaciones = data.data;
-                
+
                 setText('unidades-operativas', operaciones.status.operativas || 0);
                 setText('unidades-inoperativas', operaciones.status.inoperativas || 0);
                 setText('unidades-mantenimiento', operaciones.status.mantenimiento || 0);
@@ -629,7 +629,7 @@ function loadOperacionesData() {
                     setText('aceite-proximo', operaciones.aceite_status.proximo || 0);
                     setText('aceite-ok', operaciones.aceite_status.ok || 0);
                 }
-                
+
                 const tablaBody = document.querySelector('#tabla-resumen-flota');
 
                 if (tablaBody) {

@@ -19,11 +19,8 @@ CREATE TABLE IF NOT EXISTS `table_alm_despacho` (
   `id_despacho` int(11) NOT NULL AUTO_INCREMENT,
   `numero_orden` int(11) DEFAULT NULL,
   `id_flota` int(11) NOT NULL,
-  `operador` varchar(50) NOT NULL,
   `operador_id` int(11) DEFAULT NULL,
-  `mecanico` varchar(50) NOT NULL,
   `mecanico_id` int(11) DEFAULT NULL,
-  `despachador` varchar(50) NOT NULL,
   `despachador_id` int(11) DEFAULT NULL,
   `fecha_despacho` varchar(12) DEFAULT NULL,
   `user_id` int(11) NOT NULL,
@@ -562,20 +559,6 @@ CREATE TABLE IF NOT EXISTS `table_men_departamento_menu` (
 
 -- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_departamento_menu_backup_2026
-CREATE TABLE IF NOT EXISTS `table_men_departamento_menu_backup_2026` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `departamento_id` int(11) NOT NULL,
-  `menu_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `departamento_id` (`departamento_id`),
-  KEY `menu_id` (`menu_id`),
-  CONSTRAINT `table_men_departamento_menu_backup_2026_ibfk_1` FOREIGN KEY (`departamento_id`) REFERENCES `table_departamentos` (`departamento_id`) ON DELETE CASCADE,
-  CONSTRAINT `table_men_departamento_menu_backup_2026_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu_backup_2026` (`menu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
-
--- La exportación de datos fue deseleccionada.
-
 -- Volcando estructura para tabla busyaracuydata.table_men_menu
 CREATE TABLE IF NOT EXISTS `table_men_menu` (
   `menu_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -596,20 +579,6 @@ CREATE TABLE IF NOT EXISTS `table_men_menu` (
 
 -- La exportación de datos fue deseleccionada.
 
--- Volcando estructura para tabla busyaracuydata.table_men_menu_backup_2026
-CREATE TABLE IF NOT EXISTS `table_men_menu_backup_2026` (
-  `menu_id` int(11) NOT NULL AUTO_INCREMENT,
-  `menu_nombre` varchar(100) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
-  `menu_icono` varchar(50) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  `menu_link` varchar(255) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  `menu_es_desplegable` tinyint(1) DEFAULT 0,
-  `menu_orden` int(11) DEFAULT 0,
-  `menu_estado` tinyint(1) DEFAULT 1,
-  PRIMARY KEY (`menu_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
-
--- La exportación de datos fue deseleccionada.
-
 -- Volcando estructura para tabla busyaracuydata.table_men_rutas
 CREATE TABLE IF NOT EXISTS `table_men_rutas` (
   `ruta_id` int(11) NOT NULL AUTO_INCREMENT,
@@ -621,22 +590,6 @@ CREATE TABLE IF NOT EXISTS `table_men_rutas` (
   KEY `idx_menu` (`menu_id`),
   CONSTRAINT `fk_ruta_menu` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=52 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
-
--- La exportación de datos fue deseleccionada.
-
--- Volcando estructura para tabla busyaracuydata.table_men_submenu_backup_2026
-CREATE TABLE IF NOT EXISTS `table_men_submenu_backup_2026` (
-  `submenu_id` int(11) NOT NULL AUTO_INCREMENT,
-  `menu_id` int(11) NOT NULL,
-  `submenu_nombre` varchar(100) CHARACTER SET utf8 COLLATE utf8_spanish_ci NOT NULL,
-  `submenu_link` varchar(255) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  `submenu_orden` int(11) DEFAULT 0,
-  `submenu_estado` tinyint(1) DEFAULT 1,
-  `submenu_pagina` varchar(255) CHARACTER SET utf8 COLLATE utf8_spanish_ci DEFAULT NULL,
-  PRIMARY KEY (`submenu_id`),
-  KEY `menu_id` (`menu_id`),
-  CONSTRAINT `table_men_submenu_backup_2026_ibfk_1` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu_backup_2026` (`menu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -652,34 +605,6 @@ CREATE TABLE IF NOT EXISTS `table_men_usuario_menu` (
   CONSTRAINT `fk_um_menu` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu` (`menu_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_um_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=246 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
-
--- La exportación de datos fue deseleccionada.
-
--- Volcando estructura para tabla busyaracuydata.table_men_usuario_menu_backup_2026
-CREATE TABLE IF NOT EXISTS `table_men_usuario_menu_backup_2026` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `usuario_id` int(11) NOT NULL,
-  `menu_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `menu_id` (`menu_id`),
-  CONSTRAINT `table_men_usuario_menu_backup_2026_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`) ON DELETE CASCADE,
-  CONSTRAINT `table_men_usuario_menu_backup_2026_ibfk_2` FOREIGN KEY (`menu_id`) REFERENCES `table_men_menu_backup_2026` (`menu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=215 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
-
--- La exportación de datos fue deseleccionada.
-
--- Volcando estructura para tabla busyaracuydata.table_men_usuario_submenu_backup_2026
-CREATE TABLE IF NOT EXISTS `table_men_usuario_submenu_backup_2026` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `usuario_id` int(11) NOT NULL,
-  `submenu_id` int(11) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `usuario_id` (`usuario_id`),
-  KEY `submenu_id` (`submenu_id`),
-  CONSTRAINT `table_men_usuario_submenu_backup_2026_ibfk_1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`) ON DELETE CASCADE,
-  CONSTRAINT `table_men_usuario_submenu_backup_2026_ibfk_2` FOREIGN KEY (`submenu_id`) REFERENCES `table_men_submenu_backup_2026` (`submenu_id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=342 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
 -- La exportación de datos fue deseleccionada.
 
@@ -740,10 +665,13 @@ CREATE TABLE IF NOT EXISTS `table_personal` (
   `personal_direccion` text NOT NULL,
   `personal_email` text NOT NULL,
   `personal_tag` int(1) NOT NULL,
+  `personal_departamento` int(11) DEFAULT NULL COMMENT 'FK a table_departamentos.departamento_id',
   `personal_status` int(11) DEFAULT NULL,
   PRIMARY KEY (`id_personal`),
   KEY `personal_cargo` (`personal_cargo`),
-  CONSTRAINT `table_personal_ibfk_1` FOREIGN KEY (`personal_cargo`) REFERENCES `table_per_cargo` (`id_cargo`)
+  KEY `idx_personal_departamento` (`personal_departamento`),
+  CONSTRAINT `table_personal_ibfk_1` FOREIGN KEY (`personal_cargo`) REFERENCES `table_per_cargo` (`id_cargo`),
+  CONSTRAINT `fk_personal_departamento` FOREIGN KEY (`personal_departamento`) REFERENCES `table_departamentos` (`departamento_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=265 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
 -- La exportación de datos fue deseleccionada.

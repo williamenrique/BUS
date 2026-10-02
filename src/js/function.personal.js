@@ -26,8 +26,9 @@ document.addEventListener('DOMContentLoaded', function () {
             { "data": "personal_cedula" },
             { "data": "personal_nombre" },
             { "data": "cargo" },
-            { "data": "personal_tlf" },
-            { "data": "personal_email" },
+            { "data": "departamento", "defaultContent": "SIN DEPARTAMENTO" },
+            { "data": "personal_tlf", "defaultContent": "" },
+            { "data": "personal_email", "defaultContent": "" },
             { "data": "personal_status", "className": "text-center" },
             { "data": "acciones", "orderable": false, "className": "text-center" }
         ],
@@ -39,6 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Carga los cargos disponibles en el select del formulario
     loadCargos();
+    // Carga los departamentos disponibles en el select del formulario
+    loadDepartamentos();
 
     const formPersonal = document.querySelector("#formPersonal");
     const btnCancel = document.querySelector("#btnCancel");
@@ -104,6 +107,21 @@ async function loadCargos() {
 }
 
 /**
+ * Carga los departamentos desde el controlador y los puebla en el select.
+ * Utiliza fetch para una petición asíncrona.
+ */
+async function loadDepartamentos() {
+    try {
+        const url = base_url + 'Personal/getDepartamentos';
+        const response = await fetch(url);
+        const data = await response.text();
+        document.querySelector("#listDepartamento").innerHTML = data; // Inserta el HTML de las opciones
+    } catch (error) {
+        console.error("Error al cargar departamentos:", error);
+    }
+}
+
+/**
  * Resetea el formulario a su estado inicial para un nuevo registro.
  * Limpia campos, restaura títulos y oculta el botón de cancelar.
  */
@@ -129,7 +147,6 @@ async function fntViewPersonal(id_personal) {
         if (result.success) {
             const personal = result.data;
             // Mapeo de valores numéricos a texto legible
-            const tagMap = { 1: 'INFORMATICA', 2: 'ALMACEN', 0: 'N/A' };
             const statusMap = { 1: 'Activo', 0: 'Inactivo', 2: 'Vacaciones', 3: 'Reposo' };
 
             // Llenar el modal con los datos
@@ -139,7 +156,8 @@ async function fntViewPersonal(id_personal) {
             document.querySelector("#viewDireccion").textContent = personal.personal_direccion || 'N/A';
             document.querySelector("#viewEmail").textContent = personal.personal_email || 'N/A';
             document.querySelector("#viewTelefono").textContent = personal.personal_tlf || 'N/A';
-            document.querySelector("#viewTag").textContent = tagMap[personal.personal_tag] || 'N/A';
+            // Mostrar departamento en lugar de tag
+            document.querySelector("#viewTag").textContent = personal.departamento_nombre || 'SIN DEPARTAMENTO ASIGNADO';
             document.querySelector("#viewStatus").textContent = statusMap[personal.personal_status] || 'Desconocido';
 
             // Mostrar el modal de Bootstrap
@@ -181,7 +199,7 @@ async function fntEditPersonal(id_personal) {
             document.querySelector("#txtTelefono").value = personal.personal_tlf;
             document.querySelector("#txtEmail").value = personal.personal_email;
             document.querySelector("#txtDireccion").value = personal.personal_direccion;
-            document.querySelector("#listTagPersonal").value = personal.personal_tag;
+            document.querySelector("#listDepartamento").value = personal.personal_departamento || 0;
             document.querySelector("#listStatus").value = personal.personal_status;
 
             window.scrollTo({ top: 0, behavior: 'smooth' }); // Mover al inicio de la página para ver el formulario
