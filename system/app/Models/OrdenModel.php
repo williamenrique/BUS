@@ -72,7 +72,7 @@ class OrdenModel extends Mysql {
         $sql = "SELECT p.*, c.* FROM table_personal p
                 INNER JOIN table_per_cargo c ON p.personal_cargo = c.id_cargo 
                 AND p.personal_status <> 0 
-                WHERE p.personal_tag = 2 
+                WHERE p.personal_departamento = 4 
                 ORDER BY p.personal_cedula DESC";
         return $this->select_all($sql);
     }

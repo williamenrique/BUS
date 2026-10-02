@@ -6,7 +6,7 @@ class PersonalModel extends Mysql {
 		parent::__construct();
 	}
     /**********funcion para insertar personal*********/
-	public function insertPersonal(string $intIdentificacion, string $strNombre, string $strApellido, int $intlistRolId, string $intTxtTlf, string $strEmail, string $strDireccion, int $intTagPersonal, int $intListStatus){
+	public function insertPersonal(string $intIdentificacion, string $strNombre, string $strApellido, int $intlistRolId, string $intTxtTlf, string $strEmail, string $strDireccion, ?int $intDepartamento, int $intListStatus){
 		$this->intIdentificacion = $intIdentificacion;
 		$this->strNombre = $strNombre;
 		$this->strApellido = $strApellido;
@@ -14,7 +14,7 @@ class PersonalModel extends Mysql {
 		$this->intTxtTlf = $intTxtTlf;
 		$this->strEmail = $strEmail;
 		$this->strDireccion = $strDireccion;
-		$this->intTagPersonal = $intTagPersonal;
+		$this->intDepartamento = $intDepartamento;
 		$this->intListStatus = $intListStatus;
 
 		$select = "SELECT * FROM table_personal WHERE personal_cedula = ?";
@@ -22,8 +22,8 @@ class PersonalModel extends Mysql {
 		if(!empty($requestSelect)){
 			$requestInsert = 'exist'; // Devolvemos 'exist' si la cédula ya está registrada
 		} else {
-			$queryInsert = "INSERT INTO table_personal(personal_cedula, personal_nombre, personal_apellido, personal_cargo, personal_tlf, personal_email, personal_direccion, personal_tag, personal_status) VALUES(?,?,?,?,?,?,?,?,?)";
-			$arrData = array($this->intIdentificacion, strtoupper($this->strNombre), strtoupper($this->strApellido), $this->intlistRolId, $this->intTxtTlf, $this->strEmail, strtoupper($this->strDireccion), $this->intTagPersonal, $this->intListStatus);
+			$queryInsert = "INSERT INTO table_personal(personal_cedula, personal_nombre, personal_apellido, personal_cargo, personal_tlf, personal_email, personal_direccion, personal_departamento, personal_status) VALUES(?,?,?,?,?,?,?,?,?)";
+			$arrData = array($this->intIdentificacion, strtoupper($this->strNombre), strtoupper($this->strApellido), $this->intlistRolId, $this->intTxtTlf, $this->strEmail, strtoupper($this->strDireccion), $this->intDepartamento, $this->intListStatus);
 			$requestInsert = $this->insert($queryInsert,$arrData);
 		}
 		return $requestInsert;
@@ -31,8 +31,10 @@ class PersonalModel extends Mysql {
 
     /**********funcion para traer todo el personal**********/
 	public function selectPersonal(){
-		$sql = "SELECT p.*, c.* FROM table_per_cargo c 
-						INNER JOIN table_personal p  ON p.personal_cargo = c.id_cargo AND p.personal_status  <> 0 ORDER BY p.personal_cedula desc ";
+		$sql = "SELECT p.*, c.*, d.departamento_nombre FROM table_per_cargo c 
+						INNER JOIN table_personal p  ON p.personal_cargo = c.id_cargo AND p.personal_status  <> 0
+						LEFT JOIN table_departamentos d ON p.personal_departamento = d.departamento_id
+						ORDER BY p.personal_cedula desc ";
 		$request = $this->select_all($sql);
 		return $request;
 	}
@@ -42,6 +44,14 @@ class PersonalModel extends Mysql {
 		$request = $this->select_all($sql);
 		return $request;
 	}
+
+    /**
+     * Obtiene la lista de departamentos para selects.
+     */
+    public function selectDepartamentos(){
+        $sql = "SELECT departamento_id, departamento_nombre FROM table_departamentos WHERE departamento_status = 1 ORDER BY departamento_nombre ASC";
+        return $this->select_all($sql);
+    }
 
     /**
      * Selecciona una lista simplificada de todo el personal para selects.
@@ -78,13 +88,14 @@ class PersonalModel extends Mysql {
 	/**********funcion para traer datos de un personal**********/
 	public function selectPersonalID(int $intIdPersonal){
 		$this->intIdPersonal = $intIdPersonal;
-		$sql = "SELECT p.*, c.* FROM table_per_cargo c 
+		$sql = "SELECT p.*, c.*, d.departamento_nombre FROM table_per_cargo c 
 					INNER JOIN table_personal p ON p.personal_cargo = c.id_cargo
+					LEFT JOIN table_departamentos d ON p.personal_departamento = d.departamento_id
 					WHERE p.id_personal = ?";
 		$request = $this->select($sql, [$this->intIdPersonal]);
 		return $request;
 	}
-	public function updatePersona(int $intIdPersonal, string $intIdentificacion, string $strNombre, string $strApellido, int $intlistRolId, string $intTxtTlf, string $strEmail, string $strDireccion, int $intTagPersonal, int $intListStatus){
+	public function updatePersona(int $intIdPersonal, string $intIdentificacion, string $strNombre, string $strApellido, int $intlistRolId, string $intTxtTlf, string $strEmail, string $strDireccion, ?int $intDepartamento, int $intListStatus){
 		
 		$this->intIdPersonal = $intIdPersonal;
 		$this->intIdentificacion = $intIdentificacion;
@@ -94,7 +105,7 @@ class PersonalModel extends Mysql {
 		$this->intTxtTlf = $intTxtTlf;
 		$this->strEmail = $strEmail;
 		$this->strDireccion = $strDireccion;
-		$this->intTagPersonal = $intTagPersonal;
+		$this->intDepartamento = $intDepartamento;
 		$this->intListStatus = $intListStatus;
 
 		// Verificación de cédula duplicada: se activa si la cédula existe en un registro DIFERENTE al que se está editando.
@@ -105,8 +116,8 @@ class PersonalModel extends Mysql {
 			return 'exist'; // La cédula ya pertenece a otro miembro del personal
 		} else {
 
-		$sql = "UPDATE table_personal SET personal_cedula = ?, personal_nombre = ?, personal_apellido = ?, personal_cargo = ?, personal_tlf = ?, personal_email = ?, personal_direccion = ?, personal_tag = ?, personal_status = ? WHERE id_personal= ?";
-		$arrData = array($this->intIdentificacion, strtoupper($this->strNombre), strtoupper($this->strApellido), $this->intlistRolId, $this->intTxtTlf, $this->strEmail, strtoupper($this->strDireccion), $this->intTagPersonal, $this->intListStatus, $this->intIdPersonal);
+		$sql = "UPDATE table_personal SET personal_cedula = ?, personal_nombre = ?, personal_apellido = ?, personal_cargo = ?, personal_tlf = ?, personal_email = ?, personal_direccion = ?, personal_departamento = ?, personal_status = ? WHERE id_personal= ?";
+		$arrData = array($this->intIdentificacion, strtoupper($this->strNombre), strtoupper($this->strApellido), $this->intlistRolId, $this->intTxtTlf, $this->strEmail, strtoupper($this->strDireccion), $this->intDepartamento, $this->intListStatus, $this->intIdPersonal);
 		$request = $this->update($sql, $arrData);
 		return $request;
 	}

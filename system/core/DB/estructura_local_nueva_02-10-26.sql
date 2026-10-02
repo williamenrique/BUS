@@ -665,10 +665,13 @@ CREATE TABLE IF NOT EXISTS `table_personal` (
   `personal_direccion` text NOT NULL,
   `personal_email` text NOT NULL,
   `personal_tag` int(1) NOT NULL,
+  `personal_departamento` int(11) DEFAULT NULL COMMENT 'FK a table_departamentos.departamento_id',
   `personal_status` int(11) DEFAULT NULL,
   PRIMARY KEY (`id_personal`),
   KEY `personal_cargo` (`personal_cargo`),
-  CONSTRAINT `table_personal_ibfk_1` FOREIGN KEY (`personal_cargo`) REFERENCES `table_per_cargo` (`id_cargo`)
+  KEY `idx_personal_departamento` (`personal_departamento`),
+  CONSTRAINT `table_personal_ibfk_1` FOREIGN KEY (`personal_cargo`) REFERENCES `table_per_cargo` (`id_cargo`),
+  CONSTRAINT `fk_personal_departamento` FOREIGN KEY (`personal_departamento`) REFERENCES `table_departamentos` (`departamento_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=265 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_spanish_ci;
 
 -- La exportación de datos fue deseleccionada.
