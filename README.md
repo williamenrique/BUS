@@ -1,1 +1,1 @@
-· hay que modificar la base de datos de personal y usuario por la nueva
+VERSION FUNCIONANDO REMOTO ANTIGUA SEPTIEMBRE 2026
