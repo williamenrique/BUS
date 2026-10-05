@@ -1,5 +1,9 @@
 <?= head($data)?>
 
+<!-- ID de institución y nombre para JS (mismo patrón que orden.php) -->
+<input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
+
 <!-- Content Wrapper. Contains page content -->
 <div class="content-wrapper">
     <!-- Main content -->

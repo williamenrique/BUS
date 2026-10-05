@@ -745,6 +745,12 @@ async function fntImprimirLote() {
         const result = await response.json();
 
         if (result.success) {
+            // Asegurar que id_institucion esté en los datos para el PDF
+            const reporteData = {
+                ...result.data,
+                id_institucion: idInstitucionOrden
+            };
+
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = base_url + "data/almacen/reporte.php";
@@ -753,7 +759,7 @@ async function fntImprimirLote() {
             const input = document.createElement('input');
             input.type = 'hidden';
             input.name = 'reporteData';
-            input.value = JSON.stringify(result.data);
+            input.value = JSON.stringify(reporteData);
             form.appendChild(input);
 
             document.body.appendChild(form);
@@ -773,7 +779,12 @@ function fntImpDespacho(idDespacho) {
         .then(response => response.json())
         .then(result => {
             if (result.success && result.data) {
-                generarPDFOrden(result.data);
+                // Asegurar que id_institucion esté en los datos para el PDF
+                const reporteData = {
+                    ...result.data,
+                    id_institucion: idInstitucionOrden
+                };
+                generarPDFOrden(reporteData);
             } else {
                 notifi(result.message || 'No se pudieron obtener los datos para el reporte.', 'error');
             }

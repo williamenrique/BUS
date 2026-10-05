@@ -80,7 +80,7 @@ class Flota extends Controllers{
         
         $data = [
             'page_tag' => "FLOTA",
-            'page_title' => "Flota - " . $nombreInstitucion,
+            'page_title' => "Flota - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "operaciones",
             'page_link' => ($idInstitucion === 2) ? "flota_taller" : "flota",
             'page_functions' => "function.flota.js",
@@ -98,7 +98,7 @@ class Flota extends Controllers{
         
         $data = [
             'page_tag' => "FLOTA",
-            'page_title' => "Cambio de Aceite - " . $nombreInstitucion,
+            'page_title' => "Cambio de Aceite - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "operaciones",
             'page_link' => ($idInstitucion === 2) ? "aceite_taller" : "statusaceite",
             'page_functions' => "function.cambioaceite.js",

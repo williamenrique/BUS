@@ -8,11 +8,41 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['reporteData'])) {
     die('Acceso no autorizado.');
 }
 
-// Decodificar los datos JSON recibidos (Array de 2 órdenes)
-$ordenes = json_decode($_POST['reporteData'], true);
+// ------------------------------------------------------------------
+// DECODIFICAR Y NORMALIZAR LOS DATOS JSON RECIBIDOS
+// Acepta varios formatos:
+//   Caso 1: { "ordenes": [ {...}, {...} ] }
+//   Caso 2: [ {...}, {...} ]                  (array de órdenes)
+//   Caso 3: { "articulos": [...], ... }       (una sola orden)
+//   Caso 4: objeto mixto con id_institucion + órdenes
+// ------------------------------------------------------------------
+$decoded = json_decode($_POST['reporteData'], true);
 
-if (!$ordenes || count($ordenes) < 1) {
+if (!is_array($decoded) || empty($decoded)) {
     die('Error: No se recibieron datos válidos para generar el reporte.');
+}
+
+$ordenes = [];
+
+if (isset($decoded['ordenes']) && is_array($decoded['ordenes'])) {
+    // Caso 1
+    $ordenes = $decoded['ordenes'];
+} elseif (isset($decoded['articulos']) && is_array($decoded['articulos'])) {
+    // Caso 3
+    $ordenes = [$decoded];
+} else {
+    // Caso 2 / 4: filtramos solo los items que parezcan órdenes
+    $filtered = [];
+    foreach ($decoded as $val) {
+        if (is_array($val) && isset($val['articulos'])) {
+            $filtered[] = $val;
+        }
+    }
+    $ordenes = !empty($filtered) ? $filtered : $decoded;
+}
+
+if (empty($ordenes) || !is_array($ordenes)) {
+    die('Error: No se recibieron órdenes válidas para generar el reporte.');
 }
 
 // Configurar opciones de Dompdf
@@ -22,41 +52,109 @@ $options->set('isHtml5ParserEnabled', true);
 $options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
 
+// ------------------------------------------------------------------
+// RESOLVER INSTITUCIÓN DESDE DATOS DEL REPORTE (POST)
+// ------------------------------------------------------------------
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($nombreInstitucion) || empty($nombreInstitucion)) {
+    $idInstitucion = null;
+
+    if (is_array($decoded)) {
+        if (isset($decoded['id_institucion'])) {
+            $idInstitucion = $decoded['id_institucion'];
+        } elseif (isset($decoded[0]['id_institucion'])) {
+            $idInstitucion = $decoded[0]['id_institucion'];
+        } elseif (isset($decoded['ordenes'][0]['id_institucion'])) {
+            $idInstitucion = $decoded['ordenes'][0]['id_institucion'];
+        } elseif (isset($decoded['orden']['id_institucion'])) {
+            $idInstitucion = $decoded['orden']['id_institucion'];
+        }
+    }
+
+    if (!$idInstitucion && isset($_SESSION['id_institucion']) && !empty($_SESSION['id_institucion'])) {
+        $idInstitucion = $_SESSION['id_institucion'];
+    }
+
+    if ($idInstitucion) {
+        try {
+            require_once '../../system/core/Config/config.system.php';
+            $pdo = new PDO(
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+                DB_USER,
+                DB_PASS,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $stmt = $pdo->prepare("SELECT nombre FROM table_instituciones WHERE id_institucion = ?");
+            $stmt->execute([$idInstitucion]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($result && !empty($result['nombre'])) {
+                $nombreInstitucion = $result['nombre'];
+                error_log("reporte: Institución encontrada id=$idInstitucion nombre=" . $nombreInstitucion);
+            } else {
+                error_log("reporte: Institución NO encontrada id=$idInstitucion");
+            }
+        } catch (Exception $e) {
+            error_log("reporte ERROR: " . $e->getMessage());
+        }
+    }
+
+    if (!isset($nombreInstitucion) || empty($nombreInstitucion)) {
+        $nombreInstitucion = 'INSTITUCIÓN NO ENCONTRADA (id=' . ($idInstitucion ?? 'null') . ')';
+    }
+}
+
+// Título del reporte
+$tituloReporte = 'REPORTE DE ÓRDENES';
+
 // Importar encabezado estandarizado
 require_once '../encabezado.php';
 
-// Estilos CSS específicos para ajustar 2 órdenes en una página
+// ============================================================
+// ESTILOS ESPECÍFICOS DE ESTE REPORTE (2 órdenes por página)
+// ============================================================
 $css = $cssCommon . '
     <style>
-        @page { margin: 10mm 10mm 10mm 10mm; } /* Margen reducido para aprovechar espacio */
-        body { font-family: Arial, sans-serif; font-size: 10px; color: #333; }
-        
-        /* Sobrescribir estilos del encabezado para que no sea fijo y quepa en cada orden */
-        .header { 
-            position: relative !important; 
-            top: auto !important; 
-            left: auto !important; 
-            right: auto !important; 
-            height: auto !important; 
-            margin-bottom: 5px;
-            border-bottom: 2px solid #0056b3;
-            padding-bottom: 5px;
+        /* Márgenes reducidos porque el header aquí es estático dentro de cada orden */
+        @page { margin: 10mm 10mm 12mm 10mm; }
+
+        /* ============================================================
+           OVERRIDE DEL HEADER PARA ESTE REPORTE
+           El header se repite dentro de cada .orden-container (no fijo)
+           ============================================================ */
+        .header {
+            position: static !important;
+            top: auto !important;
+            left: auto !important;
+            right: auto !important;
+            height: auto !important;
+            width: 100% !important;
+            margin: 0 0 6px 0 !important;
+            padding: 0 !important;
+            page-break-inside: avoid;
         }
-        .header .logo {
-            width: 50px !important;
-            top: -20px !important;
-            left: 0 !important;
-        }
-        .header h1 { font-size: 14px !important; }
-        .header h2 { font-size: 10px !important; }
-        
+
+        /* Ajustes finos: logo más pequeño para que quepan 2 órdenes */
+        .header-table { width: 100%; }
+        .header-logo-cell { width: 60px !important; }
+        .header-logo-cell .logo { width: 50px !important; max-height: 18mm !important; }
+        .header-spacer-cell { width: 60px !important; }
+        .header .institucion { font-size: 11px !important; line-height: 1.2 !important; }
+        .header .fecha { font-size: 7.5px !important; margin-top: 2px !important; }
+        .header-divider { margin-top: 3px !important; }
+
+        /* ============================================================
+           CONTENEDOR DE CADA ORDEN
+           ============================================================ */
         .orden-container {
-            box-sizing: border-box; /* Para que el padding se incluya en la altura */
-            height: 44%; /* Reducido para evitar salto de página */
-            margin-bottom: 0px; 
-            border-bottom: 2px dashed #ccc; /* Separador entre órdenes */
-            padding-top: 35px; /* Aumentado para separar el logo de la línea punteada */
-            padding-bottom: 5px;
+            box-sizing: border-box;
+            height: 47%;
+            margin-bottom: 0;
+            padding: 4px 0 6px 0;
+            border-bottom: 2px dashed #ccc;
+            page-break-inside: avoid;
             position: relative;
         }
         .orden-container:last-child {
@@ -64,24 +162,41 @@ $css = $cssCommon . '
             margin-bottom: 0;
             padding-bottom: 0;
         }
-        
-        .info-orden-table { width: 100%; margin-bottom: 5px; margin-top: 0; }
+
+        /* ============================================================
+           TABLA DE INFORMACIÓN DE LA ORDEN
+           ============================================================ */
+        .info-orden-table { width: 100%; margin: 0 0 6px 0; }
         .info-orden-table td { border: none; padding: 2px 0; vertical-align: bottom; }
         .info-orden-table .numero-orden { text-align: right; font-weight: bold; font-size: 12px; }
-        
-        .section { margin-bottom: 10px; }
-        .section-title { font-size: 11px; font-weight: bold; background-color: #e8eaf6; padding: 4px; border-radius: 4px; margin-bottom: 5px; color: #1a237e; }
-        
+
+        .section { margin-bottom: 8px; }
+        .section-title {
+            font-size: 11px;
+            font-weight: bold;
+            background-color: #e8eaf6;
+            padding: 4px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            color: #1a237e;
+        }
+
         .table { width: 100%; border-collapse: collapse; font-size: 9px; }
         .table th, .table td { border: 1px solid #c5cae9; padding: 4px; text-align: left; }
         .table th { background-color: #f1f3f9; font-weight: bold; }
         .table .center { text-align: center; }
-        
-        .footer-section { margin-top: 5px; width: 100%; }
+
+        .footer-section { margin-top: 6px; width: 100%; }
         .firma-box { width: 30%; text-align: center; font-size: 9px; }
         .observacion-box { width: 38%; font-size: 9px; text-align: center; padding: 0 5px; }
-        
-        .firma-line { border-top: 1px solid #333; margin-top: 35px; padding-top: 2px; font-weight: bold; font-size: 9px; }
+
+        .firma-line {
+            border-top: 1px solid #333;
+            margin-top: 35px;
+            padding-top: 2px;
+            font-weight: bold;
+            font-size: 9px;
+        }
         .footer-section::after { content: ""; display: table; clear: both; }
     </style>
 ';
@@ -95,18 +210,22 @@ $html = '
     ' . $css . '
 </head>
 <body>
-    '; 
+    ';
 
 foreach ($ordenes as $index => $dataInfo) {
-    $dataArt = $dataInfo['articulos'];
-    
+    // Defensa: si por alguna razón un item no es array, lo saltamos
+    if (!is_array($dataInfo)) {
+        continue;
+    }
+    $dataArt = $dataInfo['articulos'] ?? [];
+
     $html .= '
     <div class="orden-container">
         ' . $headerHtml . '
         <table class="info-orden-table">
             <tr>
                 <td><strong>Fecha:</strong> ' . date("d/m/Y", strtotime($dataInfo['fecha_despacho'])) . '</td>
-                <td class="numero-orden">ORDEN DE DESPACHO N°: ' . str_pad($dataInfo['id_despacho'], 6, "0", STR_PAD_LEFT) . '</td>
+                <td class="numero-orden">ORDEN DE DESPACHO N°: ' . str_pad($dataInfo['numero_orden'], 6, "0", STR_PAD_LEFT) . '</td>
             </tr>
         </table>
 
@@ -144,10 +263,9 @@ foreach ($ordenes as $index => $dataInfo) {
     if (empty($dataArt)) {
         $html .= '<tr><td colspan="4" class="center">No se despacharon artículos.</td></tr>';
     } else {
-        // Limitamos visualmente si son muchos artículos para que quepan 2 órdenes
         $count = 0;
         foreach ($dataArt as $row) {
-            if ($count < 8) { // Mostrar máximo 8 líneas por orden para asegurar ajuste
+            if ($count < 8) {
                 $html .= '
                     <tr>
                         <td class="center">' . htmlspecialchars($row["id_producto"]) . '</td>
@@ -173,7 +291,7 @@ foreach ($ordenes as $index => $dataInfo) {
                 <div class="firma-line">' . htmlspecialchars($dataInfo['usuario_registro']) . '</div>
                 <div>Elaborado Por (Almacén)</div>
             </div>
-            
+
             <div class="observacion-box" style="float: left;">
                 <strong>Observación:</strong><br>
                 ' . (!empty($dataInfo['observacion']) ? htmlspecialchars($dataInfo['observacion']) : 'Ninguna.') . '
@@ -192,19 +310,11 @@ $html .= '
 </body>
 </html>';
 
-// Cargar el HTML en Dompdf
 $dompdf->loadHtml($html);
-
-// Establecer el tamaño de papel y la orientación
 $dompdf->setPaper('A4', 'portrait');
-
-// Renderizar el HTML a PDF
 $dompdf->render();
 
-// Generar el nombre del archivo
 $filename = "Ordenes_Lote_" . date('Ymd_His') . ".pdf";
-
-// Enviar el PDF al navegador
 $dompdf->stream($filename, ["Attachment" => false]);
 exit();
 ?>

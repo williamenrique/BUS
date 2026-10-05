@@ -2,7 +2,7 @@
 
 <!-- ID de institución y nombre para JS -->
 <input type="hidden" id="id_institucion" value="<?= $data['id_institucion'] ?>">
-<input type="hidden" id="nombre_institucion" value="<?= $data['nombre_institucion'] ?>">
+<input type="hidden" id="nombre_institucion" value="<?= obtenerIniciales($data['nombre_institucion']) ?>">
 
 <div class="content-wrapper">
     <section class="content-header">
@@ -30,7 +30,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="font-weight-bold">Progreso de órdenes este mes -
-                            <?= $data['nombre_institucion'] ?></span>
+                            <?= obtenerIniciales($data['nombre_institucion']) ?></span>
                         <span id="progressPercentage" class="font-weight-bold">0%</span>
                     </div>
                     <div class="progress">
@@ -166,7 +166,7 @@
                     <div class="card">
                         <div class="card-header">
                             <h3 class="card-title"><i class="fas fa-list-alt"></i> Órdenes Registradas -
-                                <?= $data['nombre_institucion'] ?></h3>
+                                <?= obtenerIniciales($data['nombre_institucion']) ?></h3>
                             <button id="btnImprimirLote" class="btn btn-warning btn-sm float-right" disabled><i
                                     class="fas fa-print"></i> Imprimir Seleccionados (0/2)</button>
                         </div>

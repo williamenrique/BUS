@@ -62,9 +62,9 @@
                 <div class="card-header bg-navy">
                     <h3 class="card-title"><i class="fas fa-file-pdf"></i> Reportes de Estado</h3>
                     <div class="card-tools">
-                        <span class="badge badge-info p-2">
+                        <!-- <span class="badge badge-info p-2">
                             <i class="fas fa-building mr-1"></i> <?= $data['nombre_institucion'] ?>
-                        </span>
+                        </span> -->
                     </div>
                 </div>
                 <div class="card-body">

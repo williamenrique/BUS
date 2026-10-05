@@ -94,12 +94,12 @@ class Compras extends Controllers{
 
         $data = [
             'page_tag' => "Compras - " . $nombreInstitucion,
-            'page_title' => "Compras - " . $nombreInstitucion,
+            'page_title' => "Compras - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "compras",
             'page_link' => ($idInstitucion === 2) ? "costos_taller" : "costos",
             'page_functions' => "function.compras.js",
             'id_institucion' => $idInstitucion,
-            'nombre_institucion' => $nombreInstitucion,
+            'nombre_institucion' => obtenerIniciales($nombreInstitucion),
             'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "costos", $data);

@@ -16,14 +16,72 @@ if (!$reporteData) {
 }
 
 $dataInfo = $reporteData;
-$dataArt = $reporteData['articulos'];
+$dataArt = $reporteData['articulos'] ?? [];
 
 // Configurar opciones de Dompdf
 $options = new Options();
 $options->set('defaultFont', 'Helvetica');
 $options->set('isHtml5ParserEnabled', true);
-$options->set('isRemoteEnabled', true); // Necesario para cargar imágenes externas si las hubiera
+$options->set('isRemoteEnabled', true);
 $dompdf = new Dompdf($options);
+
+// ------------------------------------------------------------------
+// RESOLVER INSTITUCIÓN DESDE DATOS DEL REPORTE (POST)
+// ------------------------------------------------------------------
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+if (!isset($nombreInstitucion) || empty($nombreInstitucion)) {
+    $idInstitucion = null;
+
+    if (isset($_POST['reporteData'])) {
+        $reporteData = json_decode($_POST['reporteData'], true);
+        if (is_array($reporteData)) {
+            if (isset($reporteData['id_institucion'])) {
+                $idInstitucion = $reporteData['id_institucion'];
+            } elseif (isset($reporteData[0]['id_institucion'])) {
+                $idInstitucion = $reporteData[0]['id_institucion'];
+            } elseif (isset($reporteData['orden']['id_institucion'])) {
+                $idInstitucion = $reporteData['orden']['id_institucion'];
+            }
+        }
+    }
+
+    if (!$idInstitucion && isset($_SESSION['id_institucion']) && !empty($_SESSION['id_institucion'])) {
+        $idInstitucion = $_SESSION['id_institucion'];
+    }
+
+    if ($idInstitucion) {
+        try {
+            require_once '../../system/core/Config/config.system.php';
+            $pdo = new PDO(
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+                DB_USER,
+                DB_PASS,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $stmt = $pdo->prepare("SELECT nombre FROM table_instituciones WHERE id_institucion = ?");
+            $stmt->execute([$idInstitucion]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($result && !empty($result['nombre'])) {
+                $nombreInstitucion = $result['nombre'];
+                error_log("reportePDFdesp: Institución encontrada id=$idInstitucion nombre=" . $nombreInstitucion);
+            } else {
+                error_log("reportePDFdesp: Institución NO encontrada id=$idInstitucion");
+            }
+        } catch (Exception $e) {
+            error_log("reportePDFdesp ERROR: " . $e->getMessage());
+        }
+    }
+
+    if (!isset($nombreInstitucion) || empty($nombreInstitucion)) {
+        $nombreInstitucion = 'INSTITUCIÓN NO ENCONTRADA (id=' . ($idInstitucion ?? 'null') . ')';
+    }
+}
+
+// Título del reporte (va al header unificado)
+$tituloReporte = 'ORDEN DE DESPACHO';
 
 // Importar encabezado estandarizado
 require_once '../encabezado.php';
@@ -36,20 +94,63 @@ $html = '
     <title>Orden de Despacho</title>
     ' . $cssCommon . '
     <style>
-        .info-orden-table { width: 100%; margin-bottom: 20px; margin-top: 40px; }
-        .info-orden-table td { border: none; padding: 5px 0; vertical-align: bottom; }
-        .info-orden-table .numero-orden { text-align: right; font-weight: bold; font-size: 14px; }
-        .section { margin-bottom: 20px; }
-        .section-title { font-size: 13px; font-weight: bold; background-color: #e8eaf6; padding: 8px; border-radius: 4px; margin-bottom: 10px; color: #1a237e; }
+        /* ============================================================
+           El header es FIJO (viene del encabezado unificado).
+           El contenido arranca debajo del margen superior del @page,
+           así que NO se necesita margin-top extra aquí.
+           ============================================================ */
+
+        .info-orden-table {
+            width: 100%;
+            margin: 0 0 20px 0;    /* solo separación inferior, sin margin-top */
+        }
+        .info-orden-table td {
+            border: none;
+            padding: 5px 0;
+            vertical-align: bottom;
+        }
+        .info-orden-table .numero-orden {
+            text-align: right;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .section { margin-bottom: 20px; page-break-inside: avoid; }
+        .section-title {
+            font-size: 13px;
+            font-weight: bold;
+            background-color: #e8eaf6;
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            color: #1a237e;
+        }
+
         .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { border: 1px solid #c5cae9; padding: 8px; text-align: left; }
+        .table th, .table td {
+            border: 1px solid #c5cae9;
+            padding: 8px;
+            text-align: left;
+            font-size: 10px;
+        }
         .table th { background-color: #f1f3f9; font-weight: bold; }
         .table .center { text-align: center; }
         .table .right { text-align: right; }
-        .footer-section { margin-top: 30px; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+
+        .footer-section { margin-top: 30px; page-break-inside: avoid; }
         .footer-section .observacion { width: 60%; float: left; }
-        .footer-section .responsable { width: 35%; float: right; text-align: center; }
-        .footer-section::after { content: ""; display: table; clear: both; }
+        .footer-section .responsable {
+            width: 35%;
+            float: right;
+            text-align: center;
+        }
+        .footer-section::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
     </style>
 </head>
 <body>
@@ -59,7 +160,7 @@ $html = '
     <table class="info-orden-table">
         <tr>
             <td><strong>Fecha:</strong> ' . date("d/m/Y", strtotime($dataInfo['fecha_despacho'])) . '</td>
-            <td class="numero-orden">ORDEN DE DESPACHO N°: ' . str_pad($dataInfo['id_despacho'], 6, "0", STR_PAD_LEFT) . '</td>
+            <td class="numero-orden">ORDEN DE DESPACHO N°: ' . str_pad($dataInfo['numero_orden'], 6, "0", STR_PAD_LEFT) . '</td>
         </tr>
     </table>
 
@@ -145,20 +246,11 @@ $html .= '
 </body>
 </html>';
 
-// Cargar el HTML en Dompdf
 $dompdf->loadHtml($html);
-
-// Establecer el tamaño de papel y la orientación
 $dompdf->setPaper('A4', 'portrait');
-
-// Renderizar el HTML a PDF
 $dompdf->render();
 
-// Generar el nombre del archivo
 $filename = "Orden_Despacho_" . str_pad($dataInfo['id_despacho'], 6, "0", STR_PAD_LEFT) . ".pdf";
-
-// Enviar el PDF al navegador para que se muestre (no forzar descarga)
 $dompdf->stream($filename, ["Attachment" => false]);
 exit();
-
 ?>

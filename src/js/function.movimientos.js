@@ -355,6 +355,7 @@ function renderizarDetalleOrden(orden) {
                 despachador_nombre: orden.despachador_nombre || '',
                 observacion: orden.observacion || '',
                 usuario_registro: orden.usuario_registro || orden.despachador_nombre || 'Sistema',
+                id_institucion: instSeleccionada.movimientos,
                 articulos: (orden.productos || []).map(prod => ({
                     id_producto: prod.id_producto || '',
                     producto: prod.producto,

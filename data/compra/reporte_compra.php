@@ -1,5 +1,5 @@
 <?php
-require_once './dompdf/autoload.inc.php';
+require_once '../dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -16,10 +16,51 @@ if (json_last_error() !== JSON_ERROR_NONE || empty($reporteData)) {
     exit;
 }
 
-// Nombre de la institución (enviado desde el JS)
-$nombreInstitucion = !empty($_POST['nombreInstitucion']) 
-    ? htmlspecialchars($_POST['nombreInstitucion'], ENT_QUOTES, 'UTF-8') 
-    : 'SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY';
+// Iniciar sesión como fallback
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// ------------------------------------------------------------------
+// RESOLVER NOMBRE DE INSTITUCIÓN
+// Prioridad 1: POST (nombreInstitucion enviado desde el JS)
+// Prioridad 2: id_institucion (POST/GET/Sesión) + consulta a BD
+// Prioridad 3: Default hardcodeado (aplica en encabezado.php)
+// ------------------------------------------------------------------
+$nombreInstitucion = '';
+
+if (!empty($_POST['nombreInstitucion'])) {
+    $nombreInstitucion = $_POST['nombreInstitucion'];
+} else {
+    $idInstitucion = null;
+    if (!empty($_POST['id_institucion'])) {
+        $idInstitucion = intval($_POST['id_institucion']);
+    } elseif (!empty($_GET['id_institucion'])) {
+        $idInstitucion = intval($_GET['id_institucion']);
+    } elseif (!empty($_SESSION['id_institucion'])) {
+        $idInstitucion = intval($_SESSION['id_institucion']);
+    }
+
+    if ($idInstitucion) {
+        try {
+            require_once '../../system/core/Config/config.system.php';
+            $pdo = new PDO(
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+                DB_USER,
+                DB_PASS,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $stmt = $pdo->prepare("SELECT nombre FROM table_instituciones WHERE id_institucion = ?");
+            $stmt->execute([$idInstitucion]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['nombre'])) {
+                $nombreInstitucion = $row['nombre'];
+            }
+        } catch (Exception $e) {
+            error_log("reporte_compra: Error al resolver institución: " . $e->getMessage());
+        }
+    }
+}
 
 // Título del reporte (va al header)
 $tituloReporte = 'REPORTE DE COMPRAS POR UNIDAD';
@@ -30,11 +71,13 @@ $grandTotalDivisa = 0;
 $grandTotalBs = 0;
 
 foreach ($reporteData as $despacho) {
-    foreach ($despacho['articulos'] as $articulo) {
-        $grandTotalArticulos += floatval($articulo['cant_despacho']);
+    if (!empty($despacho['articulos']) && is_array($despacho['articulos'])) {
+        foreach ($despacho['articulos'] as $articulo) {
+            $grandTotalArticulos += floatval($articulo['cant_despacho'] ?? 0);
+        }
     }
-    $grandTotalDivisa += floatval($despacho['total_divisa']);
-    $grandTotalBs += floatval($despacho['total_bs']);
+    $grandTotalDivisa += floatval($despacho['total_divisa'] ?? 0);
+    $grandTotalBs += floatval($despacho['total_bs'] ?? 0);
 }
 
 $options = new Options();
@@ -43,9 +86,11 @@ $options->set('isRemoteEnabled', true);
 
 $dompdf = new Dompdf($options);
 
-$unidad = !empty($reporteData) ? htmlspecialchars($reporteData[0]['unidad']) : 'N/A';
+$unidad = !empty($reporteData) && !empty($reporteData[0]['unidad'])
+    ? htmlspecialchars($reporteData[0]['unidad'])
+    : 'N/A';
 
-// Importar encabezado estandarizado
+// Importar encabezado estandarizado (usa $nombreInstitucion y $tituloReporte)
 require_once '../encabezado.php';
 
 $html = '
@@ -60,6 +105,7 @@ $html = '
             text-align: center;
             font-size: 12px;
             color: #555;
+            margin-top: 10px;
             margin-bottom: 20px;
             font-weight: bold;
         }
@@ -77,6 +123,7 @@ $html = '
         }
         thead {
             background-color: #f2f2f2;
+            display: table-header-group;
         }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -120,14 +167,14 @@ $html = '
 ';
 
 foreach ($reporteData as $despacho) {
-    $numeroOrden = $despacho['numero_orden'] ?? $despacho['id_despacho'];
+    $numeroOrden = $despacho['numero_orden'] ?? $despacho['id_despacho'] ?? '';
     $html .= '
     <table>
         <thead>
             <tr class="despacho-header">
                 <th>Orden: #' . htmlspecialchars($numeroOrden) . '</th>
-                <th class="text-center">Fecha: ' . htmlspecialchars($despacho['fecha_despacho']) . '</th>
-                <th colspan="2" class="text-right">Tasa del Día: ' . number_format($despacho['tasa_dia'], 2, ',', '.') . ' Bs</th>
+                <th class="text-center">Fecha: ' . htmlspecialchars($despacho['fecha_despacho'] ?? '') . '</th>
+                <th colspan="2" class="text-right">Tasa del Día: ' . number_format(floatval($despacho['tasa_dia'] ?? 0), 2, ',', '.') . ' Bs</th>
             </tr>
             <tr>
                 <th style="width: 52%;">Artículo</th>
@@ -138,24 +185,26 @@ foreach ($reporteData as $despacho) {
         </thead>
         <tbody>';
 
-    foreach ($despacho['articulos'] as $articulo) {
-        $html .= '
-            <tr>
-                <td>' . htmlspecialchars($articulo['producto']) . '</td>
-                <td class="text-center">' . htmlspecialchars($articulo['cant_despacho']) . '</td>
-                <td class="text-right">' . number_format($articulo['monto_divisa'], 2, ',', '.') . '</td>
-                <td class="text-right">' . number_format($articulo['monto_bs'], 2, ',', '.') . '</td>
-            </tr>';
+    if (!empty($despacho['articulos']) && is_array($despacho['articulos'])) {
+        foreach ($despacho['articulos'] as $articulo) {
+            $html .= '
+                <tr>
+                    <td>' . htmlspecialchars($articulo['producto'] ?? '') . '</td>
+                    <td class="text-center">' . htmlspecialchars($articulo['cant_despacho'] ?? '') . '</td>
+                    <td class="text-right">' . number_format(floatval($articulo['monto_divisa'] ?? 0), 2, ',', '.') . '</td>
+                    <td class="text-right">' . number_format(floatval($articulo['monto_bs'] ?? 0), 2, ',', '.') . '</td>
+                </tr>';
+        }
     }
 
     $html .= '
         </tbody>
         <tfoot>
             <tr class="despacho-footer">
-                <td>Total Artículos: ' . count($despacho['articulos']) . '</td>
+                <td>Total Artículos: ' . count($despacho['articulos'] ?? []) . '</td>
                 <td colspan="1"></td>
-                <td class="text-right">$. ' . number_format($despacho['total_divisa'], 2, ',', '.') . '</td>
-                <td class="text-right">Bs. ' . number_format($despacho['total_bs'], 2, ',', '.') . '</td>
+                <td class="text-right">$. ' . number_format(floatval($despacho['total_divisa'] ?? 0), 2, ',', '.') . '</td>
+                <td class="text-right">Bs. ' . number_format(floatval($despacho['total_bs'] ?? 0), 2, ',', '.') . '</td>
             </tr>
         </tfoot>
     </table>';

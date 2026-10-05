@@ -33,9 +33,9 @@
                     <h3 class="card-title">Unidad: <span
                             class="font-weight-bold"><?= $data['unidad']['id_unidad'] ?></span></h3>
                     <div class="card-tools">
-                        <span class="badge badge-info p-2 mr-2">
+                        <!-- <span class="badge badge-info p-2 mr-2">
                             <i class="fas fa-building mr-1"></i> <?= $data['nombre_institucion'] ?>
-                        </span>
+                        </span> -->
                         <?php if ($data['id_institucion'] == 2): ?>
                         <a href="<?= base_url() ?>flota/taller" class="btn btn-sm btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i> Volver al Taller
@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const counts = data.data.counts;
                     // Actualizamos los contadores en la vista
                     document.getElementById('count_despacho').textContent = counts.despacho ||
-                    0;
+                        0;
                     document.getElementById('count_aceite').textContent = counts.aceite || 0;
                     document.getElementById('count_status').textContent = counts.status || 0;
                     // Actualizamos el contador total con el valor que ya nos envía el backend

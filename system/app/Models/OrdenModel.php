@@ -328,6 +328,7 @@ class OrdenModel extends Mysql {
         $sql = "SELECT 
                     desp.id_despacho, 
                     desp.numero_orden,
+                    desp.id_institucion,
                     desp.fecha_despacho, 
                     desp.observacion,
                     COALESCE(

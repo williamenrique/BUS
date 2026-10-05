@@ -10,8 +10,55 @@ if (!isset($_POST['reporteData']) || !isset($_POST['reporteTitulo'])) {
     exit;
 }
 
+// Iniciar sesión como fallback
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// ------------------------------------------------------------------
+// RESOLVER NOMBRE DE INSTITUCIÓN
+// Prioridad 1: POST (enviado por el JS desde el controlador,
+//               que a su vez lo resolvió desde id_institucion del menú)
+// Prioridad 2: id_institucion vía POST/GET + consulta a BD
+// Prioridad 3: Sesión
+// ------------------------------------------------------------------
+$nombreInstitucion = '';
+
+if (!empty($_POST['nombreInstitucion'])) {
+    $nombreInstitucion = $_POST['nombreInstitucion'];
+} else {
+    $idInstitucion = null;
+    if (!empty($_POST['id_institucion'])) {
+        $idInstitucion = intval($_POST['id_institucion']);
+    } elseif (!empty($_GET['id_institucion'])) {
+        $idInstitucion = intval($_GET['id_institucion']);
+    } elseif (!empty($_SESSION['id_institucion'])) {
+        $idInstitucion = intval($_SESSION['id_institucion']);
+    }
+
+    if ($idInstitucion) {
+        try {
+            require_once '../../system/core/Config/config.system.php';
+            $pdo = new PDO(
+                "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+                DB_USER,
+                DB_PASS,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+            );
+            $stmt = $pdo->prepare("SELECT nombre FROM table_instituciones WHERE id_institucion = ?");
+            $stmt->execute([$idInstitucion]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row && !empty($row['nombre'])) {
+                $nombreInstitucion = $row['nombre'];
+            }
+        } catch (Exception $e) {
+            error_log("reporte_bienes: Error al resolver institución: " . $e->getMessage());
+        }
+    }
+}
+
 $bienesAgrupados = json_decode($_POST['reporteData'], true);
-$tituloReporte = htmlspecialchars($_POST['reporteTitulo']);
+$tituloReporte = $_POST['reporteTitulo'];
 
 if ($bienesAgrupados === null || !is_array($bienesAgrupados)) {
     http_response_code(400);
@@ -25,7 +72,7 @@ $options->set('isRemoteEnabled', true);
 
 $dompdf = new Dompdf($options);
 
-// Importar encabezado estandarizado
+// Importar encabezado estandarizado (usa $nombreInstitucion y $tituloReporte)
 require_once '../encabezado.php';
 
 $html = '
@@ -33,20 +80,58 @@ $html = '
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>' . $tituloReporte . '</title>
+    <title>' . htmlspecialchars($tituloReporte) . '</title>
     ' . $cssCommon . '
     <style>
-        .department-title { font-size: 14px; font-weight: bold; background-color: #4a5568; color: #fff; padding: 8px; border-radius: 4px; margin-top: 20px; margin-bottom: 10px; }
-        .summary-container { margin-bottom: 25px; border: 1px solid #e0e0e0; border-radius: 8px; padding: 0; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); overflow: hidden; }
-        .summary-container h3 { margin: 0; padding: 15px; font-size: 16px; text-align: center; background-color: #4a5568; color: #fff; }
+        .department-title {
+            font-size: 14px;
+            font-weight: bold;
+            background-color: #4a5568;
+            color: #fff;
+            padding: 8px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .summary-container {
+            margin-top: 5px;
+            margin-bottom: 25px;
+            border: 1px solid #e0e0e0;
+            background-color: #fff;
+        }
+        .summary-container h3 {
+            margin: 0;
+            padding: 12px;
+            font-size: 14px;
+            text-align: center;
+            background-color: #4a5568;
+            color: #fff;
+        }
         .summary-table { width: 100%; border-collapse: collapse; }
-        .summary-table th { background-color: #edf2f7; padding: 10px; text-align: left; font-size: 11px; }
-        .summary-table td { padding: 10px; border-bottom: 1px solid #e0e0e0; }
-        .summary-table tbody tr:last-child td { border-bottom: none; }
-        .summary-table tfoot td { font-weight: bold; background-color: #edf2f7; border-top: 2px solid #cbd5e0; }
+        .summary-table th {
+            background-color: #edf2f7;
+            padding: 8px;
+            text-align: left;
+            font-size: 11px;
+            border: 1px solid #ddd;
+        }
+        .summary-table td {
+            padding: 8px;
+            border: 1px solid #eee;
+            font-size: 10px;
+        }
+        .summary-table tfoot td {
+            font-weight: bold;
+            background-color: #edf2f7;
+        }
 
         .table { width: 100%; border-collapse: collapse; }
-        .table th, .table td { border: 1px solid #c5cae9; padding: 6px; text-align: left; }
+        .table th, .table td {
+            border: 1px solid #c5cae9;
+            padding: 6px;
+            text-align: left;
+            font-size: 10px;
+        }
         .table th { background-color: #f1f3f9; font-weight: bold; }
         .table .center { text-align: center; }
         .table .right { text-align: right; }
@@ -54,11 +139,10 @@ $html = '
 </head>
 <body>
     ' . $headerHtml . '
-    ' . $footerHtml . '
-    <h2 style="text-align: center; margin-top: 0;">' . $tituloReporte . '</h2>';
+    ' . $footerHtml . '';
 
 if (empty($bienesAgrupados)) {
-    $html .= '<p style="text-align:center;">No se encontraron bienes para mostrar.</p>';
+    $html .= '<p style="text-align:center; margin-top: 20px;">No se encontraron bienes para mostrar.</p>';
 } else {
     // --- INICIO: Tabla de Resumen ---
     $html .= '<div class="summary-container">';
@@ -79,7 +163,6 @@ if (empty($bienesAgrupados)) {
     }
 
     $html .= '</tbody>';
-    // Solo mostrar el total general si hay más de una agrupación
     if (count($bienesAgrupados) > 1) {
         $html .= '
             <tfoot>
@@ -105,7 +188,7 @@ if (empty($bienesAgrupados)) {
                 </tr>
             </thead>
             <tbody>';
-        
+
         foreach ($bienes as $bien) {
             $html .= '
                 <tr>

@@ -241,7 +241,11 @@ function generarPDF(data, reportScript, reportTitle, fechaInicio = null, fechaFi
     form.action = `${base_url}data/${reportScript}`;
     form.target = '_blank';
 
-    const reportData = { title: reportTitle, data: data };
+    const reportData = {
+        title: reportTitle,
+        data: data,
+        id_institucion: idInstitucionProducto
+    };
     if (fechaInicio && fechaFin) {
         reportData.fechaInicio = fechaInicio;
         reportData.fechaFin = fechaFin;

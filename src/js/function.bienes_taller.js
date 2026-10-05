@@ -1,27 +1,19 @@
 /**
  * Archivo: function.bienes_taller.js
- * Descripción: Contiene toda la lógica de JavaScript para la gestión de bienes de taller (activos),
- *              incluyendo la inicialización de la tabla, operaciones CRUD (Crear, Leer,
- *              Actualizar, Eliminar) a través de peticiones asíncronas (fetch),
- *              y el manejo de modales con SweetAlert2.
- * Autor: [Tu Nombre]
- * Fecha: [Fecha Actual]
+ * Descripción: Lógica JS para la gestión de bienes de taller.
+ * La institución viene por el menú (id_institucion) y se envía en cada petición.
  */
 
 // Variable global para la instancia de la DataTable
 let tableBienesTaller;
-let departamentosData = []; // Variable global para almacenar los departamentos
+let departamentosData = [];
 
-/**
- * Se ejecuta cuando el contenido del DOM ha sido completamente cargado.
- * Es el punto de entrada principal para la inicialización de la página.
- */
+// Institución activa (viene del menú, mismo patrón que orden.php)
+const idInstitucionTaller = document.getElementById('id_institucion')?.value || 1;
+
 document.addEventListener('DOMContentLoaded', function () {
-    // Selección de elementos del DOM para un acceso más eficiente
     const formBienTaller = document.querySelector("#formBienTaller");
 
-
-    // Inicializa la DataTable con configuraciones específicas
     tableBienesTaller = $('#tableBienesTaller').DataTable({
         "aProcessing": true,
         "aServerSide": true,
@@ -29,7 +21,7 @@ document.addEventListener('DOMContentLoaded', function () {
             "url": base_url + "src/plugins/js/es_es.json"
         },
         "ajax": {
-            "url": base_url + "BienesTaller/getBienesTaller",
+            "url": base_url + "BienesTaller/getBienesTaller?id_institucion=" + idInstitucionTaller,
             "dataSrc": ""
         },
         "columns": [
@@ -48,17 +40,16 @@ document.addEventListener('DOMContentLoaded', function () {
         "order": [[0, "desc"]],
     });
 
-    // Carga los datos iniciales para los selects del formulario
     loadFormSelects();
 
     // --- INICIO: Event Listeners para botones PDF ---
     document.querySelector('#btnPdfGeneral').addEventListener('click', async function () {
         notifi("Generando PDF general, por favor espere...", "info");
         try {
-            const response = await fetch(base_url + 'BienesTaller/generarPdfGeneral');
+            const response = await fetch(base_url + 'BienesTaller/generarPdfGeneral?id_institucion=' + idInstitucionTaller);
             const result = await response.json();
             if (result.success) {
-                fntGenerarBienesTallerPDF(result.data, "Reporte General de Bienes de Taller");
+                fntGenerarBienesTallerPDF(result.data, "Reporte General de Bienes de Taller", result.nombreInstitucion);
             } else {
                 notifi(result.message, "error");
             }
@@ -77,7 +68,6 @@ document.addEventListener('DOMContentLoaded', function () {
         fntGenerarPdfPorDepto(deptoId);
     });
 
-    // --- INICIO: Event Listener para exportar por búsqueda ---
     const btnExportarBusqueda = document.querySelector('#btnExportarBusqueda');
     if (btnExportarBusqueda) {
         btnExportarBusqueda.addEventListener('click', async function () {
@@ -92,19 +82,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     // --- FIN: Event Listeners para botones PDF ---
 
-    // --- INICIO: Event Listener para filtrar la tabla en tiempo real ---
     const txtBusquedaBienTaller = document.querySelector('#txtBusquedaBienTaller');
     if (txtBusquedaBienTaller) {
         txtBusquedaBienTaller.addEventListener('keyup', function () {
             tableBienesTaller.search(this.value).draw();
         });
     }
-    // --- FIN: Event Listener para filtrar la tabla en tiempo real ---
 
-    // Evento de envío del formulario para crear o actualizar un bien de taller
     formBienTaller.addEventListener('submit', async function (e) {
         e.preventDefault();
-        const idBienTaller = document.querySelector("#id_bien_taller").value;
         const descripcion = document.querySelector("#descripcion").value;
         const departamento = document.querySelector("#departamento").value;
         const grupo = document.querySelector("#grupo").value;
@@ -119,6 +105,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
         try {
             const formData = new FormData(formBienTaller);
+            formData.append('id_institucion', idInstitucionTaller);
+
             const response = await fetch(base_url + 'BienesTaller/setBienTaller', {
                 method: 'POST',
                 body: formData
@@ -137,43 +125,29 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-/**
- * Carga de forma asíncrona los datos para los menús desplegables (selects) del formulario.
- * Esto evita tener que cargar los datos con PHP en la vista, haciendo la carga inicial más rápida.
- */
 async function loadFormSelects() {
     try {
-        const url = base_url + 'BienesTaller/getInitialData';
+        const url = base_url + 'BienesTaller/getInitialData?id_institucion=' + idInstitucionTaller;
         const response = await fetch(url);
         const result = await response.json();
 
         if (result.success) {
             const { departamentos, grupos, subgrupos, secciones } = result.data;
 
-            // Guardamos los departamentos en la variable global para usarlos después
             departamentosData = departamentos;
 
             populateSelect('departamento', departamentos, 'depatamento_bien_id', 'departamento_bien');
             populateSelect('grupo', grupos, 'id_grupo', 'grupo');
             populateSelect('subgrupo', subgrupos, 'subgrupo_id', 'subgrupo');
             populateSelect('seccion', secciones, 'seccion_id', 'seccion');
-            populateSelect('listDeptoQR', departamentos, 'depatamento_bien_id', 'departamento_bien'); // Añadido para el modal de QR
-
-            // --- INICIO DE LA CORRECCIÓN ---
-            // Poblar el select del PDF aquí también para evitar condiciones de carrera.
-            // La tabla puede tardar en inicializarse, pero los datos ya estarán listos.
+            populateSelect('listDeptoQR', departamentos, 'depatamento_bien_id', 'departamento_bien');
             populateSelect('listDeptoPDF', departamentos, 'depatamento_bien_id', 'departamento_bien');
-            // --- FIN DE LA CORRECCIÓN ---
         }
     } catch (error) {
         console.error("Error al cargar datos para los selects:", error);
     }
 }
 
-/**
- * Abre el modal para agregar un nuevo bien de taller.
- * Limpia el formulario y ajusta los textos del modal.
- */
 function openModal() {
     document.querySelector('#id_bien_taller').value = "";
     document.querySelector('#titleModal').innerHTML = "Nuevo Bien de Taller";
@@ -182,30 +156,22 @@ function openModal() {
     $('#modalFormBienTaller').modal('show');
 }
 
-/**
- * Cierra el modal de formulario de bienes de taller.
- */
 function closeModal() {
     $('#modalFormBienTaller').modal('hide');
 }
 
-/**
- * Obtiene los datos de un bien de taller específico para editarlo.
- * @param {number} id_bien_taller - El ID del bien de taller a editar.
- */
 async function fntEditBienTaller(id_bien_taller) {
     document.querySelector('#formBienTaller').reset();
     document.querySelector('#titleModal').innerHTML = "Actualizar Bien de Taller";
     document.querySelector('#btnActionText').innerHTML = "Actualizar";
 
     try {
-        const url = `${base_url}BienesTaller/getBienTaller/${id_bien_taller}`;
+        const url = `${base_url}BienesTaller/getBienTaller/${id_bien_taller}?id_institucion=${idInstitucionTaller}`;
         const response = await fetch(url);
         const result = await response.json();
 
         if (result.success) {
             const bien = result.data;
-            // Llenar el formulario con los datos del bien
             document.querySelector("#id_bien_taller").value = bien.id_bien_taller;
             document.querySelector("#descripcion").value = bien.descripcion_bien;
             document.querySelector("#departamento").value = bien.bien_depatamento_id;
@@ -213,8 +179,6 @@ async function fntEditBienTaller(id_bien_taller) {
             document.querySelector("#subgrupo").value = bien.subgrupo_id;
             document.querySelector("#seccion").value = bien.seccion_id;
             document.querySelector("#status_bien").value = bien.status_bien;
-
-            // La fecha ya viene formateada desde el controlador
             document.querySelector("#fecha_adquisicion").value = bien.fecha_adquisicion;
 
             $('#modalFormBienTaller').modal('show');
@@ -227,10 +191,6 @@ async function fntEditBienTaller(id_bien_taller) {
     }
 }
 
-/**
- * Elimina un bien de taller después de una confirmación.
- * @param {number} id_bien_taller - El ID del bien de taller a eliminar.
- */
 function fntDelBienTaller(id_bien_taller) {
     Swal.fire({
         title: 'Eliminar Bien de Taller',
@@ -244,6 +204,7 @@ function fntDelBienTaller(id_bien_taller) {
             try {
                 const formData = new FormData();
                 formData.append('id_bien_taller', id_bien_taller);
+                formData.append('id_institucion', idInstitucionTaller);
 
                 const url = base_url + 'BienesTaller/delBienTaller';
                 const response = await fetch(url, {
@@ -266,13 +227,6 @@ function fntDelBienTaller(id_bien_taller) {
     });
 }
 
-/**
- * Función auxiliar reutilizable para poblar elementos <select>.
- * @param {string} selectId - El ID del elemento select.
- * @param {Array} data - El array de objetos para las opciones.
- * @param {string} valueField - El nombre de la propiedad para el `value` de la opción.
- * @param {string} textField - El nombre de la propiedad para el texto de la opción.
- */
 function populateSelect(selectId, data, valueField, textField) {
     const select = document.querySelector(`#${selectId}`);
     if (select) {
@@ -284,11 +238,12 @@ function populateSelect(selectId, data, valueField, textField) {
 }
 
 /**
- * Función para generar el PDF de bienes de taller.
- * @param {Object} data - Los datos de los bienes de taller.
- * @param {string} titulo - El título del reporte.
+ * Genera el PDF de bienes de taller.
+ * @param {Object} data
+ * @param {string} titulo
+ * @param {string} nombreInstitucion - viene del controlador
  */
-function fntGenerarBienesTallerPDF(data, titulo) {
+function fntGenerarBienesTallerPDF(data, titulo, nombreInstitucion) {
     if (!data) {
         notifi("No hay datos para generar el PDF.", "error");
         return;
@@ -309,24 +264,24 @@ function fntGenerarBienesTallerPDF(data, titulo) {
     inputTitulo.name = 'reporteTitulo';
     inputTitulo.value = titulo;
 
+    const inputInstitucion = document.createElement('input');
+    inputInstitucion.type = 'hidden';
+    inputInstitucion.name = 'nombreInstitucion';
+    inputInstitucion.value = nombreInstitucion || '';
+
     form.appendChild(inputData);
     form.appendChild(inputTitulo);
+    form.appendChild(inputInstitucion);
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
 }
 
-/**
- * Obtiene los datos y genera el PDF para un departamento específico.
- * @param {number} deptoId - El ID del departamento.
- */
 async function fntGenerarPdfPorDepto(deptoId) {
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Se cambia el método a POST y se envía el ID en el cuerpo del formulario
-    // para que coincida con la forma en que el controlador espera los datos.
     try {
         const formData = new FormData();
         formData.append('idDepartamento', deptoId);
+        formData.append('id_institucion', idInstitucionTaller);
 
         const response = await fetch(`${base_url}BienesTaller/generarPdfPorDepartamento`, {
             method: 'POST',
@@ -334,24 +289,20 @@ async function fntGenerarPdfPorDepto(deptoId) {
         });
         const result = await response.json();
         if (result.success) {
-            fntGenerarBienesTallerPDF(result.data, `Reporte de Bienes de Taller - ${result.departamento}`);
+            fntGenerarBienesTallerPDF(result.data, `Reporte de Bienes de Taller - ${result.departamento}`, result.nombreInstitucion);
         } else {
             notifi(result.message, "error");
         }
     } catch (error) {
         notifi("Error al solicitar el reporte por departamento.", "error");
     }
-    // --- FIN DE LA CORRECCIÓN ---
 }
 
-/**
- * Obtiene los datos y genera el PDF para un término de búsqueda específico.
- * @param {string} termino - El término de búsqueda.
- */
 async function fntGenerarPdfPorBusqueda(termino) {
     try {
         const formData = new FormData();
         formData.append('terminoBusqueda', termino);
+        formData.append('id_institucion', idInstitucionTaller);
 
         const response = await fetch(`${base_url}BienesTaller/generarPdfPorBusqueda`, {
             method: 'POST',
@@ -360,8 +311,7 @@ async function fntGenerarPdfPorBusqueda(termino) {
         const result = await response.json();
 
         if (result.success) {
-            // Usamos la misma función de generación de PDF, pero con un título dinámico
-            fntGenerarBienesTallerPDF(result.data, `Reporte de Búsqueda: "${result.termino}"`);
+            fntGenerarBienesTallerPDF(result.data, `Reporte de Búsqueda: "${result.termino}"`, result.nombreInstitucion);
         } else {
             notifi(result.message, "error");
         }
@@ -371,14 +321,7 @@ async function fntGenerarPdfPorBusqueda(termino) {
     }
 }
 
-
-/**
- * Funciones para el modal de QR (a implementar si es necesario).
- * Estas funciones se dejan como plantilla para la futura implementación de la
- * generación de códigos QR.
- */
 function openModalQR() {
-    // Lógica para abrir el modal de QR
     $('#modalQR').modal('show');
 }
 
@@ -387,47 +330,36 @@ function closeModalQR() {
     const qrcodeDiv = document.querySelector('#qrcode');
     const deptoSelect = document.querySelector('#listDeptoQR');
 
-    // Limpiar el contenido del QR y los botones de acción
     qrcodeDiv.innerHTML = '';
     const existingLinks = qrResultDiv.querySelector('.qr-actions');
     if (existingLinks) {
         existingLinks.remove();
     }
 
-    // Ocultar el resultado y resetear el select
     qrResultDiv.classList.add('d-none');
     deptoSelect.value = '';
 }
 
-/**
- * Genera el código QR para los bienes de taller de un departamento.
- * El QR apunta a la página de visualización de bienes de taller por departamento.
- */
 function generarQR() {
     const deptoSelect = document.querySelector('#listDeptoQR');
     const selectedDeptoId = deptoSelect.value;
     const qrResultDiv = document.querySelector('#qrResult');
     const qrcodeDiv = document.querySelector('#qrcode');
 
-    // 1. Validar que se haya seleccionado un departamento
     if (!selectedDeptoId) {
         notifi("Por favor, selecciona un departamento.", "warning");
-        qrResultDiv.classList.add('d-none'); // Ocultar si no hay selección
+        qrResultDiv.classList.add('d-none');
         return;
     }
 
-    // 2. Construir la URL que se codificará en el QR
-    // Apunta al archivo específico para bienes de taller
     const urlToEncode = `${base_url}data/bienes/bienes_taller_qr.php?departamento_id=${selectedDeptoId}`;
 
-    // 3. Limpiar cualquier QR y enlace anterior
     qrcodeDiv.innerHTML = '';
     const existingLinks = qrResultDiv.querySelector('.qr-actions');
     if (existingLinks) {
         existingLinks.remove();
     }
 
-    // 4. Generar el nuevo código QR usando la librería qrcode.js
     try {
         new QRCode(qrcodeDiv, {
             text: urlToEncode,
@@ -438,13 +370,12 @@ function generarQR() {
             correctLevel: QRCode.CorrectLevel.H
         });
 
-        // 5. Crear y mostrar botones de acción (Descargar y Ver)
         setTimeout(() => {
             const qrImage = qrcodeDiv.querySelector('img');
             const departamentoNombre = deptoSelect.options[deptoSelect.selectedIndex].text;
             if (qrImage) {
                 const buttonContainer = document.createElement('div');
-                buttonContainer.className = 'mt-3 flex justify-center gap-2 qr-actions'; // Clase para fácil selección
+                buttonContainer.className = 'mt-3 flex justify-center gap-2 qr-actions';
                 buttonContainer.innerHTML = `
                     <a href="${qrImage.src}" download="QR_Taller_${departamentoNombre.replace(/\s+/g, '_')}.png" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-md transition-colors flex items-center text-sm">
                         <i class="fas fa-download mr-2"></i> Descargar
@@ -455,9 +386,8 @@ function generarQR() {
                 `;
                 qrResultDiv.appendChild(buttonContainer);
             }
-        }, 100); // Pequeño timeout para asegurar que la imagen del QR se haya renderizado
+        }, 100);
 
-        // 6. Mostrar el resultado
         qrResultDiv.classList.remove('d-none');
         notifi("Código QR generado correctamente.", "success");
     } catch (error) {

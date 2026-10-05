@@ -70,12 +70,12 @@ class Orden extends Controllers{
 
         $data = [
             'page_tag' => "Gestión de Órdenes",
-            'page_title' => "Sistema de Órdenes - " . $nombreInstitucion,
+            'page_title' => "Sistema de Órdenes - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "almacen",
             'page_link' => ($idInstitucion === 2) ? "despacho_taller" : "despacho",
             'page_functions' => "function.ordenes.js",
             'id_institucion' => $idInstitucion,
-            'nombre_institucion' => $nombreInstitucion,
+            'nombre_institucion' => obtenerIniciales($nombreInstitucion),
             'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "orden", $data);

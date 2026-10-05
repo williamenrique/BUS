@@ -17,6 +17,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reportData'])) {
     $options->set('isRemoteEnabled', true);
     $options->set('defaultFont', 'Helvetica');
 
+    // ------------------------------------------------------------------
+    // RESOLVER INSTITUCIÓN DESDE DATOS DEL REPORTE (POST)
+    // ------------------------------------------------------------------
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+
+    if (!isset($nombreInstitucion) || empty($nombreInstitucion)) {
+        $idInstitucion = null;
+
+        if (isset($_POST['reportData'])) {
+            $reporteData = json_decode($_POST['reportData'], true);
+            if (is_array($reporteData)) {
+                if (isset($reporteData['id_institucion'])) {
+                    $idInstitucion = $reporteData['id_institucion'];
+                } elseif (isset($reporteData[0]['id_institucion'])) {
+                    $idInstitucion = $reporteData[0]['id_institucion'];
+                } elseif (isset($reporteData['orden']['id_institucion'])) {
+                    $idInstitucion = $reporteData['orden']['id_institucion'];
+                }
+            }
+        }
+
+        if (!$idInstitucion && isset($_SESSION['id_institucion']) && !empty($_SESSION['id_institucion'])) {
+            $idInstitucion = $_SESSION['id_institucion'];
+        }
+
+        if ($idInstitucion) {
+            try {
+                require_once '../../system/core/Config/config.system.php';
+                $pdo = new PDO(
+                    "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+                    DB_USER,
+                    DB_PASS,
+                    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]
+                );
+                $stmt = $pdo->prepare("SELECT nombre FROM table_instituciones WHERE id_institucion = ?");
+                $stmt->execute([$idInstitucion]);
+                $result = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($result && !empty($result['nombre'])) {
+                    $nombreInstitucion = $result['nombre'];
+                    error_log("historia_productos: Institución encontrada id=$idInstitucion nombre=" . $nombreInstitucion);
+                } else {
+                    error_log("historia_productos: Institución NO encontrada id=$idInstitucion");
+                }
+            } catch (Exception $e) {
+                error_log("historia_productos ERROR: " . $e->getMessage());
+            }
+        }
+
+        if (!isset($nombreInstitucion) || empty($nombreInstitucion)) {
+            $nombreInstitucion = 'INSTITUCIÓN NO ENCONTRADA (id=' . ($idInstitucion ?? 'null') . ')';
+        }
+    }
+
+    // Título del reporte
+    $tituloReporte = $title;
+
     // Importar encabezado estandarizado
     require_once '../encabezado.php';
 
@@ -31,11 +89,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reportData'])) {
         <title>' . htmlspecialchars($title) . '</title>
         ' . $cssCommon . '
         <style>
+            /* ======================================================
+               OVERRIDE DEL HEADER PARA ESTE REPORTE
+               ======================================================
+               Este reporte usa el header en flujo normal (static),
+               NO fijo, porque la tabla puede ser larga y queremos
+               que el header solo aparezca arriba una vez.
+               
+               Como el header deja de ser fijo, también hay que
+               reducir el @page margin-top: si dejaramos los 50mm
+               del base, quedaría un espacio enorme en blanco arriba.
+               ====================================================== */
+            @page {
+                margin: 15mm 15mm 18mm 15mm;
+            }
             .header {
                 position: static !important;
                 top: auto !important;
-                margin-bottom: 10px;
+                left: auto !important;
+                right: auto !important;
+                height: auto !important;
+                margin-bottom: 15px;
+                page-break-inside: avoid;
             }
+            /* ============ ESTILOS DEL CUERPO (sin cambios) ============ */
             .report-title {
                 text-align: center;
                 font-size: 16px;
@@ -73,7 +150,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reportData'])) {
         ' . $footerHtml . '
 
         <div class="report-title">' . htmlspecialchars($title) . '</div>';
-        
+
     if (!empty($fechaInicio) && !empty($fechaFin)) {
         $html .= '<div class="date-range">Desde: ' . htmlspecialchars($fechaInicio) . ' Hasta: ' . htmlspecialchars($fechaFin) . '</div>';
     }
@@ -91,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reportData'])) {
                 </tr>
             </thead>
             <tbody>';
-            
+
     if (empty($data)) {
         $html .= '<tr><td colspan="6" class="text-center">No hay datos para mostrar.</td></tr>';
     } else {

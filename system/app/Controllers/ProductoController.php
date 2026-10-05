@@ -74,12 +74,12 @@ class Producto extends Controllers{
 
         $data = [
             'page_tag' => "GESTION PRODUCTOS",
-            'page_title' => "Productos - " . $nombreInstitucion,
+            'page_title' => "Productos - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "almacen",
             'page_link' => ($idInstitucion === 2) ? "producto_taller" : "producto",
             'page_functions' => "function.producto.js",
             'id_institucion' => $idInstitucion,
-            'nombre_institucion' => $nombreInstitucion,
+            'nombre_institucion' => obtenerIniciales($nombreInstitucion),
             'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "producto", $data);
@@ -103,12 +103,12 @@ class Producto extends Controllers{
 
         $data = [
             'page_tag' => "Historial de Productos",
-            'page_title' => "Historial - " . $nombreInstitucion,
+            'page_title' => "Historial - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "almacen",
             'page_link' => ($idInstitucion === 2) ? "historial_taller" : "historial",
             'page_functions' => "function.producto.js",
             'id_institucion' => $idInstitucion,
-            'nombre_institucion' => $nombreInstitucion,
+            'nombre_institucion' => obtenerIniciales($nombreInstitucion),
             'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "historial", $data);
@@ -132,12 +132,12 @@ class Producto extends Controllers{
 
         $data = [
             'page_tag' => "INVENTARIO",
-            'page_title' => "Inventario - " . $nombreInstitucion,
+            'page_title' => "Inventario - " . obtenerIniciales($nombreInstitucion),
             'page_name' => "almacen",
             'page_link' => ($idInstitucion === 2) ? "inventario_taller" : "inventario",
             'page_functions' => "function.producto.js",
             'id_institucion' => $idInstitucion,
-            'nombre_institucion' => $nombreInstitucion,
+            'nombre_institucion' => obtenerIniciales($nombreInstitucion),
             'es_taller' => ($idInstitucion === 2)
         ];
         $this->views->getViews($this, "inventario", $data);

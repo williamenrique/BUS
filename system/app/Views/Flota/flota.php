@@ -30,9 +30,9 @@
                             <button id="btnNuevo" type="button" class="btn btn-primary" onclick="openModal()">
                                 <i class="fas fa-plus-circle"></i> Nueva Unidad
                             </button>
-                            <span class="ml-2 badge badge-info p-2">
+                            <!-- <span class="ml-2 badge badge-info p-2">
                                 <i class="fas fa-building mr-1"></i> <?= $data['nombre_institucion'] ?>
-                            </span>
+                            </span> -->
                         </div>
                         <div class="card-body">
                             <!-- Sección de Reporte de Operatividad -->

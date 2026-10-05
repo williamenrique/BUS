@@ -31,7 +31,7 @@
                     <!-- Reporte de Compras -->
                     <div class="card">
                         <div class="card-header">
-                            <h3 class="card-title">Generar Reporte de Compras - <?= $data['nombre_institucion'] ?></h3>
+                            <h3 class="card-title">Generar Reporte de Compras - <?= obtenerIniciales($data['nombre_institucion']) ?></h3>
                         </div>
                         <div class="card-body">
                             <form id="formReporteCompras">
