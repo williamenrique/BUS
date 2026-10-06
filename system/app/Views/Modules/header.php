@@ -50,6 +50,8 @@
     </script>
     <!-- Google Font: Source Sans Pro -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700&display=fallback">
+    <!-- Fuente cuadrada para el brand del sidebar -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;600;700&display=swap">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="<?= PLUGINS ?>fontawesome-free/css/all.min.css">
     <!-- overlayScrollbars -->
@@ -115,9 +117,20 @@
         <!-- Main Sidebar Container -->
         <aside class="main-sidebar main-sidebar-custom sidebar-dark-primary elevation-4">
             <!-- Brand Logo -->
-            <a href="<?= BASE_URL()?>" class="brand-link">
-            <img src="<?= IMG ?>logo.png" alt="Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
-            <span class="brand-text text-center font-weight-light">SITGO</span>
+            <!-- <img src="<?= IMG ?>logo.png" alt="Logo" class="brand-image img-circle elevation-3" style="opacity: .8"> -->
+            <a href="<?= BASE_URL()?>" class="brand-link d-flex justify-content-center align-items-center" style="padding-left: 0; padding-right: 0;">
+                <span class="brand-text" style="
+                    font-family: 'Anton', 'Oswald', 'Roboto Condensed', sans-serif;
+                    font-weight: 400;
+                    letter-spacing: 4px;
+                    font-size: 1.5rem;
+                    text-transform: uppercase;
+                    text-align: center;
+                    width: 100%;
+                    line-height: 1;
+                    display: inline-block;
+                    color: #fff;
+                ">SITGO</span>
             </a>
 
             <!-- Sidebar -->
@@ -128,7 +141,21 @@
                         <img src="<?= BASE_URL().'/'.$_SESSION['userData']['usuario_imagen']?>" class="img-circle elevation-2" alt="User Image" style="width: 4.3rem; height: 4.3rem;">
                     </div>
                     <div class="info d-block">
-                        <a href="#" class="d-block"><?= $_SESSION['userData']['personal_nombre'].' '.$_SESSION['userData']['personal_apellido']?></a>
+                        <?php
+                            // Mostrar nombre completo + inicial del apellido (ej: JUANA P.)
+                            $__nombre   = trim($_SESSION['userData']['personal_nombre'] ?? '');
+                            $__apellido = trim($_SESSION['userData']['personal_apellido'] ?? '');
+
+                            $__apellidoInicial = '';
+                            if ($__apellido !== '' && $__apellido !== '0') {
+                                $__apellidoInicial = ' ' . mb_strtoupper(mb_substr($__apellido, 0, 1, 'UTF-8'), 'UTF-8') . '.';
+                            }
+
+                            $__nombreMostrar = trim($__nombre . $__apellidoInicial);
+                        ?>
+                        <a href="#" class="d-block" title="<?= htmlspecialchars($__nombre . ' ' . $__apellido, ENT_QUOTES, 'UTF-8') ?>">
+                            <?= htmlspecialchars($__nombreMostrar, ENT_QUOTES, 'UTF-8') ?>
+                        </a>
                     </div>
                 </div>
 
