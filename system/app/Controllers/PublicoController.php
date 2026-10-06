@@ -23,21 +23,12 @@ class Publico extends Controllers {
         $this->views->getViews($this, "movimientos", $data);
     }
     
-    /**
-     * Devuelve la lista de instituciones activas para los selectores.
-     * Aplica la función obtenerIniciales() del helper para generar abreviaturas.
-     */
-   
     public function getInstituciones() {
-        //  echo obtenerIniciales("SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY");
         try {
             $instituciones = $this->model->getInstituciones();
-            
-            // Aplicar la función obtenerIniciales() del helper para generar abreviaturas
             foreach ($instituciones as &$inst) {
                 $inst['iniciales'] = obtenerIniciales($inst['nombre']);
             }
-            
             $arrResponse = ['success' => true, 'data' => $instituciones];
         } catch (Exception $e) {
             $arrResponse = ['success' => false, 'message' => 'Error: ' . $e->getMessage(), 'data' => []];
@@ -47,9 +38,6 @@ class Publico extends Controllers {
         die();
     }
     
-    /**
-     * Get initial data for the dashboard - AJAX endpoint
-     */
     public function getMovimientosData() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         
@@ -62,7 +50,6 @@ class Publico extends Controllers {
             
             $movimientos = [];
             
-            // 1. Despachos de Almacén
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'despachos') {
                 $despachos = $this->model->getDespachosPublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($despachos as $d) {
@@ -83,7 +70,6 @@ class Publico extends Controllers {
                 }
             }
             
-            // 2. Mantenimientos de Flota
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'mantenimientos') {
                 $mantenimientos = $this->model->getMantenimientosPublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($mantenimientos as $m) {
@@ -104,7 +90,6 @@ class Publico extends Controllers {
                 }
             }
             
-            // 3. Cambios de Aceite
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'aceite') {
                 $aceites = $this->model->getCambiosAceitePublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($aceites as $a) {
@@ -125,7 +110,6 @@ class Publico extends Controllers {
                 }
             }
             
-            // 4. Kilometraje Flota
             if ($tipoMovimiento === 'todos' || $tipoMovimiento === 'kilometraje') {
                 $kilometrajes = $this->model->getKilometrajePublic($fechaInicio, $fechaFin, $idInstitucion);
                 foreach ($kilometrajes as $k) {
@@ -177,9 +161,6 @@ class Publico extends Controllers {
         die();
     }
     
-    /**
-     * Get detalle de un cambio de aceite
-     */
     public function getDetalleAceite() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         try {
@@ -200,7 +181,6 @@ class Publico extends Controllers {
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
-            // Agregar nombre de institución
             $detalle['nombre_institucion'] = $this->model->getNombreInstitucion($idInstitucion);
             $arrResponse = ['success' => true, 'message' => 'OK', 'data' => $detalle];
         } catch (Exception $e) {
@@ -211,9 +191,6 @@ class Publico extends Controllers {
         die();
     }
     
-    /**
-     * Get detalle de un mantenimiento
-     */
     public function getDetalleMantenimiento() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         try {
@@ -244,9 +221,6 @@ class Publico extends Controllers {
         die();
     }
     
-    /**
-     * Get detalle de una actualización de kilometraje
-     */
     public function getDetalleKilometraje() {
         $arrResponse = ['success' => false, 'message' => '', 'data' => []];
         try {
@@ -433,7 +407,6 @@ class Publico extends Controllers {
                 echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
                 die();
             }
-            // Agregar el nombre de la institución a la info de la unidad
             $unidadInfo['nombre_institucion'] = $this->model->getNombreInstitucion($idInstitucion);
             
             $postData = $input;
@@ -525,11 +498,14 @@ class Publico extends Controllers {
     }
     
     /**
-     * Get ventas de estación for public view with filters
-     * NO MODIFICADO - Estación no aplica institución
+     * =============================================================
+     * VENTAS DE ESTACIÓN - VISTA PÚBLICA
+     * CAMBIO: usa `vendedor_nombre` (nombre completo de la persona)
+     * en lugar de `usuario_nick` para las agrupaciones.
+     * =============================================================
      */
     public function getVentasEstacionData() {
-        $arrResponse = ['success' => false, 'message' => '', 'data' => []];
+        $arrResponse = ['success' => false, 'message' => '', 'data' => [], 'totales_combustible' => []];
         try {
             $input = json_decode(file_get_contents("php://input"), true);
             $fechaInicio = $input['fechaInicio'] ?? date('Y-m-d', strtotime('-30 days'));
@@ -540,6 +516,8 @@ class Publico extends Controllers {
             $ventas = $this->model->getVentasEstacionPublic($fechaInicio, $fechaFin, $estacionId);
             
             $grouped = [];
+            $totalesComb = [];
+            
             foreach ($ventas as $venta) {
                 $fecha = $venta['fecha_venta'];
                 $estacionNombre = $venta['estacion_nombre'] ?? 'Sin Estación';
@@ -551,46 +529,131 @@ class Publico extends Controllers {
                         'estacion' => $estacionNombre,
                         'total_litros' => 0,
                         'total_ventas' => 0,
+                        'total_bs' => 0,
+                        'total_divisa' => 0,
+                        'total_efectivo' => 0,
+                        'total_debito' => 0,
+                        'litros_gasolina' => 0,
+                        'litros_diesel' => 0,
                         'vendedores' => [],
-                        'tipos_vehiculo' => []
+                        'tipos_vehiculo' => [],
+                        'tipos_combustible' => [],
+                        'tipos_pago' => [],
+                        'ventas' => []
                     ];
                 }
                 
-                $grouped[$key]['total_litros'] += (float)$venta['litros'];
-                $grouped[$key]['total_ventas'] += 1;
+                $litros = (float)$venta['litros'];
+                $monto = (float)$venta['monto'];
+                $tasa = (float)$venta['tasa_dia'];
+                $idTipoPago = (int)$venta['id_tipo_pago'];
+                $idCombustible = (int)($venta['id_tipo_combustible'] ?? 1);
+                $nombreComb = $venta['tipo_combustible'] ?? 'Gasolina';
                 
-                $vendedor = $venta['usuario_nick'] ?? 'N/A';
-                if (!isset($grouped[$key]['vendedores'][$vendedor])) {
-                    $grouped[$key]['vendedores'][$vendedor] = ['litros' => 0, 'ventas' => 0];
+                // *** CAMBIO: usar vendedor_nombre (nombre completo de la persona) con fallback ***
+                $vendedor = $venta['vendedor_nombre'] ?? $venta['usuario_nick'] ?? 'N/A';
+                
+                $montoBs = ($idTipoPago == 1) ? $monto * $tasa : $monto;
+                
+                $grouped[$key]['total_litros'] += $litros;
+                $grouped[$key]['total_ventas'] += 1;
+                $grouped[$key]['total_bs'] += $montoBs;
+                
+                if ($idTipoPago == 1) $grouped[$key]['total_divisa'] += $monto;
+                if ($idTipoPago == 2) $grouped[$key]['total_efectivo'] += $monto;
+                if ($idTipoPago == 3) $grouped[$key]['total_debito'] += $monto;
+                
+                if ($idCombustible == 1) $grouped[$key]['litros_gasolina'] += $litros;
+                else if ($idCombustible == 2) $grouped[$key]['litros_diesel'] += $litros;
+                
+                if (!isset($totalesComb[$nombreComb])) {
+                    $totalesComb[$nombreComb] = ['cantidad' => 0, 'litros' => 0, 'monto' => 0];
                 }
-                $grouped[$key]['vendedores'][$vendedor]['litros'] += (float)$venta['litros'];
+                $totalesComb[$nombreComb]['cantidad'] += 1;
+                $totalesComb[$nombreComb]['litros'] += $litros;
+                $totalesComb[$nombreComb]['monto'] += $montoBs;
+                
+                // Vendedor (ahora con nombre completo)
+                if (!isset($grouped[$key]['vendedores'][$vendedor])) {
+                    $grouped[$key]['vendedores'][$vendedor] = ['litros' => 0, 'ventas' => 0, 'monto' => 0];
+                }
+                $grouped[$key]['vendedores'][$vendedor]['litros'] += $litros;
                 $grouped[$key]['vendedores'][$vendedor]['ventas'] += 1;
+                $grouped[$key]['vendedores'][$vendedor]['monto'] += $montoBs;
                 
                 $tipoVehiculo = $venta['tipo_vehiculo'] ?? 'N/A';
                 if (!isset($grouped[$key]['tipos_vehiculo'][$tipoVehiculo])) {
                     $grouped[$key]['tipos_vehiculo'][$tipoVehiculo] = ['cantidad' => 0, 'litros' => 0];
                 }
                 $grouped[$key]['tipos_vehiculo'][$tipoVehiculo]['cantidad'] += 1;
-                $grouped[$key]['tipos_vehiculo'][$tipoVehiculo]['litros'] += (float)$venta['litros'];
+                $grouped[$key]['tipos_vehiculo'][$tipoVehiculo]['litros'] += $litros;
+                
+                if (!isset($grouped[$key]['tipos_combustible'][$nombreComb])) {
+                    $grouped[$key]['tipos_combustible'][$nombreComb] = ['cantidad' => 0, 'litros' => 0, 'monto' => 0];
+                }
+                $grouped[$key]['tipos_combustible'][$nombreComb]['cantidad'] += 1;
+                $grouped[$key]['tipos_combustible'][$nombreComb]['litros'] += $litros;
+                $grouped[$key]['tipos_combustible'][$nombreComb]['monto'] += $montoBs;
+                
+                $nombrePago = $venta['tipo_pago'] ?? 'N/A';
+                if (!isset($grouped[$key]['tipos_pago'][$nombrePago])) {
+                    $grouped[$key]['tipos_pago'][$nombrePago] = ['cantidad' => 0, 'monto' => 0];
+                }
+                $grouped[$key]['tipos_pago'][$nombrePago]['cantidad'] += 1;
+                $grouped[$key]['tipos_pago'][$nombrePago]['monto'] += $montoBs;
+                
+                // Guardar venta individual
+                $grouped[$key]['ventas'][] = [
+                    'id_venta' => (int)$venta['id_venta'],
+                    'hora_venta' => $venta['hora_venta'],
+                    'vendedor' => $vendedor,   // *** ahora nombre completo ***
+                    'tipo_vehiculo' => $tipoVehiculo,
+                    'tipo_combustible' => $nombreComb,
+                    'tipo_pago' => $nombrePago,
+                    'litros' => $litros,
+                    'monto' => $monto,
+                    'monto_bs' => $montoBs,
+                    'tasa_dia' => $tasa
+                ];
             }
             
             $data = array_values($grouped);
             
             foreach ($data as &$item) {
                 $item['vendedores'] = array_map(function($v, $k) {
-                    return ['nombre' => $k, 'litros' => $v['litros'], 'ventas' => $v['ventas']];
+                    return ['nombre' => $k, 'litros' => $v['litros'], 'ventas' => $v['ventas'], 'monto' => $v['monto']];
                 }, $item['vendedores'], array_keys($item['vendedores']));
                 
                 $item['tipos_vehiculo'] = array_map(function($v, $k) {
                     return ['tipo' => $k, 'cantidad' => $v['cantidad'], 'litros' => $v['litros']];
                 }, $item['tipos_vehiculo'], array_keys($item['tipos_vehiculo']));
+                
+                $item['tipos_combustible'] = array_map(function($v, $k) {
+                    return ['tipo' => $k, 'cantidad' => $v['cantidad'], 'litros' => $v['litros'], 'monto' => $v['monto']];
+                }, $item['tipos_combustible'], array_keys($item['tipos_combustible']));
+                
+                $item['tipos_pago'] = array_map(function($v, $k) {
+                    return ['tipo' => $k, 'cantidad' => $v['cantidad'], 'monto' => $v['monto']];
+                }, $item['tipos_pago'], array_keys($item['tipos_pago']));
+            }
+            unset($item);
+            
+            $totalesCombList = [];
+            foreach ($totalesComb as $nombre => $info) {
+                $totalesCombList[] = [
+                    'tipo' => $nombre,
+                    'cantidad' => (int)$info['cantidad'],
+                    'litros' => (float)$info['litros'],
+                    'monto' => (float)$info['monto']
+                ];
             }
             
             $arrResponse = [
                 'success' => true, 
                 'message' => 'OK', 
                 'data' => $data,
-                'estaciones' => $estaciones
+                'estaciones' => $estaciones,
+                'totales_combustible' => $totalesCombList
             ];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -601,16 +664,205 @@ class Publico extends Controllers {
     }
     
     /**
-     * Helper: Get estado despacho text
+     * Genera el PDF del reporte de ventas de estación.
      */
+    public function exportarVentasEstacionPDF() {
+        $input = json_decode(file_get_contents("php://input"), true);
+        $data = $input['data'] ?? [];
+        $fechaInicio = $input['fechaInicio'] ?? date('Y-m-d', strtotime('-30 days'));
+        $fechaFin = $input['fechaFin'] ?? date('Y-m-d');
+        $estacionNombre = $input['estacionNombre'] ?? 'Todas las estaciones';
+        
+        $options = new Options();
+        $options->set('defaultFont', 'Helvetica');
+        $options->set('isRemoteEnabled', true);
+        $dompdf = new Dompdf($options);
+        
+        $fmt = function($v, $dec = 2) {
+            return number_format((float)$v, $dec, ',', '.');
+        };
+        
+        $granTotalLitros = 0;
+        $granTotalVentas = 0;
+        $granTotalBs = 0;
+        $granTotalGasolina = 0;
+        $granTotalDiesel = 0;
+        $granTotalDivisa = 0;
+        $granTotalEfectivo = 0;
+        $granTotalDebito = 0;
+        
+        $aggCombustible = [];
+        $aggVehiculo = [];
+        $aggPago = [];
+        
+        foreach ($data as $item) {
+            $granTotalLitros += (float)$item['total_litros'];
+            $granTotalVentas += (int)$item['total_ventas'];
+            $granTotalBs += (float)$item['total_bs'];
+            $granTotalGasolina += (float)$item['litros_gasolina'];
+            $granTotalDiesel += (float)$item['litros_diesel'];
+            $granTotalDivisa += (float)$item['total_divisa'];
+            $granTotalEfectivo += (float)$item['total_efectivo'];
+            $granTotalDebito += (float)$item['total_debito'];
+            
+            foreach ($item['tipos_combustible'] ?? [] as $tc) {
+                if (!isset($aggCombustible[$tc['tipo']])) {
+                    $aggCombustible[$tc['tipo']] = ['cantidad' => 0, 'litros' => 0, 'monto' => 0];
+                }
+                $aggCombustible[$tc['tipo']]['cantidad'] += (int)$tc['cantidad'];
+                $aggCombustible[$tc['tipo']]['litros'] += (float)$tc['litros'];
+                $aggCombustible[$tc['tipo']]['monto'] += (float)$tc['monto'];
+            }
+            
+            foreach ($item['tipos_vehiculo'] ?? [] as $tv) {
+                if (!isset($aggVehiculo[$tv['tipo']])) {
+                    $aggVehiculo[$tv['tipo']] = ['cantidad' => 0, 'litros' => 0];
+                }
+                $aggVehiculo[$tv['tipo']]['cantidad'] += (int)$tv['cantidad'];
+                $aggVehiculo[$tv['tipo']]['litros'] += (float)$tv['litros'];
+            }
+            
+            foreach ($item['tipos_pago'] ?? [] as $tp) {
+                if (!isset($aggPago[$tp['tipo']])) {
+                    $aggPago[$tp['tipo']] = ['cantidad' => 0, 'monto' => 0];
+                }
+                $aggPago[$tp['tipo']]['cantidad'] += (int)$tp['cantidad'];
+                $aggPago[$tp['tipo']]['monto'] += (float)$tp['monto'];
+            }
+        }
+        
+        $periodo = "Desde: " . date('d/m/Y', strtotime($fechaInicio)) . " Hasta: " . date('d/m/Y', strtotime($fechaFin));
+        
+        $html = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @page { margin: 15mm 10mm; }
+                body { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #333; line-height: 1.3; }
+                .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
+                .header h1 { margin: 0; font-size: 14px; color: #2c3e50; text-transform: uppercase; }
+                .header h2 { margin: 5px 0 0 0; font-size: 11px; font-weight: normal; color: #555; }
+                .header p { margin: 3px 0; font-size: 9px; color: #777; }
+                .section-title { background-color: #2c3e50; color: white; font-weight: bold; padding: 5px 8px; font-size: 10px; margin-top: 12px; margin-bottom: 6px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 8px; }
+                th, td { border: 1px solid #ddd; padding: 4px 5px; vertical-align: middle; }
+                th { background-color: #e9ecef; color: #2c3e50; font-weight: bold; text-align: center; }
+                .text-left { text-align: left; }
+                .text-center { text-align: center; }
+                .text-right { text-align: right; }
+                .kpi-container { text-align: center; margin-bottom: 10px; }
+                .kpi-box { display: inline-block; border: 1px solid #2c3e50; border-radius: 4px; padding: 8px 12px; margin: 0 4px; min-width: 100px; background: #f8f9fa; }
+                .kpi-value { font-size: 14px; font-weight: bold; color: #2c3e50; }
+                .kpi-label { font-size: 8px; color: #666; text-transform: uppercase; }
+                .total-row { background-color: #2c3e50; color: white; font-weight: bold; }
+                .subtotal-row { background-color: #e9ecef; font-weight: bold; }
+                .footer { margin-top: 20px; text-align: center; font-size: 7px; color: #999; border-top: 1px solid #ddd; padding-top: 10px; }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>BUS YARACUY</h1>
+                <h2>Reporte de Ventas de Estación</h2>
+                <p>' . $periodo . ' | Estación: ' . htmlspecialchars($estacionNombre) . '</p>
+                <p>Generado: ' . date('d/m/Y H:i:s') . '</p>
+            </div>
+            
+            <div class="kpi-container">
+                <div class="kpi-box"><div class="kpi-value">' . $fmt($granTotalLitros) . ' L</div><div class="kpi-label">Litros Totales</div></div>
+                <div class="kpi-box"><div class="kpi-value">' . number_format($granTotalVentas) . '</div><div class="kpi-label">Vehículos Atendidos</div></div>
+                <div class="kpi-box"><div class="kpi-value">' . $fmt($granTotalBs) . ' Bs</div><div class="kpi-label">Total General</div></div>
+            </div>
+            
+            <div class="section-title">Desglose por Tipo de Combustible</div>
+            <table>
+                <thead><tr><th class="text-left" style="width: 30%;">Combustible</th><th style="width: 15%;">Cantidad</th><th style="width: 20%;">Litros</th><th style="width: 35%;">Monto Bs</th></tr></thead>
+                <tbody>';
+        
+        if (!empty($aggCombustible)) {
+            foreach ($aggCombustible as $nombre => $info) {
+                $html .= '<tr><td class="text-left"><strong>' . htmlspecialchars($nombre) . '</strong></td><td class="text-center">' . number_format($info['cantidad']) . '</td><td class="text-right">' . $fmt($info['litros']) . ' L</td><td class="text-right">' . $fmt($info['monto']) . ' Bs</td></tr>';
+            }
+            $html .= '<tr class="subtotal-row"><td class="text-left">TOTAL</td><td class="text-center">' . number_format($granTotalVentas) . '</td><td class="text-right">' . $fmt($granTotalLitros) . ' L</td><td class="text-right">' . $fmt($granTotalBs) . ' Bs</td></tr>';
+        } else {
+            $html .= '<tr><td colspan="4" class="text-center">Sin datos.</td></tr>';
+        }
+        
+        $html .= '</tbody></table>
+            
+            <div class="section-title">Desglose por Tipo de Vehículo</div>
+            <table>
+                <thead><tr><th class="text-left" style="width: 40%;">Tipo de Vehículo</th><th style="width: 20%;">Cantidad</th><th style="width: 40%;">Litros</th></tr></thead>
+                <tbody>';
+        
+        if (!empty($aggVehiculo)) {
+            foreach ($aggVehiculo as $nombre => $info) {
+                $html .= '<tr><td class="text-left"><strong>' . htmlspecialchars($nombre) . '</strong></td><td class="text-center">' . number_format($info['cantidad']) . '</td><td class="text-right">' . $fmt($info['litros']) . ' L</td></tr>';
+            }
+            $html .= '<tr class="subtotal-row"><td class="text-left">TOTAL</td><td class="text-center">' . number_format($granTotalVentas) . '</td><td class="text-right">' . $fmt($granTotalLitros) . ' L</td></tr>';
+        } else {
+            $html .= '<tr><td colspan="3" class="text-center">Sin datos.</td></tr>';
+        }
+        
+        $html .= '</tbody></table>
+            
+            <div class="section-title">Desglose por Tipo de Pago</div>
+            <table>
+                <thead><tr><th class="text-left" style="width: 40%;">Tipo de Pago</th><th style="width: 20%;">Cantidad</th><th style="width: 40%;">Monto Bs</th></tr></thead>
+                <tbody>';
+        
+        if (!empty($aggPago)) {
+            foreach ($aggPago as $nombre => $info) {
+                $html .= '<tr><td class="text-left"><strong>' . htmlspecialchars($nombre) . '</strong></td><td class="text-center">' . number_format($info['cantidad']) . '</td><td class="text-right">' . $fmt($info['monto']) . ' Bs</td></tr>';
+            }
+            $html .= '<tr class="subtotal-row"><td class="text-left">TOTAL</td><td class="text-center">' . number_format($granTotalVentas) . '</td><td class="text-right">' . $fmt($granTotalBs) . ' Bs</td></tr>';
+        } else {
+            $html .= '<tr><td colspan="3" class="text-center">Sin datos.</td></tr>';
+        }
+        
+        $html .= '</tbody></table>
+            
+            <div class="section-title">Detalle por Fecha y Estación</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Fecha</th>
+                        <th class="text-left" style="width: 20%;">Estación</th>
+                        <th style="width: 10%;">Ventas</th>
+                        <th style="width: 13%;">Litros Tot.</th>
+                        <th style="width: 12%;">Gasolina</th>
+                        <th style="width: 12%;">Diesel</th>
+                        <th style="width: 21%;">Monto Bs</th>
+                    </tr>
+                </thead>
+                <tbody>';
+        
+        if (!empty($data)) {
+            foreach ($data as $item) {
+                $html .= '<tr><td class="text-center">' . date('d/m/Y', strtotime($item['fecha'])) . '</td><td class="text-left">' . htmlspecialchars($item['estacion']) . '</td><td class="text-center">' . number_format($item['total_ventas']) . '</td><td class="text-right">' . $fmt($item['total_litros']) . ' L</td><td class="text-right">' . $fmt($item['litros_gasolina']) . ' L</td><td class="text-right">' . $fmt($item['litros_diesel']) . ' L</td><td class="text-right">' . $fmt($item['total_bs']) . ' Bs</td></tr>';
+            }
+            $html .= '<tr class="total-row"><td class="text-center" colspan="2">TOTAL GENERAL</td><td class="text-center">' . number_format($granTotalVentas) . '</td><td class="text-right">' . $fmt($granTotalLitros) . ' L</td><td class="text-right">' . $fmt($granTotalGasolina) . ' L</td><td class="text-right">' . $fmt($granTotalDiesel) . ' L</td><td class="text-right">' . $fmt($granTotalBs) . ' Bs</td></tr>';
+        } else {
+            $html .= '<tr><td colspan="7" class="text-center">Sin datos en el período seleccionado.</td></tr>';
+        }
+        
+        $html .= '</tbody></table>
+            <div class="footer"><p>Sistema BUS Yaracuy | Reporte generado automáticamente | ' . date('d/m/Y H:i:s') . '</p></div>
+        </body>
+        </html>';
+        
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        $dompdf->stream("reporte_ventas_estacion_" . $fechaInicio . "_a_" . $fechaFin . ".pdf", ["Attachment" => false]);
+    }
+    
     private function getEstadoDespacho($estado) {
         $estados = [1 => 'Requisición', 2 => 'Aprobada por Compras', 3 => 'Despachada', 4 => 'Rechazada'];
         return $estados[$estado] ?? 'Desconocido (' . $estado . ')';
     }
     
-    /**
-     * Helper: Get estado mantenimiento text
-     */
     private function getEstadoMantenimiento($status) {
         $estados = ['P' => 'Pendiente', 'E' => 'En Proceso', 'T' => 'Terminado', 'C' => 'Cancelado', 'A' => 'Aprobado'];
         return $estados[$status] ?? ($status ?? 'Sin estado');

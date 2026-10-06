@@ -10,9 +10,6 @@ class PublicoModel extends Mysql {
      * =================================================================
      */
     
-    /**
-     * Devuelve las instituciones activas para los selectores.
-     */
     public function getInstituciones() {
         $query = "SELECT id_institucion, nombre 
                   FROM table_instituciones 
@@ -21,9 +18,6 @@ class PublicoModel extends Mysql {
         return $this->select_all($query);
     }
     
-    /**
-     * Devuelve el nombre de una institución por su ID.
-     */
     public function getNombreInstitucion($idInstitucion) {
         $query = "SELECT nombre FROM table_instituciones WHERE id_institucion = ?";
         $result = $this->select($query, [intval($idInstitucion)]);
@@ -32,13 +26,10 @@ class PublicoModel extends Mysql {
     
     /**
      * =================================================================
-     * ESTADO DE FLOTA (con filtro por institución)
+     * ESTADO DE FLOTA
      * =================================================================
      */
     
-    /**
-     * Devuelve conteos de flota por estado para una institución.
-     */
     public function getEstadoFlota($idInstitucion) {
         $query = "SELECT status_unidad, COUNT(*) as total 
                   FROM table_flota 
@@ -72,9 +63,6 @@ class PublicoModel extends Mysql {
         ];
     }
     
-    /**
-     * Devuelve conteos de cambio de aceite para una institución.
-     */
     public function getEstadoAceite($idInstitucion) {
         $query = "SELECT tf.id_flota,
             COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km WHERE km.id_flota = tf.id_flota ORDER BY km.fecha_actualizacion DESC, km.id_kilometraje DESC LIMIT 1), 0) as kilometraje_actual,
@@ -106,9 +94,6 @@ class PublicoModel extends Mysql {
         ];
     }
     
-    /**
-     * Devuelve el resumen de flota por modelo para una institución.
-     */
     public function getResumenFlota($idInstitucion) {
         $query = "SELECT fm.marca_unidad as marca, fmo.modelo_unidad as modelo,
             CONCAT(fm.marca_unidad, ' ', fmo.modelo_unidad) as marca_modelo,
@@ -146,9 +131,6 @@ class PublicoModel extends Mysql {
         return array_values($grouped);
     }
     
-    /**
-     * Devuelve las unidades filtradas por estado e institución.
-     */
     public function getUnidadesPorEstado($status, $idInstitucion) {
         $query = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.fecha_creacion,
             fm.marca_unidad AS marca_unidad, fmo.modelo_unidad AS modelo_unidad,
@@ -165,9 +147,6 @@ class PublicoModel extends Mysql {
         return $this->select_all($query, [intval($status), intval($idInstitucion)]);
     }
     
-    /**
-     * Devuelve las unidades filtradas por estado de aceite e institución.
-     */
     public function getUnidadesPorEstadoAceite($status, $idInstitucion) {
         $query = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.fecha_creacion,
             fm.marca_unidad AS marca_unidad, fmo.modelo_unidad AS modelo_unidad,
@@ -203,13 +182,10 @@ class PublicoModel extends Mysql {
     
     /**
      * =================================================================
-     * MOVIMIENTOS (con filtro por institución)
+     * MOVIMIENTOS
      * =================================================================
      */
     
-    /**
-     * Get despachos de almacén filtrados por institución.
-     */
     public function getDespachosPublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
@@ -266,9 +242,6 @@ class PublicoModel extends Mysql {
         return $despachos;
     }
     
-    /**
-     * Get mantenimientos de flota filtrados por institución.
-     */
     public function getMantenimientosPublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
@@ -300,9 +273,6 @@ class PublicoModel extends Mysql {
         return $this->select_all($query, [$fechaInicio, $fechaFin, intval($idInstitucion)]);
     }
     
-    /**
-     * Get cambios de aceite filtrados por institución.
-     */
     public function getCambiosAceitePublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
@@ -326,9 +296,6 @@ class PublicoModel extends Mysql {
         return $this->select_all($query, [$fechaInicio, $fechaFin, intval($idInstitucion)]);
     }
     
-    /**
-     * Get kilometraje filtrado por institución.
-     */
     public function getKilometrajePublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
             SELECT 
@@ -351,13 +318,10 @@ class PublicoModel extends Mysql {
     
     /**
      * =================================================================
-     * DETALLES (con nombre de institución)
+     * DETALLES
      * =================================================================
      */
     
-    /**
-     * Get detalle de un cambio de aceite específico.
-     */
     public function getDetalleAceite($idAceite) {
         $query = "
             SELECT 
@@ -382,9 +346,6 @@ class PublicoModel extends Mysql {
         return $this->select($query, [$idAceite]);
     }
     
-    /**
-     * Get detalle de un mantenimiento específico.
-     */
     public function getDetalleMantenimiento($idMantenimiento) {
         $query = "
             SELECT 
@@ -417,9 +378,6 @@ class PublicoModel extends Mysql {
         return $this->select($query, [$idMantenimiento]);
     }
     
-    /**
-     * Get detalle de una actualización de kilometraje específica.
-     */
     public function getDetalleKilometraje($idKilometraje) {
         $query = "
             SELECT 
@@ -452,9 +410,6 @@ class PublicoModel extends Mysql {
         return $this->select($query, [$idKilometraje]);
     }
     
-    /**
-     * Get unit info for public view.
-     */
     public function getUnidadInfo($idFlota) {
         $query = "
             SELECT 
@@ -500,9 +455,6 @@ class PublicoModel extends Mysql {
      * =================================================================
      */
     
-    /**
-     * Get complete unit history (Hoja de Vida) for public view
-     */
     public function selectHistorialUnidad(int $idFlota, array $postData, int $perPage) {
         $fechaInicio = !empty($postData['fechaInicio']) ? $postData['fechaInicio'] : null;
         $fechaFin = !empty($postData['fechaFin']) ? $postData['fechaFin'] : null;
@@ -671,20 +623,6 @@ class PublicoModel extends Mysql {
         }
     }
     
-    /**
-     * Get order details (orden de despacho) for public view.
-     *
-     * IMPORTANTE: Este método devuelve los mismos campos que 
-     * OrdenModel::selectDepacho() para que reportePDFdesp.php funcione
-     * igual desde el panel de órdenes y desde la vista pública.
-     *
-     * Campos requeridos por reportePDFdesp.php:
-     *   - id_despacho, numero_orden, fecha_despacho, id_unidad
-     *   - marca_unidad, modelo_unidad, vim_unidad
-     *   - operador_nombre, mecanico_nombre, despachador_nombre
-     *   - observacion, usuario_registro
-     *   - articulos[] (id_producto, producto, cant_despacho, ubicacion)
-     */
     public function getDetalleOrden($idDespacho) {
         $query = "
             SELECT 
@@ -753,6 +691,11 @@ class PublicoModel extends Mysql {
      * =================================================================
      */
     
+    /**
+     * Devuelve las ventas de estación para la vista pública.
+     * CAMBIO: `vendedor_nombre` ahora es nombre + INICIAL del apellido + punto.
+     * Ej: "JUANA PEÑA" → "JUANA P."
+     */
     public function getVentasEstacionPublic($fechaInicio, $fechaFin, $estacionId = null) {
         $query = "
             SELECT 
@@ -760,6 +703,7 @@ class PublicoModel extends Mysql {
                 v.id_user,
                 v.id_tipo_pago,
                 v.id_tipo_vehiculo,
+                v.id_tipo_combustible,
                 v.litros,
                 v.monto,
                 v.id_cierre_diario,
@@ -769,13 +713,29 @@ class PublicoModel extends Mysql {
                 v.id_rol,
                 v.status_ticket,
                 u.usuario_nick,
+                COALESCE(
+                    NULLIF(TRIM(CONCAT_WS(' ',
+                        NULLIF(TRIM(p.personal_nombre), ''),
+                        CASE 
+                            WHEN p.personal_apellido IS NOT NULL 
+                              AND TRIM(p.personal_apellido) <> '' 
+                              AND TRIM(p.personal_apellido) <> '0'
+                            THEN CONCAT(LEFT(TRIM(p.personal_apellido), 1), '.')
+                            ELSE NULL 
+                        END
+                    )), ''),
+                    u.usuario_nick
+                ) AS vendedor_nombre,
                 tv.nombre as tipo_vehiculo,
                 tp.nombre as tipo_pago,
+                tc.nombre as tipo_combustible,
                 e.estacion as estacion_nombre
             FROM table_es_venta v
             LEFT JOIN table_usuarios u ON v.id_user = u.usuario_id
+            LEFT JOIN table_personal p ON u.usuario_id_personal = p.id_personal
             LEFT JOIN table_es_tipos_vehiculo tv ON v.id_tipo_vehiculo = tv.id_tipo_vehiculo
             LEFT JOIN table_es_tipos_pago tp ON v.id_tipo_pago = tp.id_tipo_pago
+            LEFT JOIN table_es_tipos_combustible tc ON v.id_tipo_combustible = tc.id_tipo_combustible
             LEFT JOIN table_es_estacion e ON u.usuario_estacion_id = e.id_estacion
             WHERE v.fecha_venta BETWEEN ? AND ?
         ";

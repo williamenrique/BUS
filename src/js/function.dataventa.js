@@ -22,7 +22,6 @@ document.addEventListener('DOMContentLoaded', async function () {
     // --- INICIO: Sección de Tasa del Día ---
     function setupTasaSection() {
         const table = openSalesTableBody ? openSalesTableBody.closest('table') : null;
-        // Si no encontramos la tabla, intentamos insertar antes del mensaje de "no hay ventas"
         const referenceElement = table || noOpenSalesMessage;
 
         if (referenceElement) {
@@ -54,10 +53,8 @@ document.addEventListener('DOMContentLoaded', async function () {
                 </div>
             `;
 
-            // Insertar antes de la tabla o mensaje
             referenceElement.parentNode.insertBefore(container, referenceElement);
 
-            // Cargar tasa inicial y asignar evento
             loadTasa();
             document.getElementById('btnUpdateTasaDataVenta').addEventListener('click', updateTasa);
         }
@@ -100,8 +97,8 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             if (result.success) {
                 notifi(result.message, 'success');
-                loadTasa(); // Recargar para mostrar la nueva hora de actualización
-                loadInitialData(); // Recargar datos globales por si afectan cálculos
+                loadTasa();
+                loadInitialData();
             } else {
                 notifi(result.message, 'error');
             }
@@ -114,7 +111,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     // Función para cargar todos los datos iniciales
     async function loadInitialData() {
-        // Cargar total de litros del sistema
         try {
             const response = await fetch(base_url + 'Estacion/getLitrosTotales')
             const result = await response.json()
@@ -124,13 +120,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (error) {
             console.error('Error al cargar total de litros:', error)
         }
-        // Cargar historial de cierres
         try {
             const response = await fetch(base_url + 'Estacion/getHistorialCierres')
             const result = await response.json()
-            // Con el cambio en el backend, 'data' siempre existirá si 'success' es true.
             if (result.success && Array.isArray(result.data)) {
-                renderCierresTable(result.data); // result.data será [] si no hay cierres
+                renderCierresTable(result.data);
             } else {
                 throw new Error(result.message || 'Respuesta no exitosa o formato incorrecto.');
             }
@@ -148,7 +142,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             const response = await fetch(base_url + 'Estacion/getOpenSales')
             const result = await response.json()
 
-            // Comprobación robusta: Asegurarse de que result.data es un array y tiene elementos
             if (result.success && Array.isArray(result.data) && result.data.length > 0) {
                 noOpenSalesMessage.style.display = 'none';
                 renderOpenSalesTable(result.data)
@@ -162,6 +155,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             notifi('Error al cargar las ventas abiertas.', 'error')
         }
     }
+
     // Función para renderizar la tabla de ventas abiertas
     function renderOpenSalesTable(data) {
         let html = ''
@@ -175,11 +169,14 @@ document.addEventListener('DOMContentLoaded', async function () {
                         <button class="btn btn-warning btn-sm view-open-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Ver Tickets">
                             <i class="fas fa-eye"></i>
                         </button>
+                        <button class="btn btn-primary btn-sm print-detallado-open-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Reimprimir Detallado">
+                            <i class="fas fa-receipt"></i>
+                        </button>
                         <button class="btn btn-success btn-sm close-sale-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}">
                             Cerrar Venta
                         </button>
-                        <button class="btn btn-info btn-sm print-pdf-btn" data-id="${sale.id_cierre}" data-iduser="${sale.id_user}" data-fecha="${sale.fecha_venta}">
-                            Imprimir PDF
+                        <button class="btn btn-info btn-sm print-pdf-btn" data-id="${sale.id_cierre}" data-iduser="${sale.id_user}" data-fecha="${sale.fecha_venta}" title="Imprimir PDF">
+                            <i class="fas fa-file-pdf"></i>
                         </button>
                         <button class="btn btn-danger btn-sm delete-all-sales-btn" data-fecha="${sale.fecha_venta}" data-iduser="${sale.id_user}" title="Eliminar Registro Completo">
                             <i class="fas fa-trash"></i>
@@ -190,8 +187,10 @@ document.addEventListener('DOMContentLoaded', async function () {
         })
         openSalesTableBody.innerHTML = html
     }
+
     // Event listener para los botones de ventas abiertas
     openSalesTableBody.addEventListener('click', async function (e) {
+        // --- Cerrar venta (con modo de detallado) ---
         if (e.target.classList.contains('close-sale-btn')) {
             const fechaVenta = e.target.dataset.fecha
             const userId = e.target.dataset.iduser
@@ -205,18 +204,21 @@ document.addEventListener('DOMContentLoaded', async function () {
             }).then(async (result) => {
                 if (result.isConfirmed) {
                     try {
-                        // 1. Obtener e imprimir el reporte detallado PRIMERO.
+                        // 1. Preguntar cómo imprimir el detallado
+                        const modoDetallado = await fntPreguntarModoDetallado();
+
+                        // 2. Obtener el detallado
                         const detailedResponse = await fetch(base_url + 'Estacion/getDetalleVentas', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ idUser: userId, fecha_detalle: fechaVenta })
                         });
                         const detailedResult = await detailedResponse.json();
-                        if (detailedResult.success) {
-                            await fntImprimirDetallado(detailedResult.ticketData);
+                        if (detailedResult.success && modoDetallado) {
+                            await fntImprimirDetallado(detailedResult.ticketData, modoDetallado);
                         }
 
-                        // 2. Realizar el cierre en el servidor DESPUÉS de imprimir el detallado.
+                        // 3. Cerrar en el servidor
                         const closeResponse = await fetch(base_url + 'Estacion/cerrarTurnoPendiente', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -225,16 +227,15 @@ document.addEventListener('DOMContentLoaded', async function () {
                         const closeResult = await closeResponse.json();
 
                         if (closeResult.success) {
-                            // 3. Imprimir el reporte de cierre con los datos de la respuesta.
+                            // 4. Imprimir el cierre
                             if (typeof fntImprimirCierre === 'function' && closeResult.dataCierre) {
                                 await fntImprimirCierre(closeResult.dataCierre);
                             }
-                            // Recargar ventas abiertas y datos iniciales
                             loadOpenSales()
                             loadInitialData()
 
                         } else {
-                            notifi(result.message, 'error')
+                            notifi(closeResult.message, 'error')
                         }
                     } catch (error) {
                         console.error('Error al cerrar venta:', error)
@@ -243,24 +244,51 @@ document.addEventListener('DOMContentLoaded', async function () {
                 }
             })
         }
+
+        // --- Reimprimir detallado de una venta abierta (sin cerrar) ---
+        if (e.target.closest('.print-detallado-open-btn')) {
+            const btn = e.target.closest('.print-detallado-open-btn');
+            const fechaVenta = btn.dataset.fecha;
+            const userId = btn.dataset.iduser;
+            try {
+                const modoDetallado = await fntPreguntarModoDetallado();
+                if (!modoDetallado) return;
+
+                const response = await fetch(base_url + 'Estacion/getDetalleVentas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idUser: userId, fecha_detalle: fechaVenta })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    await fntImprimirDetallado(result.ticketData, modoDetallado);
+                } else {
+                    notifi(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error al imprimir detallado:', error);
+                notifi('Error al imprimir el detallado.', 'error');
+            }
+        }
+
+        // --- Imprimir PDF (usando la nueva función con preguntas) ---
         if (e.target.classList.contains('print-pdf-btn')) {
             try {
-                // Obtener los datos directamente del botón que se hizo clic
                 const fechaVenta = e.target.dataset.fecha;
-                const userId = e.target.dataset.iduser; // Asegúrate de que este atributo existe en el botón
+                const userId = e.target.dataset.iduser;
                 fntGenerarPDF({ idUser: parseInt(userId), fecha: fechaVenta });
             } catch (error) {
                 console.error('Error al generar PDF:', error);
                 notifi('Error al generar el PDF de ventas.', 'error');
             }
         }
+
         // Listener para el botón de ver tickets de venta abierta
         if (e.target.closest('.view-open-sales-btn')) {
             const btn = e.target.closest('.view-open-sales-btn');
             const fechaVenta = btn.dataset.fecha;
             const userId = btn.dataset.iduser;
 
-            // Establecer un título especial para indicar que es una venta en curso
             cierreIdTitle.textContent = "EN CURSO";
 
             try {
@@ -272,7 +300,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const result = await response.json();
                 if (result.success) {
                     renderVentasList(result.data);
-                    // Desplazarse a la sección de detalles
                     ventasCierreSection.scrollIntoView({ behavior: 'smooth' });
                 } else {
                     notifi(result.message, 'error');
@@ -309,10 +336,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                         const res = await response.json();
                         if (res.success) {
                             notifi(res.message, 'success');
-                            loadOpenSales(); // Recargar la tabla de ventas abiertas
-                            loadInitialData(); // Actualizar contadores globales
+                            loadOpenSales();
+                            loadInitialData();
 
-                            // Si se estaba visualizando el detalle de esa venta específica, ocultarlo
                             if (cierreIdTitle.textContent === "EN CURSO" && document.getElementById('fechaCierre').textContent === fechaVenta) {
                                 ventasCierreSection.style.display = 'none';
                             }
@@ -339,7 +365,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         tableCierres = $('#cierresTable').DataTable({
             dom: "<'row'<'col-sm-12 col-md-6'l><'col-sm-12 col-md-6'f>>" + "<'row'<'col-sm-12'tr>>" + "<'row'<'col-sm-12 col-md-5'i><'col-sm-12 col-md-7'p>>",
             "language": {
-                // Cambia la URL para que apunte a tu archivo local
                 "url": base_url + "src/plugins/js/es_es.json"
             },
             "columns": [
@@ -371,8 +396,19 @@ document.addEventListener('DOMContentLoaded', async function () {
                     }
                 },
                 {
-                    "data": "total_litros_vendidos", "render": function (data) {
-                        return `${parseFloat(data).toFixed(2)} L`;
+                    // Litros con desglose por combustible en tooltip
+                    "data": "total_litros_vendidos",
+                    "render": function (data, type, row) {
+                        const total = parseFloat(data).toFixed(2);
+                        const gas = parseFloat(row.litros_gasolina || 0).toFixed(2);
+                        const die = parseFloat(row.litros_diesel || 0).toFixed(2);
+                        let detalle = '';
+                        if (parseFloat(gas) > 0) detalle += `Gasolina: ${gas} L\n`;
+                        if (parseFloat(die) > 0) detalle += `Diesel: ${die} L`;
+                        if (detalle) {
+                            return `<span title="${detalle.trim()}">${total} L <i class="fas fa-info-circle text-info"></i></span>`;
+                        }
+                        return `${total} L`;
                     }
                 },
                 {
@@ -380,34 +416,32 @@ document.addEventListener('DOMContentLoaded', async function () {
                     "render": function (data, type, row) {
                         return `
                             <button class="btn btn-info btn-sm show-ventas-btn" data-id="${row.id_cierre}" data-iduser="${row.id_user}" data-fecha="${row.fecha_cierre}" title="Ver Ventas"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-primary btn-sm reimprimir-detallado-cierre-btn" data-id="${row.id_cierre}" data-iduser="${row.id_user}" data-fecha="${row.fecha_cierre}" title="Reimprimir Detallado"><i class="fas fa-receipt"></i></button>
                             <button class="btn btn-danger btn-sm delete-cierre-total-btn" data-id="${row.id_cierre}" data-iduser="${row.id_user}" data-fecha="${row.fecha_cierre}" title="Eliminar Cierre y Ventas"><i class="fas fa-trash"></i></button>
                         `;
                     }
                 }
             ],
-            responsive: false, // Desactivado para permitir el scroll horizontal del contenedor
+            responsive: false,
             autoWidth: false,
             pageLength: 10,
             lengthMenu: [5, 10, 25, 50],
-            order: [[3, 'desc']], // Ordenar por fecha (columna 4) descendente
+            order: [[3, 'desc']],
             columnDefs: [
-                { orderable: false, targets: [8] }, // Hacer que la columna de acciones no sea ordenable
+                { orderable: false, targets: [8] },
             ]
         });
     }
+
     // Función para renderizar la lista de ventas de un cierre
     function renderVentasList(data) {
-        // Limpiar el contenedor principal
         ventasCierreList.innerHTML = '';
 
-        // Actualizar títulos y manejar el caso sin datos
         if (data.length > 0) {
             document.getElementById('fechaCierre').textContent = data[0].fecha_venta;
             document.getElementById('nameEmp').textContent = data[0].empleado;
-            // Asignar datos a los botones de acción
             btnImprimirCierre.dataset.fecha = data[0].fecha_venta;
-            // --- INICIO DE LA CORRECCIÓN ---
-            btnImprimirCierre.dataset.idcierre = cierreIdTitle.textContent; // Guardamos el ID del cierre en el botón
+            btnImprimirCierre.dataset.idcierre = cierreIdTitle.textContent;
             btnImprimirCierre.dataset.iduser = data[0].id_user;
             btnImprimirPdf.dataset.fecha = data[0].fecha_venta;
             btnImprimirPdf.dataset.iduser = data[0].id_user;
@@ -419,7 +453,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             return;
         }
 
-        // Crear la estructura de la tabla dinámicamente
+        // Crear la estructura de la tabla dinámicamente (con columna Combustible)
         const tableHTML = `
             <table id="ventasCierreTable" class="table table-bordered table-striped table-sm w-100">
                 <thead>
@@ -427,6 +461,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         <th># Venta</th>
                         <th>Hora</th>
                         <th>Tipo Vehículo</th>
+                        <th>Combustible</th>
                         <th>Litros</th>
                         <th>Tipo Pago</th>
                         <th>Monto</th>
@@ -438,18 +473,23 @@ document.addEventListener('DOMContentLoaded', async function () {
         `;
         ventasCierreList.innerHTML = tableHTML;
 
-        // Destruir DataTable si ya existe para evitar conflictos
         if (tableVentasCierre) {
             tableVentasCierre.destroy();
         }
 
-        // Inicializar la DataTable en la tabla recién creada
         tableVentasCierre = $('#ventasCierreTable').DataTable({
             "data": data,
             "columns": [
                 { "data": "numero_venta" },
                 { "data": "hora_venta" },
                 { "data": "tipo_vehiculo" },
+                {
+                    "data": "tipo_combustible",
+                    "render": function (d) {
+                        if (!d) return 'Gasolina';
+                        return d;
+                    }
+                },
                 { "data": "cantidad_litros", "render": function (d) { return `${parseFloat(d).toFixed(2)} L`; } },
                 { "data": "tipo_pago" },
                 {
@@ -463,7 +503,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                     "orderable": false,
                     "className": "text-center",
                     "render": function (d, type, row) {
-                        // Se combinan ambos botones en un solo return
                         return `<button class="btn btn-info btn-xs print-ticket-btn" data-id="${row.numero_venta}" data-iduser="${row.id_user}" data-fecha="${row.fecha_venta}" title="Imprimir Copia"><i class="fas fa-print"></i></button>
                                 <button class="btn btn-danger btn-xs delete-venta-btn" data-id="${row.numero_venta}" data-iduser="${row.id_user}" data-fecha="${row.fecha_venta}" title="Eliminar Ticket"><i class="far fa-trash-alt"></i></button>
                                 `;
@@ -480,6 +519,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         ventasCierreSection.style.display = 'block';
     }
+
     // Event listener para los botones de la tabla de cierres
     cierresTableBody.addEventListener('click', async function (e) {
         const showBtn = e.target.closest('.show-ventas-btn');
@@ -504,6 +544,35 @@ document.addEventListener('DOMContentLoaded', async function () {
             } catch (error) {
                 console.error('Error al obtener las ventas del cierre:', error)
                 notifi('Error al cargar las ventas. Intenta de nuevo.', 'error')
+            }
+        }
+
+        // --- NUEVO: Reimprimir detallado de un cierre histórico ---
+        if (e.target.closest('.reimprimir-detallado-cierre-btn')) {
+            const btn = e.target.closest('.reimprimir-detallado-cierre-btn');
+            const idCierre = btn.dataset.id;
+            const idUser = btn.dataset.iduser;
+            const fechaCierre = btn.dataset.fecha;
+            try {
+                // 1. Preguntar modo del detallado
+                const modoDetallado = await fntPreguntarModoDetallado();
+                if (!modoDetallado) return;
+
+                // 2. Obtener el detallado del cierre (usamos getDataVenta que ya trae las ventas con combustible)
+                const response = await fetch(base_url + 'Estacion/getVentasByCierre', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ iduser: idUser, idCierre: idCierre, fechaCierre: fechaCierre })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    await fntImprimirDetallado(result.data, modoDetallado);
+                } else {
+                    notifi(result.message, 'error');
+                }
+            } catch (error) {
+                console.error('Error al reimprimir el detallado:', error);
+                notifi('Error al reimprimir el detallado.', 'error');
             }
         }
 
@@ -534,8 +603,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                         const res = await response.json();
                         if (res.success) {
                             notifi(res.message, 'success');
-                            loadInitialData(); // Recargar la tabla de cierres
-                            // Si se estaba mostrando el detalle de este cierre, limpiarlo
+                            loadInitialData();
                             if (cierreIdTitle.textContent == idCierre) {
                                 ventasCierreSection.style.display = 'none';
                                 ventasCierreList.innerHTML = '';
@@ -568,7 +636,7 @@ document.addEventListener('DOMContentLoaded', async function () {
                 });
                 const result = await response.json();
                 if (result.success) {
-                    fntImprimirTicket({ ticketData: result.ticketData, copia: 1 }); // 1 para marcar como copia
+                    fntImprimirTicket({ ticketData: result.ticketData, copia: 1 });
                 } else {
                     notifi(result.message, 'error');
                 }
@@ -577,6 +645,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         }
     })
+
     // Event listener para los botones de eliminar en la lista de ventas
     ventasCierreList.addEventListener('click', async function (e) {
         if (e.target.classList.contains('delete-venta-btn')) {
@@ -603,12 +672,9 @@ document.addEventListener('DOMContentLoaded', async function () {
                         const result = await response.json()
                         if (result.success) {
                             notifi('¡Eliminado!', 'success')
-                            // Recargar la lista de ventas después de la eliminación
                             const idCierre = cierreIdTitle.textContent
 
-                            // Verificar si estamos en una venta abierta (EN CURSO) o un cierre
                             if (idCierre === "EN CURSO") {
-                                // Recargar usando el endpoint de ventas abiertas
                                 const responseRefresh = await fetch(base_url + 'Estacion/getVentasAbiertas', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -623,7 +689,6 @@ document.addEventListener('DOMContentLoaded', async function () {
                                     }
                                 }
                             } else {
-                                // Recargar usando el endpoint de cierres (lógica original)
                                 const responseRefresh = await fetch(base_url + 'Estacion/getVentasByCierre', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -646,27 +711,26 @@ document.addEventListener('DOMContentLoaded', async function () {
                     } catch (error) {
                         notifi('Error al eliminar el ticket. Intenta de nuevo.', 'error')
                     }
-                    // Mover la recarga de datos aquí para que se ejecute siempre después de la operación
                     loadInitialData();
                 }
             })
         }
     })
 
-    // Event listener para el botón de imprimir
+    // Event listener para el botón de imprimir cierre
     btnImprimirCierre.addEventListener('click', async function () {
         try {
             const idUser = this.dataset.iduser;
             const fechaVenta = this.dataset.fecha;
-            const idCierre = this.dataset.idcierre; // Obtenemos el ID del cierre desde el botón
+            const idCierre = this.dataset.idcierre;
             const response = await fetch(base_url + 'Estacion/getDataCierre', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idUser: idUser, fecha_venta: fechaVenta, idCierre: idCierre }) // Enviamos los 3 parámetros
+                body: JSON.stringify({ idUser: idUser, fecha_venta: fechaVenta, idCierre: idCierre })
             });
             const result = await response.json();
             if (result.success) {
-                await fntImprimirCierre(result.cierreData); // Usar result.cierreData
+                await fntImprimirCierre(result.cierreData);
             } else {
                 notifi(result.message, 'error');
             }
@@ -674,6 +738,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             notifi('Error al obtener los datos para imprimir el cierre.', 'error');
         }
     });
+
     btnImprimirPdf.addEventListener('click', async function () {
         try {
             const fecha = this.dataset.fecha;
@@ -684,9 +749,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             notifi('Error al generar el PDF de ventas.', 'error');
         }
     });
+
     /**
      * Configura los controles de búsqueda por fecha (Día o Mes)
-     * Reemplaza al antiguo selector de fechas.
      */
     function setupDateSearch() {
         const selectFechaCierre = document.getElementById('selectFechaCierre');
@@ -694,7 +759,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         const parent = selectFechaCierre.parentNode;
 
-        // Crear contenedor para los nuevos controles
         const controlsContainer = document.createElement('div');
         controlsContainer.className = 'row g-2 align-items-center';
 
@@ -718,8 +782,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         `;
 
         parent.insertBefore(controlsContainer, selectFechaCierre);
-
-        // Remover el select original que está vacío/obsoleto
         selectFechaCierre.remove();
 
         const searchType = document.getElementById('searchType');
@@ -729,7 +791,6 @@ document.addEventListener('DOMContentLoaded', async function () {
         const monthRangeContainer = document.getElementById('monthRangeContainer');
         const btnPrintReport = document.getElementById('btnPrintReport');
 
-        // Establecer fecha actual por defecto
         const today = new Date();
         const yyyy = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -739,21 +800,18 @@ document.addEventListener('DOMContentLoaded', async function () {
         searchDateMonthStart.value = `${yyyy}-${mm}`;
         searchDateMonthEnd.value = `${yyyy}-${mm}`;
 
-        // Carga inicial
         loadLitrosPorFecha(searchDateDay.value, 'day');
 
-        // Eventos
         searchType.addEventListener('change', function () {
             if (this.value === 'day') {
                 searchDateDay.style.display = 'block';
                 monthRangeContainer.style.display = 'none';
-                btnPrintReport.style.display = 'none'; // Ocultar reporte para día
+                btnPrintReport.style.display = 'none';
                 loadLitrosPorFecha(searchDateDay.value, 'day');
             } else {
                 searchDateDay.style.display = 'none';
                 monthRangeContainer.style.display = 'flex';
-                btnPrintReport.style.display = 'block'; // Mostrar reporte para mes
-                // Cargar con el rango actual
+                btnPrintReport.style.display = 'block';
                 loadLitrosPorFecha(searchDateMonthStart.value, 'month', searchDateMonthEnd.value);
             }
         });
@@ -764,7 +822,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         searchDateMonthStart.addEventListener('change', function () {
             if (this.value) {
-                // Si la fecha fin es menor a la inicio, igualarla
                 if (searchDateMonthEnd.value < this.value) {
                     searchDateMonthEnd.value = this.value;
                 }
@@ -776,10 +833,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (this.value) loadLitrosPorFecha(searchDateMonthStart.value, 'month', this.value);
         });
 
-        // Evento para imprimir reporte
         btnPrintReport.addEventListener('click', function () {
             const type = searchType.value;
-            // Solo permitir reporte si es por mes
             if (type === 'day') return;
 
             const fecha = searchDateMonthStart.value;
@@ -825,9 +880,6 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     /**
      * Función para cargar los litros vendidos en una fecha específica
-     * @param {string} fecha - Fecha en formato YYYY-MM-DD o YYYY-MM
-     * @param {string} type - 'day' o 'month'
-     * @param {string} fechaFin - Fecha fin para rango de meses (opcional)
      */
     async function loadLitrosPorFecha(fecha, type = 'day', fechaFin = null) {
         try {
@@ -839,7 +891,6 @@ document.addEventListener('DOMContentLoaded', async function () {
             const result = await response.json()
             if (result.success) {
                 const totalLitros = parseFloat(result.totalLitros) || 0
-                // Formato entendible (ej: 1.234,56 L)
                 const formattedLitros = new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalLitros);
                 document.getElementById('totalLitrosFecha').textContent = `${formattedLitros} L`
             } else {
@@ -852,10 +903,10 @@ document.addEventListener('DOMContentLoaded', async function () {
             notifi('Error al cargar los litros vendidos.', 'error')
         }
     }
-    // Llamar a la función para cargar las fechas cuando el DOM esté listo
+
     // Cargar datos al iniciar
     setupDateSearch()
-    setupTasaSection() // Inicializar la sección de tasa
+    setupTasaSection()
     loadOpenSales()
     loadInitialData()
 })

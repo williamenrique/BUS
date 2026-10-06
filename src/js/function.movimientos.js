@@ -1,11 +1,10 @@
 /**
  * Public Movimientos Dashboard - JavaScript
- * Dashboard público de consulta de movimientos
  * CON SOPORTE MULTI-INSTITUCIÓN
  */
 
 // ============================================
-// ESTADO GLOBAL DE LA APLICACIÓN
+// ESTADO GLOBAL
 // ============================================
 
 let allMovimientos = [];
@@ -28,10 +27,6 @@ let aceiteUnidadesFiltered = [];
 let currentPage = 1;
 let recordsPerPage = 10;
 
-// ============================================
-// ESTADO MULTI-INSTITUCIÓN
-// ============================================
-
 let allInstituciones = [];
 
 const instSeleccionada = {
@@ -41,13 +36,12 @@ const instSeleccionada = {
     movimientos: null
 };
 
+let totalesCombustibleEstacion = [];
+
 // ============================================
 // FUNCIONES DE INSTITUCIÓN
 // ============================================
 
-/**
- * Carga la lista de instituciones desde el backend y llena los 4 selectores.
- */
 async function cargarInstituciones() {
     try {
         const response = await fetch('?url=Publico/getInstituciones');
@@ -92,53 +86,29 @@ async function cargarInstituciones() {
     }
 }
 
-/**
- * Abrevia el nombre de la institución a iniciales si es muy largo.
- */
 function abreviarNombreInstitucion(nombre) {
     if (!nombre) return 'N/D';
-
-    if (nombre.length <= 20) {
-        return nombre;
-    }
-
+    if (nombre.length <= 20) return nombre;
     const ignorar = ['de', 'del', 'la', 'el', 'los', 'las', 'y', 'e', 'o', 'a', 'en', 'con'];
     const palabras = nombre.split(/\s+/);
-
     let iniciales = '';
     palabras.forEach(p => {
         const lower = p.toLowerCase();
-        if (!ignorar.includes(lower) && p.length > 0) {
-            iniciales += p[0].toUpperCase();
-        }
+        if (!ignorar.includes(lower) && p.length > 0) iniciales += p[0].toUpperCase();
     });
-
-    if (iniciales.length < 3) {
-        return nombre;
-    }
-
+    if (iniciales.length < 3) return nombre;
     return iniciales;
 }
 
-/**
- * Devuelve el nombre completo de la institución según el id.
- */
 function getNombreInstitucionPorId(id) {
     const inst = allInstituciones.find(i => parseInt(i.id_institucion, 10) === parseInt(id, 10));
     return inst ? inst.nombre : '';
 }
 
-/**
- * Capitaliza la primera letra.
- */
 function capitalize(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-/**
- * Recarga los datos de la sección seleccionada.
- * Se ejecuta desde los selectores (change) y desde la carga inicial.
- */
 function recargarSeccion(seccion) {
     switch (seccion) {
         case 'flota':
@@ -164,7 +134,7 @@ function recargarSeccion(seccion) {
 }
 
 // ============================================
-// FUNCIONES GLOBALES - NAVEGACIÓN DE LINKS
+// NAVEGACIÓN DE LINKS
 // ============================================
 
 function cargarDetalleOrden(idDespacho) {
@@ -201,10 +171,7 @@ function cargarDetalleAceite(idAceite) {
     fetch('?url=Publico/getDetalleAceite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            idAceite: idAceite,
-            id_institucion: instSeleccionada.movimientos
-        })
+        body: JSON.stringify({ idAceite: idAceite, id_institucion: instSeleccionada.movimientos })
     })
         .then(r => r.json())
         .then(data => {
@@ -227,10 +194,7 @@ function cargarDetalleMantenimiento(idMantenimiento) {
     fetch('?url=Publico/getDetalleMantenimiento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            idMantenimiento: idMantenimiento,
-            id_institucion: instSeleccionada.movimientos
-        })
+        body: JSON.stringify({ idMantenimiento: idMantenimiento, id_institucion: instSeleccionada.movimientos })
     })
         .then(r => r.json())
         .then(data => {
@@ -253,10 +217,7 @@ function cargarDetalleKilometraje(idKilometraje) {
     fetch('?url=Publico/getDetalleKilometraje', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            idKilometraje: idKilometraje,
-            id_institucion: instSeleccionada.movimientos
-        })
+        body: JSON.stringify({ idKilometraje: idKilometraje, id_institucion: instSeleccionada.movimientos })
     })
         .then(r => r.json())
         .then(data => {
@@ -279,10 +240,7 @@ function cargarHistorialUnidad(idFlota, idUnidad) {
     fetch('?url=Publico/getHistorialUnidad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            idFlota: idFlota,
-            id_institucion: instSeleccionada.movimientos
-        })
+        body: JSON.stringify({ idFlota: idFlota, id_institucion: instSeleccionada.movimientos })
     })
         .then(r => r.json())
         .then(data => {
@@ -310,9 +268,7 @@ function renderizarDetalleOrden(orden) {
         <div class="card border-primary">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Despacho #${orden.id_despacho}</h6>
-                <button type="button" class="btn btn-sm btn-light btn-despacho-pdf" data-id-despacho="${orden.id_despacho}" title="Descargar PDF">
-                    <i class="fas fa-file-pdf me-1"></i>PDF
-                </button>
+                <button type="button" class="btn btn-sm btn-light btn-despacho-pdf" data-id-despacho="${orden.id_despacho}" title="Descargar PDF"><i class="fas fa-file-pdf me-1"></i>PDF</button>
             </div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
@@ -343,18 +299,12 @@ function renderizarDetalleOrden(orden) {
     const btnPDF = resumenDiv.querySelector('.btn-despacho-pdf');
     if (btnPDF) {
         btnPDF.addEventListener('click', () => {
-            // Mostrar indicador de carga
             btnPDF.disabled = true;
             btnPDF.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...';
-
-            // Obtener los datos completos de la orden antes de generar el PDF
             fetch('?url=Publico/getDetalleOrden', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    idDespacho: orden.id_despacho,
-                    id_institucion: instSeleccionada.movimientos
-                })
+                body: JSON.stringify({ idDespacho: orden.id_despacho, id_institucion: instSeleccionada.movimientos })
             })
             .then(r => r.json())
             .then(data => {
@@ -421,9 +371,7 @@ function renderizarDetalleAceite(a) {
 
     resumenDiv.innerHTML = `
         <div class="card border-warning">
-            <div class="card-header bg-warning text-dark">
-                <h6 class="mb-0"><i class="fas fa-oil-can me-2"></i>Cambio de Aceite ACE-${String(a.id_aceite_historial).padStart(6, '0')}</h6>
-            </div>
+            <div class="card-header bg-warning text-dark"><h6 class="mb-0"><i class="fas fa-oil-can me-2"></i>Cambio de Aceite ACE-${String(a.id_aceite_historial).padStart(6, '0')}</h6></div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
                     <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Fecha</small><strong>${formatearFechaCompleta(a.fecha_cambio)}</strong></div></div></div>
@@ -454,9 +402,7 @@ function renderizarDetalleMantenimiento(m) {
 
     resumenDiv.innerHTML = `
         <div class="card border-secondary">
-            <div class="card-header bg-secondary text-white">
-                <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Mantenimiento MANT-${String(m.id_unidad_mantenimiento).padStart(6, '0')}</h6>
-            </div>
+            <div class="card-header bg-secondary text-white"><h6 class="mb-0"><i class="fas fa-tools me-2"></i>Mantenimiento MANT-${String(m.id_unidad_mantenimiento).padStart(6, '0')}</h6></div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
                     <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Unidad</small><strong>${m.id_unidad || 'N/A'}</strong></div></div></div>
@@ -489,9 +435,7 @@ function renderizarDetalleKilometraje(k) {
 
     resumenDiv.innerHTML = `
         <div class="card border-info">
-            <div class="card-header bg-info text-white">
-                <h6 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Actualización KM-${String(k.id_kilometraje).padStart(6, '0')}</h6>
-            </div>
+            <div class="card-header bg-info text-white"><h6 class="mb-0"><i class="fas fa-tachometer-alt me-2"></i>Actualización KM-${String(k.id_kilometraje).padStart(6, '0')}</h6></div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
                     <div class="col-6 col-md-4"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Unidad</small><strong>${k.id_unidad || 'N/A'}</strong></div></div></div>
@@ -534,9 +478,7 @@ function renderizarHistorialUnidad(unidad, historial) {
         <div class="card">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="fas fa-bus me-2"></i>Hoja de Vida - Unidad ${unidad.id_unidad}</h6>
-                <button type="button" class="btn btn-sm btn-light btn-descargar-pdf" data-id-flota="${unidad.id_flota}" data-id-unidad="${unidad.id_unidad}" title="Descargar PDF">
-                    <i class="fas fa-file-pdf me-1"></i>PDF
-                </button>
+                <button type="button" class="btn btn-sm btn-light btn-descargar-pdf" data-id-flota="${unidad.id_flota}" data-id-unidad="${unidad.id_unidad}" title="Descargar PDF"><i class="fas fa-file-pdf me-1"></i>PDF</button>
             </div>
             <div class="card-body">
                 <div class="row g-2 mb-3">
@@ -571,18 +513,14 @@ function renderizarHistorialUnidad(unidad, historial) {
             html += `
                 <div class="timeline-item mb-4" data-tipo="${mov.tipo}">
                     <div class="d-flex">
-                        <div class="timeline-icon me-3" style="width: 40px; height: 40px; border-radius: 50%; background: ${tipoColor}; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
-                            <i class="${tipoIcon}"></i>
-                        </div>
+                        <div class="timeline-icon me-3" style="width: 40px; height: 40px; border-radius: 50%; background: ${tipoColor}; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;"><i class="${tipoIcon}"></i></div>
                         <div class="timeline-content flex-grow-1">
                             <div class="d-flex justify-content-between align-items-start mb-1">
                                 <h6 class="mb-0 fw-bold" style="color: ${tipoColor};">${tipoLabel} #${mov.id_evento}</h6>
                                 <small class="text-muted">${fechaFormateada}</small>
                             </div>
                             <div class="timeline-description" style="font-size: 0.9rem; line-height: 1.5;">${descripcion}</div>
-                            <div class="timeline-meta mt-2" style="font-size: 0.8rem; color: #6c757d;">
-                                <i class="fas fa-user me-1"></i><strong>Registrado por:</strong> ${usuario}
-                            </div>
+                            <div class="timeline-meta mt-2" style="font-size: 0.8rem; color: #6c757d;"><i class="fas fa-user me-1"></i><strong>Registrado por:</strong> ${usuario}</div>
                         </div>
                     </div>
                 </div>
@@ -652,10 +590,7 @@ function descargarHojaVidaPDF(idFlota, idUnidad) {
     fetch('?url=Publico/getHistorialUnidad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            idFlota: idFlota,
-            id_institucion: instSeleccionada.movimientos
-        })
+        body: JSON.stringify({ idFlota: idFlota, id_institucion: instSeleccionada.movimientos })
     })
         .then(response => response.json())
         .then(result => {
@@ -786,36 +721,27 @@ function getEstadoBadge(estado) {
 }
 
 // ============================================
-// FUNCIONES GLOBALES - RESUMEN FLOTA
+// RESUMEN FLOTA
 // ============================================
 
 function toggleFleetGroup(index, checkbox) {
     if (!filteredFleetSummary || !filteredFleetSummary[index]) return;
-
     const item = filteredFleetSummary[index];
     const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
-
-    if (checkbox.checked) {
-        selectedFleetGroups.add(key);
-    } else {
-        selectedFleetGroups.delete(key);
-    }
-
+    if (checkbox.checked) selectedFleetGroups.add(key);
+    else selectedFleetGroups.delete(key);
     actualizarCheckboxSelectAll();
     actualizarResumenSeleccionados();
 }
 
 function toggleSelectAllFleet(checkbox) {
     const isChecked = checkbox.checked;
-
     const selectAllFleet = document.getElementById('selectAllFleet');
     const selectAllFleetHeader = document.getElementById('selectAllFleetHeader');
     if (selectAllFleet) selectAllFleet.checked = isChecked;
     if (selectAllFleetHeader) selectAllFleetHeader.checked = isChecked;
-
     const checkboxes = document.querySelectorAll('#tbodyFleetSummary input[type="checkbox"]');
     checkboxes.forEach(cb => { cb.checked = isChecked; });
-
     selectedFleetGroups.clear();
     if (isChecked) {
         allFleetSummary.forEach(item => {
@@ -823,7 +749,6 @@ function toggleSelectAllFleet(checkbox) {
             selectedFleetGroups.add(key);
         });
     }
-
     actualizarResumenSeleccionados();
 }
 
@@ -833,12 +758,10 @@ function actualizarCheckboxSelectAll() {
     const checked = document.querySelectorAll('#tbodyFleetSummary input[type="checkbox"]:checked').length;
     const allChecked = total > 0 && checked === total;
     const noneChecked = checked === 0;
-
     const selectAllFleet = document.getElementById('selectAllFleet');
     const selectAllFleetHeader = document.getElementById('selectAllFleetHeader');
     if (selectAllFleet) selectAllFleet.checked = allChecked;
     if (selectAllFleetHeader) selectAllFleetHeader.checked = allChecked;
-
     if (noneChecked) {
         if (selectAllFleet) selectAllFleet.checked = false;
         if (selectAllFleetHeader) selectAllFleetHeader.checked = false;
@@ -854,11 +777,7 @@ function actualizarResumenSeleccionados() {
     const selectedFleetCount = document.getElementById('selectedFleetCount');
     const btnGenerarPdfFlota = document.getElementById('btnGenerarPdfFlota');
 
-    let totalCant = 0;
-    let totalOp = 0;
-    let totalInop = 0;
-    let totalCrit = 0;
-
+    let totalCant = 0, totalOp = 0, totalInop = 0, totalCrit = 0;
     const selectedItems = [];
 
     allFleetSummary.forEach(item => {
@@ -876,25 +795,12 @@ function actualizarResumenSeleccionados() {
     if (selTotalOp) selTotalOp.textContent = totalOp;
     if (selTotalInop) selTotalInop.textContent = totalInop;
     if (selTotalCrit) selTotalCrit.textContent = totalCrit;
-
-    if (selectedFleetCount) {
-        selectedFleetCount.textContent = selectedFleetGroups.size + ' seleccionados';
-    }
-
-    if (btnGenerarPdfFlota) {
-        btnGenerarPdfFlota.disabled = selectedFleetGroups.size === 0;
-    }
+    if (selectedFleetCount) selectedFleetCount.textContent = selectedFleetGroups.size + ' seleccionados';
+    if (btnGenerarPdfFlota) btnGenerarPdfFlota.disabled = selectedFleetGroups.size === 0;
 
     if (!tbodySelectedGroups) return;
-
     if (selectedItems.length === 0) {
-        tbodySelectedGroups.innerHTML = `
-            <tr>
-                <td colspan="5" class="text-center text-muted py-4">
-                    <i class="fas fa-info-circle me-1"></i>Seleccione grupos de la tabla izquierda
-                </td>
-            </tr>
-        `;
+        tbodySelectedGroups.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4"><i class="fas fa-info-circle me-1"></i>Seleccione grupos de la tabla izquierda</td></tr>`;
         return;
     }
 
@@ -918,13 +824,9 @@ function generarPdfFlota() {
         alert('Seleccione al menos un grupo para generar el PDF');
         return;
     }
-
     const btn = document.getElementById('btnGenerarPdfFlota');
     const originalText = btn ? btn.innerHTML : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...';
-    }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...'; }
 
     const reporteData = [];
     allFleetSummary.forEach(item => {
@@ -941,39 +843,32 @@ function generarPdfFlota() {
     });
 
     const nombreInstitucion = getNombreInstitucionPorId(instSeleccionada.resumen);
-
     const form = document.createElement('form');
     form.method = 'POST';
     form.action = '../../data/flota/operatividad.php';
     form.target = '_blank';
     form.style.display = 'none';
-
     const inputData = document.createElement('input');
     inputData.type = 'hidden';
     inputData.name = 'reporteData';
     inputData.value = JSON.stringify(reporteData);
     form.appendChild(inputData);
-
     const inputInst = document.createElement('input');
     inputInst.type = 'hidden';
     inputInst.name = 'nombreInstitucion';
     inputInst.value = nombreInstitucion;
     form.appendChild(inputInst);
-
     document.body.appendChild(form);
     form.submit();
     document.body.removeChild(form);
 
     setTimeout(() => {
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
+        if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
     }, 2000);
 }
 
 // ============================================
-// INICIALIZACIÓN Y EVENTOS DOM
+// INICIALIZACIÓN
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -1036,18 +931,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (fleetElements.fleetSearch) {
-        fleetElements.fleetSearch.addEventListener('input', function () {
-            filtrarResumenFlota();
-        });
+        fleetElements.fleetSearch.addEventListener('input', function () { filtrarResumenFlota(); });
     }
 
     // ============================================
-    // FUNCIONES INTERNAS (definidas ANTES de usarlas)
+    // MOVIMIENTOS
     // ============================================
 
     function initMovimientosDataTable() {
         if (typeof $ === 'undefined' || !$.fn.DataTable) return;
-
         const tableElement = document.getElementById('movimientosTable');
         if (!tableElement) return;
 
@@ -1083,25 +975,15 @@ document.addEventListener('DOMContentLoaded', function () {
         let columnDefs = [];
 
         const renderReferencia = function (data, type, row) {
-            if (row.id_despacho) {
-                return '<a href="javascript:void(0)" class="link-action link-despacho" data-id-despacho="' + row.id_despacho + '" title="Ver detalle del despacho"><i class="fas fa-file-invoice me-1"></i>' + (data || 'N/A') + '</a>';
-            }
-            if (row.id_aceite) {
-                return '<a href="javascript:void(0)" class="link-action link-aceite" data-id-aceite="' + row.id_aceite + '" title="Ver detalle del cambio de aceite"><i class="fas fa-oil-can me-1"></i>' + (data || 'N/A') + '</a>';
-            }
-            if (row.id_mantenimiento) {
-                return '<a href="javascript:void(0)" class="link-action link-mantenimiento" data-id-mantenimiento="' + row.id_mantenimiento + '" title="Ver detalle del mantenimiento"><i class="fas fa-tools me-1"></i>' + (data || 'N/A') + '</a>';
-            }
-            if (row.id_kilometraje) {
-                return '<a href="javascript:void(0)" class="link-action link-kilometraje" data-id-kilometraje="' + row.id_kilometraje + '" title="Ver detalle del kilometraje"><i class="fas fa-tachometer-alt me-1"></i>' + (data || 'N/A') + '</a>';
-            }
+            if (row.id_despacho) return '<a href="javascript:void(0)" class="link-action link-despacho" data-id-despacho="' + row.id_despacho + '"><i class="fas fa-file-invoice me-1"></i>' + (data || 'N/A') + '</a>';
+            if (row.id_aceite) return '<a href="javascript:void(0)" class="link-action link-aceite" data-id-aceite="' + row.id_aceite + '"><i class="fas fa-oil-can me-1"></i>' + (data || 'N/A') + '</a>';
+            if (row.id_mantenimiento) return '<a href="javascript:void(0)" class="link-action link-mantenimiento" data-id-mantenimiento="' + row.id_mantenimiento + '"><i class="fas fa-tools me-1"></i>' + (data || 'N/A') + '</a>';
+            if (row.id_kilometraje) return '<a href="javascript:void(0)" class="link-action link-kilometraje" data-id-kilometraje="' + row.id_kilometraje + '"><i class="fas fa-tachometer-alt me-1"></i>' + (data || 'N/A') + '</a>';
             return '<small class="fw-bold font-monospace">' + (data || 'N/A') + '</small>';
         };
 
         const renderUnidad = function (data, type, row) {
-            if (row.id_flota) {
-                return '<a href="javascript:void(0)" class="link-action link-unidad" data-id-flota="' + row.id_flota + '" data-id-unidad="' + (data || '') + '" title="Ver hoja de vida"><i class="fas fa-bus me-1"></i>' + (data || 'N/A') + '</a>';
-            }
+            if (row.id_flota) return '<a href="javascript:void(0)" class="link-action link-unidad" data-id-flota="' + row.id_flota + '" data-id-unidad="' + (data || '') + '"><i class="fas fa-bus me-1"></i>' + (data || 'N/A') + '</a>';
             return '<span class="badge bg-light text-dark border">' + (data || 'N/A') + '</span>';
         };
 
@@ -1126,17 +1008,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 { targets: 5, render: (d) => { const km = parseInt(d || 0); return km > 0 ? '<small class="text-end">' + km.toLocaleString('es-VE') + ' KM</small>' : '<small class="text-muted">N/A</small>'; } },
                 { targets: 6, render: (d) => { const km = parseInt(d || 0); return km > 0 ? '<small class="text-end">' + km.toLocaleString('es-VE') + ' KM</small>' : '<small class="text-muted">N/A</small>'; } },
                 { targets: 7, render: (d) => { const km = parseInt(d || 0); return km > 0 ? '<small class="text-end">' + km.toLocaleString('es-VE') + ' KM</small>' : '<small class="text-muted">N/A</small>'; } },
-                {
-                    targets: 8,
-                    render: function (data) {
-                        const estado = data || 'Sin registro';
-                        let badgeClass = 'bg-secondary';
-                        if (estado === 'OK') badgeClass = 'bg-success';
-                        else if (estado === 'Requerido') badgeClass = 'bg-danger';
-                        else if (estado === 'Próximo') badgeClass = 'bg-warning text-dark';
-                        return '<span class="badge ' + badgeClass + '">' + estado + '</span>';
-                    }
-                }
+                { targets: 8, render: function (data) { const estado = data || 'Sin registro'; let badgeClass = 'bg-secondary'; if (estado === 'OK') badgeClass = 'bg-success'; else if (estado === 'Requerido') badgeClass = 'bg-danger'; else if (estado === 'Próximo') badgeClass = 'bg-warning text-dark'; return '<span class="badge ' + badgeClass + '">' + estado + '</span>'; } }
             ];
         } else if (isDespachos) {
             columns = [
@@ -1226,26 +1098,12 @@ document.addEventListener('DOMContentLoaded', function () {
             autoWidth: false
         });
 
-        if (movElements.btnExportPDF) {
-            movElements.btnExportPDF.onclick = function () {
-                if (movimientosTable) movimientosTable.button('.buttons-pdf').trigger();
-            };
-        }
-        if (movElements.btnExportExcel) {
-            movElements.btnExportExcel.onclick = function () {
-                if (movimientosTable) movimientosTable.button('.buttons-excel').trigger();
-            };
-        }
+        if (movElements.btnExportPDF) movElements.btnExportPDF.onclick = function () { if (movimientosTable) movimientosTable.button('.buttons-pdf').trigger(); };
+        if (movElements.btnExportExcel) movElements.btnExportExcel.onclick = function () { if (movimientosTable) movimientosTable.button('.buttons-excel').trigger(); };
     }
 
     function cargarEstadoFlota() {
-        fetch('?url=Publico/getEstadoFlota', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_institucion: instSeleccionada.flota
-            })
-        })
+        fetch('?url=Publico/getEstadoFlota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_institucion: instSeleccionada.flota }) })
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.data) {
@@ -1260,13 +1118,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function cargarEstadoAceite() {
-        fetch('?url=Publico/getEstadoAceite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_institucion: instSeleccionada.aceite
-            })
-        })
+        fetch('?url=Publico/getEstadoAceite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_institucion: instSeleccionada.aceite }) })
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.data) {
@@ -1279,13 +1131,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function cargarResumenFlota() {
-        fetch('?url=Publico/getResumenFlota', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id_institucion: instSeleccionada.resumen
-            })
-        })
+        fetch('?url=Publico/getResumenFlota', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id_institucion: instSeleccionada.resumen }) })
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.data) {
@@ -1299,31 +1145,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function filtrarResumenFlota() {
         const query = fleetElements.fleetSearch?.value?.toLowerCase().trim() || '';
-        if (!query) {
-            filteredFleetSummary = [...allFleetSummary];
-        } else {
-            filteredFleetSummary = allFleetSummary.filter(item => {
-                const searchStr = `${item.marca_modelo || ''} ${item.transmision || ''} ${item.combustible || ''}`.toLowerCase();
-                return searchStr.includes(query);
-            });
-        }
+        if (!query) filteredFleetSummary = [...allFleetSummary];
+        else filteredFleetSummary = allFleetSummary.filter(item => {
+            const searchStr = `${item.marca_modelo || ''} ${item.transmision || ''} ${item.combustible || ''}`.toLowerCase();
+            return searchStr.includes(query);
+        });
         renderFleetSummaryTable();
     }
 
     function renderFleetSummaryTable() {
         if (!fleetElements.tbodyFleetSummary) return;
         fleetElements.tbodyFleetSummary.innerHTML = '';
-
         selectedFleetGroups.clear();
-
         filteredFleetSummary.forEach((item, index) => {
             const tr = document.createElement('tr');
             const key = item.marca_modelo + '|' + item.transmision + '|' + item.combustible;
             const isSelected = selectedFleetGroups.has(key);
             tr.innerHTML = `
-                <td class="text-center">
-                    <input class="form-check-input" type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleFleetGroup(${index}, this)">
-                </td>
+                <td class="text-center"><input class="form-check-input" type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleFleetGroup(${index}, this)"></td>
                 <td><small class="fw-bold">${item.marca_modelo}</small></td>
                 <td><small>${item.transmision || '-'}</small></td>
                 <td><small>${item.combustible || '-'}</small></td>
@@ -1333,15 +1172,12 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             fleetElements.tbodyFleetSummary.appendChild(tr);
         });
-
         actualizarResumenSeleccionados();
     }
 
     function cargarMovimientos() {
         const spinner = document.getElementById('loadingSpinner');
         if (spinner) spinner.style.display = 'flex';
-        const emptyState = document.getElementById('emptyState');
-        if (emptyState) emptyState.style.display = 'none';
         const tipoMovimiento = document.getElementById('tipoMovimiento')?.value || 'todos';
         const requestData = {
             fechaInicio: (document.getElementById('fechaInicio')?.value) || '',
@@ -1354,10 +1190,7 @@ document.addEventListener('DOMContentLoaded', function () {
             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify(requestData)
         })
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            })
+            .then(response => { if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return response.json(); })
             .then(data => {
                 const spinner = document.getElementById('loadingSpinner');
                 if (spinner) spinner.style.display = 'none';
@@ -1399,9 +1232,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         movimientosTable.draw();
                     }
                     if (allMovimientos.length === 0) showMovimientosEmptyState();
-                } else {
-                    showMovimientosEmptyState();
-                }
+                } else { showMovimientosEmptyState(); }
             })
             .catch(error => {
                 console.error('Error cargando movimientos:', error);
@@ -1421,19 +1252,10 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function showMovimientosEmptyState() {
-        try {
-            const spinner = document.getElementById('loadingSpinner');
-            if (spinner) spinner.style.display = 'none';
-        } catch (e) { console.warn(e); }
-        try {
-            if (movimientosTable) movimientosTable.clear().draw();
-        } catch (e) { console.error(e); }
+        try { const spinner = document.getElementById('loadingSpinner'); if (spinner) spinner.style.display = 'none'; } catch (e) { console.warn(e); }
+        try { if (movimientosTable) movimientosTable.clear().draw(); } catch (e) { console.error(e); }
     }
 
-    // ============================================
-    // EXPONER FUNCIONES AL ÁMBITO GLOBAL
-    // ============================================
-    // Esto permite que cargarInstituciones() (que se ejecuta antes) las encuentre
     window.cargarEstadoFlota = cargarEstadoFlota;
     window.cargarEstadoAceite = cargarEstadoAceite;
     window.cargarResumenFlota = cargarResumenFlota;
@@ -1441,7 +1263,7 @@ document.addEventListener('DOMContentLoaded', function () {
     window.initMovimientosDataTable = initMovimientosDataTable;
 
     // ============================================
-    // FLOTA - Event listeners de cards
+    // FLOTA
     // ============================================
     const flotaStatusMap = {
         '1': { titulo: 'Unidades Operativas', badgeClass: 'bg-success' },
@@ -1453,9 +1275,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#estadoFlota .status-card-clickable').forEach(card => {
         card.addEventListener('click', function () {
             const status = this.getAttribute('data-status');
-            document.querySelectorAll('#estadoFlota .status-card-clickable').forEach(c => {
-                c.classList.remove('shadow', 'border-3', 'bg-light');
-            });
+            document.querySelectorAll('#estadoFlota .status-card-clickable').forEach(c => c.classList.remove('shadow', 'border-3', 'bg-light'));
             this.classList.add('shadow', 'bg-light');
             currentFlotaStatus = status;
             cargarUnidadesPorEstadoFlota(status);
@@ -1463,34 +1283,20 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function cargarUnidadesPorEstadoFlota(status) {
-        if (flotaElements.estadoFlotaUnidadesTable) {
-            flotaElements.estadoFlotaUnidadesTable.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="small text-muted mt-2">Cargando...</p></div>';
-        }
-        fetch('?url=Publico/getUnidadesPorEstado', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                status: status,
-                id_institucion: instSeleccionada.flota
-            })
-        })
+        if (flotaElements.estadoFlotaUnidadesTable) flotaElements.estadoFlotaUnidadesTable.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="small text-muted mt-2">Cargando...</p></div>';
+        fetch('?url=Publico/getUnidadesPorEstado', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status, id_institucion: instSeleccionada.flota }) })
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.data)) {
                     flotaUnidadesData = data.data;
                     filtrarYRenderizarUnidadesFlota();
-                } else {
-                    renderizarTablaFlotaVacia('No se encontraron unidades.');
-                }
+                } else renderizarTablaFlotaVacia('No se encontraron unidades.');
             })
             .catch(err => { console.error(err); renderizarTablaFlotaVacia('Error al cargar.'); });
     }
-
     window.cargarUnidadesPorEstadoFlota = cargarUnidadesPorEstadoFlota;
 
-    flotaElements.estadoFlotaUnidadesSearch?.addEventListener('input', function () {
-        filtrarYRenderizarUnidadesFlota();
-    });
+    flotaElements.estadoFlotaUnidadesSearch?.addEventListener('input', function () { filtrarYRenderizarUnidadesFlota(); });
 
     function filtrarYRenderizarUnidadesFlota() {
         const query = flotaElements.estadoFlotaUnidadesSearch?.value?.toLowerCase().trim() || '';
@@ -1504,21 +1310,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderizarTablaUnidadesFlota() {
         if (!flotaElements.estadoFlotaUnidadesTable) return;
-        if (flotaUnidadesFiltered.length === 0) {
-            renderizarTablaFlotaVacia('Sin datos.');
-            return;
-        }
+        if (flotaUnidadesFiltered.length === 0) { renderizarTablaFlotaVacia('Sin datos.'); return; }
         const infoEstado = flotaStatusMap[currentFlotaStatus || '1'] || { badgeClass: 'bg-secondary', titulo: 'Unidades' };
-        let html = `
-            <div class="table-responsive border rounded bg-white" style="max-height: 350px;">
-                <div class="table-title bg-light p-2 border-bottom d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="fas fa-bus me-2"></i>${infoEstado.titulo}</h6>
-                    <span class="badge ${infoEstado.badgeClass}">${flotaUnidadesFiltered.length} unidades</span>
-                </div>
-                <table class="table table-hover table-sm mb-0">
-                    <thead class="table-dark sticky-top"><tr><th style="width: 50px;">#</th><th>Unidad</th><th>Marca / Modelo</th><th>Placa</th><th>Transmisión</th><th>Combustible</th></tr></thead>
-                    <tbody>
-        `;
+        let html = `<div class="table-responsive border rounded bg-white" style="max-height: 350px;"><div class="table-title bg-light p-2 border-bottom d-flex justify-content-between align-items-center"><h6 class="mb-0"><i class="fas fa-bus me-2"></i>${infoEstado.titulo}</h6><span class="badge ${infoEstado.badgeClass}">${flotaUnidadesFiltered.length} unidades</span></div><table class="table table-hover table-sm mb-0"><thead class="table-dark sticky-top"><tr><th style="width: 50px;">#</th><th>Unidad</th><th>Marca / Modelo</th><th>Placa</th><th>Transmisión</th><th>Combustible</th></tr></thead><tbody>`;
         flotaUnidadesFiltered.forEach((u, index) => {
             html += `<tr><td class="fw-bold text-center">${index + 1}</td><td><span class="badge bg-light text-dark border">${u.id_unidad || 'N/A'}</span></td><td><small>${u.marca_unidad || ''} ${u.modelo_unidad || ''}</small></td><td><small class="font-monospace">${u.vim_unidad || '-'}</small></td><td><small>${u.transmision || '-'}</small></td><td><small>${u.tipo_combustible || '-'}</small></td></tr>`;
         });
@@ -1532,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     // ============================================
-    // ACEITE - Event listeners de cards
+    // ACEITE
     // ============================================
     const aceiteStatusMap = {
         'ok': { titulo: 'Mantenimiento OK', badgeClass: 'bg-success' },
@@ -1543,9 +1337,7 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('#estadoAceite .status-card-clickable').forEach(card => {
         card.addEventListener('click', function () {
             const status = this.getAttribute('data-status');
-            document.querySelectorAll('#estadoAceite .status-card-clickable').forEach(c => {
-                c.classList.remove('shadow', 'border-3', 'bg-light');
-            });
+            document.querySelectorAll('#estadoAceite .status-card-clickable').forEach(c => c.classList.remove('shadow', 'border-3', 'bg-light'));
             this.classList.add('shadow', 'bg-light');
             currentAceiteStatus = status;
             cargarUnidadesPorEstadoAceite(status);
@@ -1553,34 +1345,20 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function cargarUnidadesPorEstadoAceite(status) {
-        if (aceiteElements.estadoAceiteUnidadesTable) {
-            aceiteElements.estadoAceiteUnidadesTable.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="small text-muted mt-2">Cargando...</p></div>';
-        }
-        fetch('?url=Publico/getUnidadesPorEstadoAceite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                status: status,
-                id_institucion: instSeleccionada.aceite
-            })
-        })
+        if (aceiteElements.estadoAceiteUnidadesTable) aceiteElements.estadoAceiteUnidadesTable.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div><p class="small text-muted mt-2">Cargando...</p></div>';
+        fetch('?url=Publico/getUnidadesPorEstadoAceite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status, id_institucion: instSeleccionada.aceite }) })
             .then(res => res.json())
             .then(data => {
                 if (data.success && Array.isArray(data.data)) {
                     aceiteUnidadesData = data.data;
                     filtrarYRenderizarUnidadesAceite();
-                } else {
-                    renderizarTablaAceiteVacia('No se encontraron unidades.');
-                }
+                } else renderizarTablaAceiteVacia('No se encontraron unidades.');
             })
             .catch(err => { console.error(err); renderizarTablaAceiteVacia('Error al cargar.'); });
     }
-
     window.cargarUnidadesPorEstadoAceite = cargarUnidadesPorEstadoAceite;
 
-    aceiteElements.estadoAceiteUnidadesSearch?.addEventListener('input', function () {
-        filtrarYRenderizarUnidadesAceite();
-    });
+    aceiteElements.estadoAceiteUnidadesSearch?.addEventListener('input', function () { filtrarYRenderizarUnidadesAceite(); });
 
     function filtrarYRenderizarUnidadesAceite() {
         const query = aceiteElements.estadoAceiteUnidadesSearch?.value?.toLowerCase().trim() || '';
@@ -1594,21 +1372,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function renderizarTablaUnidadesAceite() {
         if (!aceiteElements.estadoAceiteUnidadesTable) return;
-        if (aceiteUnidadesFiltered.length === 0) {
-            renderizarTablaAceiteVacia('Sin datos.');
-            return;
-        }
+        if (aceiteUnidadesFiltered.length === 0) { renderizarTablaAceiteVacia('Sin datos.'); return; }
         const infoEstado = aceiteStatusMap[currentAceiteStatus] || { badgeClass: 'bg-secondary', titulo: 'Unidades' };
-        let html = `
-            <div class="table-responsive border rounded bg-white" style="max-height: 350px;">
-                <div class="table-title bg-light p-2 border-bottom d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="fas fa-oil-can me-2"></i>${infoEstado.titulo}</h6>
-                    <span class="badge ${infoEstado.badgeClass}">${aceiteUnidadesFiltered.length} unidades</span>
-                </div>
-                <table class="table table-hover table-sm mb-0">
-                    <thead class="table-dark sticky-top"><tr><th style="width: 50px;">#</th><th>Unidad</th><th>Marca / Modelo</th><th>Placa</th><th>Transmisión</th><th>Combustible</th><th class="text-end">KM Actual</th><th class="text-end">Últ. Cambio</th><th class="text-end">Próx. Cambio</th><th class="text-center">Estado</th></tr></thead>
-                    <tbody>
-        `;
+        let html = `<div class="table-responsive border rounded bg-white" style="max-height: 350px;"><div class="table-title bg-light p-2 border-bottom d-flex justify-content-between align-items-center"><h6 class="mb-0"><i class="fas fa-oil-can me-2"></i>${infoEstado.titulo}</h6><span class="badge ${infoEstado.badgeClass}">${aceiteUnidadesFiltered.length} unidades</span></div><table class="table table-hover table-sm mb-0"><thead class="table-dark sticky-top"><tr><th style="width: 50px;">#</th><th>Unidad</th><th>Marca / Modelo</th><th>Placa</th><th>Transmisión</th><th>Combustible</th><th class="text-end">KM Actual</th><th class="text-end">Últ. Cambio</th><th class="text-end">Próx. Cambio</th><th class="text-center">Estado</th></tr></thead><tbody>`;
         aceiteUnidadesFiltered.forEach((u, index) => {
             const kmActual = parseInt(u.km_actual || 0);
             const ultimoCambio = parseInt(u.ultimo_cambio_aceite || 0);
@@ -1621,20 +1387,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 else if (faltante <= 1000) { estadoAceite = 'Próximo'; estadoClass = 'text-warning fw-bold'; }
                 else { estadoAceite = 'OK'; estadoClass = 'text-success fw-bold'; }
             }
-            html += `
-                <tr>
-                    <td class="fw-bold text-center">${index + 1}</td>
-                    <td><span class="badge bg-light text-dark border">${u.id_unidad || 'N/A'}</span></td>
-                    <td><small>${u.marca_unidad || ''} ${u.modelo_unidad || ''}</small></td>
-                    <td><small class="font-monospace">${u.vim_unidad || '-'}</small></td>
-                    <td><small>${u.transmision || '-'}</small></td>
-                    <td><small>${u.tipo_combustible || '-'}</small></td>
-                    <td class="text-end"><small>${kmActual > 0 ? kmActual.toLocaleString('es-VE') : 'N/A'}</small></td>
-                    <td class="text-end"><small>${ultimoCambio > 0 ? ultimoCambio.toLocaleString('es-VE') : 'N/A'}</small></td>
-                    <td class="text-end"><small>${proximoCambio > 0 ? proximoCambio.toLocaleString('es-VE') : 'N/A'}</small></td>
-                    <td class="text-center"><span class="${estadoClass}">${estadoAceite}</span></td>
-                </tr>
-            `;
+            html += `<tr><td class="fw-bold text-center">${index + 1}</td><td><span class="badge bg-light text-dark border">${u.id_unidad || 'N/A'}</span></td><td><small>${u.marca_unidad || ''} ${u.modelo_unidad || ''}</small></td><td><small class="font-monospace">${u.vim_unidad || '-'}</small></td><td><small>${u.transmision || '-'}</small></td><td><small>${u.tipo_combustible || '-'}</small></td><td class="text-end"><small>${kmActual > 0 ? kmActual.toLocaleString('es-VE') : 'N/A'}</small></td><td class="text-end"><small>${ultimoCambio > 0 ? ultimoCambio.toLocaleString('es-VE') : 'N/A'}</small></td><td class="text-end"><small>${proximoCambio > 0 ? proximoCambio.toLocaleString('es-VE') : 'N/A'}</small></td><td class="text-center"><span class="${estadoClass}">${estadoAceite}</span></td></tr>`;
         });
         html += `</tbody></table></div>`;
         aceiteElements.estadoAceiteUnidadesTable.innerHTML = html;
@@ -1664,21 +1417,10 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...';
         btn.disabled = true;
 
-        fetch('?url=Publico/getUnidadesPorEstadoAceite', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-            body: JSON.stringify({
-                status: 'todos',
-                id_institucion: instSeleccionada.aceite
-            })
-        })
+        fetch('?url=Publico/getUnidadesPorEstadoAceite', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ status: 'todos', id_institucion: instSeleccionada.aceite }) })
             .then(response => response.json())
             .then(data => {
-                if (!data.success || !data.data) {
-                    alert('Error al obtener datos');
-                    btn.innerHTML = originalText; btn.disabled = false;
-                    return;
-                }
+                if (!data.success || !data.data) { alert('Error al obtener datos'); btn.innerHTML = originalText; btn.disabled = false; return; }
                 const allUnits = data.data;
                 const categorized = { 'Requerido': [], 'Próximo': [], 'Bien': [], 'Sin Registro': [] };
                 allUnits.forEach(unidad => {
@@ -1704,26 +1446,12 @@ document.addEventListener('DOMContentLoaded', function () {
                             else if (faltante <= 1000) estadoAceite = 'Próximo';
                             else estadoAceite = 'Bien';
                         }
-                        items.push({
-                            id_unidad: unidad.id_unidad, marca_unidad: unidad.marca_unidad, modelo_unidad: unidad.modelo_unidad,
-                            kilometraje_actual: kmActual, ultimo_cambio_km: ultimoCambio > 0 ? ultimoCambio : null,
-                            proximo_cambio_km: proximoCambio > 0 ? proximoCambio : null, estado: estadoAceite
-                        });
+                        items.push({ id_unidad: unidad.id_unidad, marca_unidad: unidad.marca_unidad, modelo_unidad: unidad.modelo_unidad, kilometraje_actual: kmActual, ultimo_cambio_km: ultimoCambio > 0 ? ultimoCambio : null, proximo_cambio_km: proximoCambio > 0 ? proximoCambio : null, estado: estadoAceite });
                     });
                 });
-                const counts = {
-                    'Requerido': categorized['Requerido'].length, 'Próximo': categorized['Próximo'].length,
-                    'Bien': categorized['Bien'].length, 'Sin Registro': categorized['Sin Registro'].length
-                };
-
+                const counts = { 'Requerido': categorized['Requerido'].length, 'Próximo': categorized['Próximo'].length, 'Bien': categorized['Bien'].length, 'Sin Registro': categorized['Sin Registro'].length };
                 const nombreInstitucion = getNombreInstitucionPorId(instSeleccionada.aceite);
-
-                const reporteData = {
-                    items: items,
-                    counts: counts,
-                    filtro: filtros.join(', '),
-                    nombre_institucion: nombreInstitucion
-                };
+                const reporteData = { items: items, counts: counts, filtro: filtros.join(', '), nombre_institucion: nombreInstitucion };
                 const form = document.createElement('form');
                 form.method = 'POST';
                 form.action = '../../data/flota/reporteaceite.php';
@@ -1740,12 +1468,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             })
-            .catch(error => {
-                console.error(error);
-                alert('Error al generar el reporte');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            });
+            .catch(error => { console.error(error); alert('Error al generar el reporte'); btn.innerHTML = originalText; btn.disabled = false; });
     }
 
     // ============================================
@@ -1761,22 +1484,19 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    movElements.btnFiltrar?.addEventListener('click', function () {
-        initMovimientosDataTable();
-        cargarMovimientos();
-    });
-
+    movElements.btnFiltrar?.addEventListener('click', function () { initMovimientosDataTable(); cargarMovimientos(); });
     movElements.movimientosSearch?.addEventListener('input', applyMovimientosFilters);
 
     // ============================================
-    // ESTACIÓN - VENTAS (NO MODIFICADO)
+    // ESTACIÓN - VENTAS
     // ============================================
     const estacionElements = {
         fechaInicio: document.getElementById('estacionFechaInicio'),
         fechaFin: document.getElementById('estacionFechaFin'),
         estacionSelect: document.getElementById('estacionSelect'),
         estacionSearch: document.getElementById('estacionSearch'),
-        btnFiltrar: document.getElementById('btnFiltrarEstacion')
+        btnFiltrar: document.getElementById('btnFiltrarEstacion'),
+        btnGenerarPdf: document.getElementById('btnGenerarPdfEstacion')
     };
 
     let estacionTable = null;
@@ -1789,15 +1509,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function cargarEstacionesSelect() {
-        fetch('?url=Publico/getVentasEstacionData', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fechaInicio: firstDayStr, fechaFin: todayStr, estacionId: 'todas' })
-        })
+        fetch('?url=Publico/getVentasEstacionData', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fechaInicio: firstDayStr, fechaFin: todayStr, estacionId: 'todas' }) })
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.estaciones) {
                     const select = estacionElements.estacionSelect;
                     if (select) {
+                        select.innerHTML = '<option value="todas" selected>Todas las estaciones</option>';
                         data.estaciones.forEach(est => {
                             const option = document.createElement('option');
                             option.value = est.id_estacion;
@@ -1812,7 +1530,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function initEstacionDataTable() {
         if (typeof $ === 'undefined' || !$.fn.DataTable) return;
-
         const tableElement = document.getElementById('estacionTable');
         if (!tableElement) return;
 
@@ -1825,8 +1542,9 @@ document.addEventListener('DOMContentLoaded', function () {
             { data: null, title: '#', width: '40px', className: 'text-center' },
             { data: 'fecha', title: 'Fecha', width: '100px' },
             { data: 'estacion', title: 'Estación' },
-            { data: 'total_litros', title: 'Total Litros', width: '100px' },
-            { data: 'total_ventas', title: 'Total Ventas', width: '100px' },
+            { data: 'total_litros', title: 'Litros', width: '130px' },
+            { data: 'total_ventas', title: 'Ventas', width: '90px' },
+            { data: 'total_bs', title: 'Monto Bs', width: '130px' },
             { data: 'vendedores', title: 'Vendedores' },
             { data: 'tipos_vehiculo', title: 'Tipos de Vehículo' }
         ];
@@ -1835,19 +1553,26 @@ document.addEventListener('DOMContentLoaded', function () {
             { targets: 0, render: (d, t, r, m) => m.row + 1 },
             { targets: 1, render: (d) => '<small>' + formatearFecha(d) + '</small>' },
             { targets: 2, render: (d) => '<strong>' + (d || 'N/A') + '</strong>' },
-            { targets: 3, render: (d) => '<small class="text-end fw-bold">' + (parseFloat(d || 0)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L</small>' },
-            { targets: 4, render: (d) => '<small class="text-center fw-bold">' + (d || 0) + '</small>' },
             {
-                targets: 5,
-                render: function (data) {
-                    if (!data || data.length === 0) return '<small class="text-muted">-</small>';
-                    let html = '<div class="small">';
-                    data.forEach(v => {
-                        html += '<div><strong>' + v.nombre + ':</strong> ' + v.litros.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L (' + v.ventas + ' ventas)</div>';
-                    });
-                    html += '</div>';
+                targets: 3,
+                render: function (d, type, row) {
+                    const total = parseFloat(d || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const gas = parseFloat(row.litros_gasolina || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    const die = parseFloat(row.litros_diesel || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    let html = `<small class="fw-bold">${total} L</small>`;
+                    if (parseFloat(row.litros_gasolina || 0) > 0 || parseFloat(row.litros_diesel || 0) > 0) {
+                        html += '<div class="litros-breakdown">';
+                        if (parseFloat(row.litros_gasolina || 0) > 0) html += `<div><i class="fas fa-gas-pump gas me-1"></i>${gas} L</div>`;
+                        if (parseFloat(row.litros_diesel || 0) > 0) html += `<div><i class="fas fa-oil-can die me-1"></i>${die} L</div>`;
+                        html += '</div>';
+                    }
                     return html;
                 }
+            },
+            { targets: 4, render: (d) => '<span class="badge bg-primary">' + (d || 0) + '</span>' },
+            {
+                targets: 5,
+                render: (d) => '<small class="fw-bold text-success">' + parseFloat(d || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Bs</small>'
             },
             {
                 targets: 6,
@@ -1855,7 +1580,19 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!data || data.length === 0) return '<small class="text-muted">-</small>';
                     let html = '<div class="small">';
                     data.forEach(v => {
-                        html += '<div><strong>' + v.tipo + ':</strong> ' + v.cantidad + ' unidades, ' + v.litros.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L</div>';
+                        html += '<div><strong>' + v.nombre + ':</strong> ' + v.ventas + ' ventas (' + v.litros.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L)</div>';
+                    });
+                    html += '</div>';
+                    return html;
+                }
+            },
+            {
+                targets: 7,
+                render: function (data) {
+                    if (!data || data.length === 0) return '<small class="text-muted">-</small>';
+                    let html = '<div class="small">';
+                    data.forEach(v => {
+                        html += '<div><strong>' + v.tipo + ':</strong> ' + v.cantidad + ' (' + v.litros.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L)</div>';
                     });
                     html += '</div>';
                     return html;
@@ -1873,8 +1610,105 @@ document.addEventListener('DOMContentLoaded', function () {
             language: { url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json' },
             dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6">>rtip',
             responsive: true,
-            autoWidth: false
+            autoWidth: false,
+            createdRow: function (row, data, dataIndex) {
+                $(row).addClass('clickable-row');
+                $(row).attr('data-row-index', dataIndex);
+            }
         });
+
+        $('#estacionTable tbody').off('click', 'tr').on('click', 'tr', function (e) {
+            if ($(e.target).is('a') || $(e.target).closest('a').length) return;
+            const data = estacionTable.row(this).data();
+            if (data) mostrarModalDetalleEstacion(data);
+        });
+    }
+
+    function mostrarModalDetalleEstacion(item) {
+        const modalBody = document.getElementById('modalDetalleEstacionBody');
+        if (!modalBody) return;
+
+        const ventas = item.ventas || [];
+
+        const porCombustible = {};
+        ventas.forEach(v => {
+            const c = v.tipo_combustible || 'Sin clasificar';
+            if (!porCombustible[c]) porCombustible[c] = [];
+            porCombustible[c].push(v);
+        });
+
+        // Bloque de vendedores (badges arriba)
+        let vendedoresHtml = '';
+        if (item.vendedores && item.vendedores.length > 0) {
+            vendedoresHtml = '<div class="d-flex flex-wrap gap-2 mb-3">';
+            item.vendedores.forEach(v => {
+                vendedoresHtml += `
+                    <span class="badge bg-info text-dark p-2" title="Monto: ${parseFloat(v.monto || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs">
+                        <i class="fas fa-user me-1"></i>${v.nombre}
+                        <span class="ms-1 opacity-75">— ${v.ventas} ventas</span>
+                        <span class="ms-1">(${parseFloat(v.litros || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L)</span>
+                    </span>
+                `;
+            });
+            vendedoresHtml += '</div>';
+        }
+
+        let html = `
+            <div class="row g-2 mb-3">
+                <div class="col-md-3"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Fecha</small><strong>${formatearFecha(item.fecha)}</strong></div></div></div>
+                <div class="col-md-3"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Estación</small><strong>${item.estacion}</strong></div></div></div>
+                <div class="col-md-3"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Total Ventas</small><strong>${item.total_ventas}</strong></div></div></div>
+                <div class="col-md-3"><div class="card bg-light border-0"><div class="card-body text-center p-2"><small class="text-muted d-block">Total Litros</small><strong>${parseFloat(item.total_litros).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L</strong></div></div></div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-4"><div class="card border-success"><div class="card-body text-center p-2"><small class="text-muted d-block">Total en Bs</small><strong class="text-success">${parseFloat(item.total_bs).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</strong></div></div></div>
+                <div class="col-md-4"><div class="card border-info"><div class="card-body text-center p-2"><small class="text-muted d-block">Efectivo Bs</small><strong class="text-info">${parseFloat(item.total_efectivo).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</strong></div></div></div>
+                <div class="col-md-4"><div class="card border-warning"><div class="card-body text-center p-2"><small class="text-muted d-block">Débito / Punto</small><strong class="text-warning">${parseFloat(item.total_debito).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</strong></div></div></div>
+            </div>
+        `;
+
+        if (vendedoresHtml) {
+            html += `
+                <h6 class="fw-bold border-bottom pb-2 mt-3"><i class="fas fa-users me-1"></i>Vendedores</h6>
+                ${vendedoresHtml}
+            `;
+        }
+
+        if (Object.keys(porCombustible).length > 0) {
+            html += '<h6 class="fw-bold border-bottom pb-2 mt-3"><i class="fas fa-gas-pump me-1"></i>Desglose por Tipo de Combustible</h6>';
+            html += '<div class="table-responsive"><table class="table table-sm table-bordered mb-3"><thead class="table-light"><tr><th>Combustible</th><th class="text-center">Ventas</th><th class="text-end">Litros</th><th class="text-end">Monto Bs</th></tr></thead><tbody>';
+            Object.entries(porCombustible).forEach(([nombre, lista]) => {
+                const subLitros = lista.reduce((acc, v) => acc + parseFloat(v.litros || 0), 0);
+                const subMonto = lista.reduce((acc, v) => acc + parseFloat(v.monto_bs || 0), 0);
+                html += `<tr><td><strong>${nombre}</strong></td><td class="text-center">${lista.length}</td><td class="text-end">${subLitros.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L</td><td class="text-end">${subMonto.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs</td></tr>`;
+            });
+            html += '</tbody></table></div>';
+        }
+
+        html += '<h6 class="fw-bold border-bottom pb-2 mt-3"><i class="fas fa-list me-1"></i>Detalle de Tickets</h6>';
+        html += '<div class="table-responsive" style="max-height: 400px; overflow-y: auto;"><table class="table table-sm table-hover table-striped mb-0"><thead class="table-dark sticky-top"><tr><th style="width: 60px;">Ticket</th><th style="width: 80px;">Hora</th><th>Vehículo</th><th>Combustible</th><th>Tipo Pago</th><th class="text-end">Litros</th><th class="text-end">Monto</th></tr></thead><tbody>';
+
+        ventas.forEach(v => {
+            const simbolo = (v.tipo_pago || '').toLowerCase().includes('divisa') ? '$' : 'Bs';
+            html += `<tr>
+                <td class="text-center fw-bold">${v.id_venta}</td>
+                <td class="text-center"><small>${v.hora_venta || '-'}</small></td>
+                <td><small>${v.tipo_vehiculo}</small></td>
+                <td><small>${v.tipo_combustible}</small></td>
+                <td><small>${v.tipo_pago}</small></td>
+                <td class="text-end"><small>${parseFloat(v.litros).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} L</small></td>
+                <td class="text-end"><small>${parseFloat(v.monto).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${simbolo}</small></td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+
+        modalBody.innerHTML = html;
+
+        const modalEl = document.getElementById('modalDetalleEstacion');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
     }
 
     function cargarVentasEstacion() {
@@ -1886,13 +1720,11 @@ document.addEventListener('DOMContentLoaded', function () {
             method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
             body: JSON.stringify({ fechaInicio, fechaFin, estacionId })
         })
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                return response.json();
-            })
+            .then(response => { if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`); return response.json(); })
             .then(data => {
                 if (data.success && Array.isArray(data.data)) {
                     allEstacionData = data.data;
+                    totalesCombustibleEstacion = Array.isArray(data.totales_combustible) ? data.totales_combustible : [];
                     if (estacionTable) {
                         estacionTable.clear();
                         estacionTable.rows.add(allEstacionData);
@@ -1900,17 +1732,17 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     renderEstacionChart();
                 } else {
-                    if (estacionTable) {
-                        estacionTable.clear().draw();
-                    }
+                    allEstacionData = [];
+                    totalesCombustibleEstacion = [];
+                    if (estacionTable) estacionTable.clear().draw();
                     renderEstacionChart();
                 }
             })
             .catch(error => {
                 console.error('Error cargando ventas de estación:', error);
-                if (estacionTable) {
-                    estacionTable.clear().draw();
-                }
+                allEstacionData = [];
+                totalesCombustibleEstacion = [];
+                if (estacionTable) estacionTable.clear().draw();
                 renderEstacionChart();
             });
     }
@@ -1928,29 +1760,24 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!ctx || !allEstacionData || allEstacionData.length === 0) {
             if (ctx) ctx.style.display = 'none';
             if (emptyMsg) emptyMsg.style.display = 'block';
+            if (estacionChart) { try { estacionChart.destroy(); } catch(e){} estacionChart = null; }
             return;
         }
-
         if (emptyMsg) emptyMsg.style.display = 'none';
         ctx.style.display = 'block';
-
         if (estacionChart) {
-            estacionChart.destroy();
+            try { estacionChart.destroy(); } catch(e){ console.warn(e); }
+            estacionChart = null;
         }
 
-        let labels = [];
-        let data = [];
-        let label = '';
-        let backgroundColor = [];
-        let borderColor = [];
+        let labels = [], data = [], label = '', backgroundColor = [], borderColor = [];
 
         switch (chartType) {
             case 'litros_dia':
                 const litrosPorDia = {};
                 allEstacionData.forEach(item => {
-                    const fecha = item.fecha;
-                    if (!litrosPorDia[fecha]) litrosPorDia[fecha] = 0;
-                    litrosPorDia[fecha] += parseFloat(item.total_litros || 0);
+                    const f = item.fecha;
+                    litrosPorDia[f] = (litrosPorDia[f] || 0) + parseFloat(item.total_litros || 0);
                 });
                 labels = Object.keys(litrosPorDia).sort();
                 data = labels.map(f => litrosPorDia[f]);
@@ -1962,9 +1789,8 @@ document.addEventListener('DOMContentLoaded', function () {
             case 'ventas_dia':
                 const ventasPorDia = {};
                 allEstacionData.forEach(item => {
-                    const fecha = item.fecha;
-                    if (!ventasPorDia[fecha]) ventasPorDia[fecha] = 0;
-                    ventasPorDia[fecha] += parseInt(item.total_ventas || 0);
+                    const f = item.fecha;
+                    ventasPorDia[f] = (ventasPorDia[f] || 0) + parseInt(item.total_ventas || 0);
                 });
                 labels = Object.keys(ventasPorDia).sort();
                 data = labels.map(f => ventasPorDia[f]);
@@ -1976,51 +1802,66 @@ document.addEventListener('DOMContentLoaded', function () {
             case 'litros_tipo_vehiculo':
                 const litrosPorTipo = {};
                 allEstacionData.forEach(item => {
-                    if (item.tipos_vehiculo) {
-                        item.tipos_vehiculo.forEach(tv => {
-                            const tipo = tv.tipo;
-                            if (!litrosPorTipo[tipo]) litrosPorTipo[tipo] = 0;
-                            litrosPorTipo[tipo] += parseFloat(tv.litros || 0);
-                        });
-                    }
+                    (item.tipos_vehiculo || []).forEach(tv => {
+                        litrosPorTipo[tv.tipo] = (litrosPorTipo[tv.tipo] || 0) + parseFloat(tv.litros || 0);
+                    });
                 });
                 labels = Object.keys(litrosPorTipo);
                 data = labels.map(t => litrosPorTipo[t]);
                 label = 'Litros por Tipo de Vehículo';
-                backgroundColor = labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 60%, 0.6)`);
-                borderColor = labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 40%, 1)`);
+                backgroundColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 60%, 0.6)`);
+                borderColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 40%, 1)`);
+                break;
+
+            case 'litros_tipo_combustible':
+                {
+                    const litrosPorComb = {};
+                    if (Array.isArray(totalesCombustibleEstacion) && totalesCombustibleEstacion.length > 0) {
+                        totalesCombustibleEstacion.forEach(tc => {
+                            const nombre = tc.tipo || 'Sin clasificar';
+                            litrosPorComb[nombre] = (litrosPorComb[nombre] || 0) + parseFloat(tc.litros || 0);
+                        });
+                    } else {
+                        allEstacionData.forEach(item => {
+                            const gas = parseFloat(item.litros_gasolina || 0) || 0;
+                            const die = parseFloat(item.litros_diesel || 0) || 0;
+                            if (gas > 0) litrosPorComb['Gasolina'] = (litrosPorComb['Gasolina'] || 0) + gas;
+                            if (die > 0) litrosPorComb['Diesel']   = (litrosPorComb['Diesel']   || 0) + die;
+                        });
+                    }
+                    labels = Object.keys(litrosPorComb);
+                    data = labels.map(t => litrosPorComb[t]);
+                    label = 'Litros por Tipo de Combustible';
+                    backgroundColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 60%, 0.6)`);
+                    borderColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 40%, 1)`);
+                }
                 break;
 
             case 'ventas_vendedor':
                 const ventasPorVendedor = {};
                 allEstacionData.forEach(item => {
-                    if (item.vendedores) {
-                        item.vendedores.forEach(v => {
-                            const nombre = v.nombre;
-                            if (!ventasPorVendedor[nombre]) ventasPorVendedor[nombre] = 0;
-                            ventasPorVendedor[nombre] += parseInt(v.ventas || 0);
-                        });
-                    }
+                    (item.vendedores || []).forEach(v => {
+                        ventasPorVendedor[v.nombre] = (ventasPorVendedor[v.nombre] || 0) + parseInt(v.ventas || 0);
+                    });
                 });
                 labels = Object.keys(ventasPorVendedor);
                 data = labels.map(v => ventasPorVendedor[v]);
                 label = 'Ventas por Vendedor';
-                backgroundColor = labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 60%, 0.6)`);
-                borderColor = labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 40%, 1)`);
+                backgroundColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 60%, 0.6)`);
+                borderColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 40%, 1)`);
                 break;
 
             case 'comparativo_estaciones':
                 const litrosPorEstacion = {};
                 allEstacionData.forEach(item => {
-                    const estacion = item.estacion;
-                    if (!litrosPorEstacion[estacion]) litrosPorEstacion[estacion] = 0;
-                    litrosPorEstacion[estacion] += parseFloat(item.total_litros || 0);
+                    const e = item.estacion;
+                    litrosPorEstacion[e] = (litrosPorEstacion[e] || 0) + parseFloat(item.total_litros || 0);
                 });
                 labels = Object.keys(litrosPorEstacion);
                 data = labels.map(e => litrosPorEstacion[e]);
                 label = 'Litros por Estación';
-                backgroundColor = labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 60%, 0.6)`);
-                borderColor = labels.map((_, i) => `hsl(${i * 360 / labels.length}, 70%, 40%, 1)`);
+                backgroundColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 60%, 0.6)`);
+                borderColor = labels.map((_, i) => `hsl(${i * 360 / Math.max(labels.length,1)}, 70%, 40%, 1)`);
                 break;
         }
 
@@ -2032,7 +1873,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return l;
         });
 
-        const isBar = ['litros_tipo_vehiculo', 'ventas_vendedor', 'comparativo_estaciones'].includes(chartType);
+        const isBar = ['litros_tipo_vehiculo', 'ventas_vendedor', 'comparativo_estaciones', 'litros_tipo_combustible'].includes(chartType);
+        const esLitros = ['litros_dia', 'litros_tipo_vehiculo', 'comparativo_estaciones', 'litros_tipo_combustible'].includes(chartType);
 
         estacionChart = new Chart(ctx, {
             type: isBar ? 'bar' : 'line',
@@ -2041,8 +1883,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 datasets: [{
                     label: label,
                     data: data,
-                    backgroundColor: Array.isArray(backgroundColor) ? backgroundColor : backgroundColor,
-                    borderColor: Array.isArray(borderColor) ? borderColor : borderColor,
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
                     borderWidth: 2,
                     fill: !isBar,
                     tension: 0.3
@@ -2056,8 +1898,8 @@ document.addEventListener('DOMContentLoaded', function () {
                     tooltip: {
                         callbacks: {
                             label: function (context) {
-                                let value = context.raw;
-                                if (chartType === 'litros_dia' || chartType === 'litros_tipo_vehiculo' || chartType === 'comparativo_estaciones') {
+                                const value = context.raw;
+                                if (esLitros) {
                                     return value.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' L';
                                 }
                                 return value + ' ventas';
@@ -2070,7 +1912,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         beginAtZero: true,
                         ticks: {
                             callback: function (value) {
-                                if (chartType === 'litros_dia' || chartType === 'litros_tipo_vehiculo' || chartType === 'comparativo_estaciones') {
+                                if (esLitros) {
                                     return value.toLocaleString('es-VE') + ' L';
                                 }
                                 return value;
@@ -2084,6 +1926,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('estacionChartType')?.addEventListener('change', renderEstacionChart);
 
+    /**
+     * Genera el PDF del reporte de ventas de estación.
+     * Usa un form POST tradicional apuntando al archivo PHP dedicado.
+     * El navegador abre el PDF directamente, sin blob URLs.
+     */
+    estacionElements.btnGenerarPdf?.addEventListener('click', function () {
+        if (!allEstacionData || allEstacionData.length === 0) {
+            alert('No hay datos para exportar. Aplique filtros primero.');
+            return;
+        }
+
+        const fechaInicio = estacionElements.fechaInicio?.value || firstDayStr;
+        const fechaFin = estacionElements.fechaFin?.value || todayStr;
+        const estacionSelect = estacionElements.estacionSelect;
+        const estacionNombre = estacionSelect?.value === 'todas'
+            ? 'Todas las estaciones'
+            : (estacionSelect?.options[estacionSelect.selectedIndex]?.text || 'N/D');
+
+        const reporteData = {
+            data: allEstacionData,
+            fechaInicio: fechaInicio,
+            fechaFin: fechaFin,
+            estacionNombre: estacionNombre
+        };
+
+        // Crear form POST tradicional → el navegador abre el PDF directamente
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = base_url + 'data/publico/reporte_ventas_estacion.php';
+        form.target = '_blank';
+        form.style.display = 'none';
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'reporteData';
+        input.value = JSON.stringify(reporteData);
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    });
+
     estacionElements.btnFiltrar?.addEventListener('click', cargarVentasEstacion);
     estacionElements.estacionSearch?.addEventListener('input', applyEstacionFilters);
     estacionElements.estacionSelect?.addEventListener('change', cargarVentasEstacion);
@@ -2093,7 +1978,7 @@ document.addEventListener('DOMContentLoaded', function () {
     cargarVentasEstacion();
 
     // ============================================
-    // CARGA INICIAL: PRIMERO INSTITUCIONES, LUEGO EL RESTO
+    // CARGA INICIAL
     // ============================================
     (async function () {
         await cargarInstituciones();
@@ -2106,7 +1991,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ============================================
-// EVENT DELEGATION GLOBAL - Cada link a su acción
+// EVENT DELEGATION GLOBAL
 // ============================================
 
 $(document).off('click', '.link-despacho').on('click', '.link-despacho', function (e) {
@@ -2158,7 +2043,6 @@ $(document).off('click', '#movimientosTable tbody tr').on('click', '#movimientos
 
 $(document).off('click', '#fleetSummaryTable tbody tr').on('click', '#fleetSummaryTable tbody tr', function (e) {
     if ($(e.target).is('input[type="checkbox"]') || $(e.target).closest('input[type="checkbox"]').length) return;
-
     const checkbox = $(this).find('input[type="checkbox"]').first();
     if (checkbox.length) {
         checkbox.prop('checked', !checkbox.prop('checked')).trigger('change');

@@ -43,7 +43,7 @@ class Estacion extends Controllers{
         // 2. Mostrar un mensaje JSON (para APIs)
         // 3. Guardar en variable para mostrar en vista
         // Para métodos que devuelven JSON:
-        if ($this->isAja|xRequest()) {
+        if ($this->isAjaxRequest()) {
             $arrResponse = [
                 'success' => false,
                 'message' => 'Error de conexión a la base de datos',
@@ -61,7 +61,6 @@ class Estacion extends Controllers{
         return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
     }
 	/**fin de manejo de errores en cada controlador debe estar*/
-	/**fin de manejo de errores en cada controlador debe estar*/
     public function registrar(){
         // Validar nuevamente la sesión antes de mostrar el home
         if (!$this->validateSession()) {
@@ -77,11 +76,14 @@ class Estacion extends Controllers{
         ];
         $this->views->getViews($this, "registrar", $data);
     }
-	public function initialData() {
+
+    public function initialData() {
         $arrResponse = array('success' => false, 'message' => '');
         try {
             $tiposVehiculo = $this->model->selectTipoVehiculo();
             $tiposPago = $this->model->selectTipoPago();
+            // --- Tipos de combustible ---
+            $tiposCombustible = $this->model->selectTipoCombustible();
 
             // Validacion para admin de sistema
             $idEstacion = 0; // Por defecto, sin estación (para admin)
@@ -101,6 +103,7 @@ class Estacion extends Controllers{
 				'ventasPendientes' => $ventasPendientes,
                 'tiposVehiculo' => $tiposVehiculo,
                 'tiposPago' => $tiposPago,
+                'tiposCombustible' => $tiposCombustible,
                 'tasa' => $tasa,
                 'ultimosTickets' => $ultimosTickets,
                 'resumen' => $resumen,
@@ -112,6 +115,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     public function updateTasa() {
         $arrResponse = array('success' => false, 'message' => '');
         $data = json_decode(file_get_contents("php://input"), true);
@@ -139,6 +143,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     public function registrarVenta() {
         $arrResponse = array('success' => false, 'message' => '');
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -157,14 +162,21 @@ class Estacion extends Controllers{
             $tipoPago = intval($_POST['txtListTipoPago']);
             $monto = floatval($_POST['txtMonto']);
             $tasa = floatval($_POST['txtTasa']);
+
+            // --- Tipo de combustible (Gasolina por defecto = 1) ---
+            $tipoCombustible = intval($_POST['txtListTipoCombustible'] ?? 1);
+            if ($tipoCombustible <= 0) {
+                $tipoCombustible = 1;
+            }
+
             $idEstacion = 0;
             if ($_SESSION['userData']['departamento_nombre'] != 'SISTEMA') {
                 $idEstacion = $_SESSION['userData']['usuario_estacion_id'] ?? 0;
             }
-            $request = $this->model->setVenta($idUser, $idEstacion, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa);
+            // Se pasa $tipoCombustible como 4.º parámetro (nuevo orden)
+            $request = $this->model->setVenta($idUser, $idEstacion, $tipoVehiculo, $tipoCombustible, $litros, $tipoPago, $monto, $tasa);
             if ($request > 0) {
 				$datTicket = $this->model->getTicketData($request, $idUser, date('Y-m-d'), $idEstacion);
-				// dep($datTicket);
                 $arrResponse = ['success' => true, 'message' => 'Venta registrada con éxito. Ticket #' . $request, 'ticketData' => $datTicket];
             } else {
                 $arrResponse['message'] = 'Error al registrar la venta.';
@@ -175,6 +187,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     public function cerrarDia() {
 		$arrResponse = array('success' => false, 'message' => '');
 		try {
@@ -202,15 +215,13 @@ class Estacion extends Controllers{
 					'total_efectivo' => 0.00,
 					'total_debito' => 0.00,
 					'tiposVehiculo' => [],
+					'tiposCombustible' => [],
 					'tiposPago' => [],
 				];
-                // --- INICIO DE LA CORRECCIÓN ---
                 // Obtener tanto los datos del cierre como los detallados
-                // Pasamos el ID del cierre recién creado ($request) en lugar del ID de la estación.
                 $dataCierre = $this->model->getDataCierre($userId, $fechaCierre, $request);
                 $dataDetallado = $this->model->getDetallado($userId, $fechaCierre, $idEstacion);
 				$arrResponse = ['success' => true, 'message' => 'Día cerrado exitosamente.','dataCierre' => $dataCierre, 'dataDetallado' => $dataDetallado, 'resumen' => $resumen_vacio];
-                // --- FIN DE LA CORRECCIÓN ---
 			} else {
 				$arrResponse['message'] = 'Error al cerrar el día. Puede que ya esté cerrado o no haya ventas.';
 			}
@@ -220,6 +231,7 @@ class Estacion extends Controllers{
 		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
     // cerrar turno pendiente de dias anteriores
     public function cerrarTurnoPendiente() {
 		$arrResponse = array('success' => false, 'message' => '');
@@ -233,11 +245,9 @@ class Estacion extends Controllers{
 			}
 			$fechaCierre = $data['fecha_cierre'];
 			$userId = $data['userId'];
-            // --- INICIO DE LA CORRECCIÓN ---
             // Obtener la estación del usuario de la venta, no del admin en sesión.
             $userInfo = $this->model->getUsuario($userId);
             $idEstacion = $userInfo['usuario_estacion_id'] ?? 0;
-            // --- FIN DE LA CORRECCIÓN ---
 
 			// Asumiendo que el modelo ya tiene la lógica para cerrar el turno pendiente
 			$request = $this->model->setDailyCierre($userId, $fechaCierre, $idEstacion);
@@ -250,11 +260,12 @@ class Estacion extends Controllers{
 					'total_efectivo' => 0.00,
 					'total_debito' => 0.00,
 					'tiposVehiculo' => [],
+					'tiposCombustible' => [],
 					'tiposPago' => [],
 				];
                 // Obtener tanto los datos del cierre como los detallados
                 $dataCierre = $this->model->getDataCierre($userId, $fechaCierre, $idEstacion);
-                $dataDetallado = $this->model->getDetallado($userId, $fechaCierre, $idEstacion, false); // Para impresión pre-cierre, solo ventas abiertas
+                $dataDetallado = $this->model->getDetallado($userId, $fechaCierre, $idEstacion, false);
 				$arrResponse = ['success' => true, 'message' => 'Cierre de día pendiente realizado con éxito.','dataCierre' => $dataCierre, 'dataDetallado' => $dataDetallado, 'resumen' => $resumen_vacio];
 
 			} else {
@@ -266,6 +277,7 @@ class Estacion extends Controllers{
 		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
 	// obtener data para imrimir detallado del dia
 	public function getDetalleVentas() {
         $arrResponse = array('success' => false, 'message' => '');
@@ -278,15 +290,13 @@ class Estacion extends Controllers{
 				throw new Exception("Error: Datos incompletos.");
 			}
             $fechaTicket = $data['fecha_detalle'];
-            $idUser = intval($data['idUser']); // Usar el idUser que viene del frontend
+            $idUser = intval($data['idUser']);
 
-            // --- INICIO DE LA CORRECCIÓN ---
             // Obtener la estación del usuario de la venta, no del admin en sesión.
             $userInfo = $this->model->getUsuario($idUser);
             $idEstacion = $userInfo['usuario_estacion_id'] ?? 0;
-            // --- FIN DE LA CORRECCIÓN ---
 
-            $request = $this->model->getDetallado($idUser, $fechaTicket, $idEstacion, false); // Para impresión pre-cierre, solo ventas abiertas
+            $request = $this->model->getDetallado($idUser, $fechaTicket, $idEstacion, false);
             if (!empty($request)) {
                 $arrResponse = ['success' => true, 'message' => 'Ticket obtenido', 'ticketData' => $request];
             } else {
@@ -298,6 +308,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     // obtener data para imprimir un ticket
 	public function getTicket() {
         $arrResponse = array('success' => false, 'message' => '');
@@ -328,6 +339,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
 	// para generar el pdf
 	public function generarReportePdf() {
 		header('Content-Type: application/json');
@@ -341,23 +353,33 @@ class Estacion extends Controllers{
 			$fecha = $data['fecha'];
 			$idUser = $data['idUser'];
 			$reportType = $data['reportType']; // 'unificado' o 'divisa'
-			
-            // --- INICIO DE LA CORRECCIÓN UNIFICADA ---
-            // Se obtiene la estación del usuario de la venta (idUser), no del usuario en sesión.
-            // Esto garantiza que el reporte funcione tanto para el operador como para el administrador
-            // que imprime reportes de otros usuarios.
-            $userInfo = $this->model->getUsuario($idUser);
-            $idEstacion = $userInfo['usuario_estacion_id'] ?? 0;
-            // --- FIN DE LA CORRECCIÓN UNIFICADA ---
+			// Modo del detallado: 'unificado', 'separado' o 'ambos' (default: ambos)
+			$detalleMode = isset($data['detalleMode']) ? $data['detalleMode'] : 'ambos';
+			if (!in_array($detalleMode, ['unificado', 'separado', 'ambos'])) {
+				$detalleMode = 'ambos';
+			}
 
-            // Se obtienen los datos de las ventas para la fecha y usuario, sin importar si el día está abierto o cerrado.
-            $dataTotal = $this->model->getTotal($fecha, $idUser, $idEstacion, true, $reportType);
-            $dataDetallado = $this->model->getDetallado($idUser, $fecha, $idEstacion, true, $reportType);
+			// Se obtiene la estación del usuario de la venta (idUser), no del usuario en sesión.
+			$userInfo = $this->model->getUsuario($idUser);
+			$idEstacion = $userInfo['usuario_estacion_id'] ?? 0;
+
+			// Se obtienen los datos de las ventas para la fecha y usuario, sin importar si el día está abierto o cerrado.
+			$dataTotal = $this->model->getTotal($fecha, $idUser, $idEstacion, true, $reportType);
+			$dataDetallado = $this->model->getDetallado($idUser, $fecha, $idEstacion, true, $reportType);
 
 			if (empty($dataTotal) || empty($dataDetallado)) {
 				$arrResponse = ['success' => false, 'message' => 'No se encontraron datos de ventas para esta fecha y usuario.'];
 			} else {
-				$arrResponse = ['success' => true, 'message' => 'Datos obtenidos para el reporte.', 'data' => ['dataTotal' => $dataTotal, 'dataDetallado' => $dataDetallado, 'reportType' => $reportType]];
+				$arrResponse = [
+					'success' => true,
+					'message' => 'Datos obtenidos para el reporte.',
+					'data' => [
+						'dataTotal'    => $dataTotal,
+						'dataDetallado' => $dataDetallado,
+						'reportType'   => $reportType,
+						'detalleMode'  => $detalleMode
+					]
+				];
 			}
 		} catch (Exception $e) {
 			$arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -365,6 +387,7 @@ class Estacion extends Controllers{
 		echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
 		die();
 	}
+
 	/* 
     * inicio vista dataventa
     **/
@@ -383,6 +406,7 @@ class Estacion extends Controllers{
         ];
         $this->views->getViews($this, "dataventa", $data);
     }
+
     /*
     * inicio del init
     * TODO: Nuevos métodos para la sección de historial de cierres y ventas
@@ -399,6 +423,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     // tabla historial de cierres
     public function getHistorialCierres() {
         if ($_SERVER['REQUEST_METHOD'] == 'GET') {
@@ -417,6 +442,7 @@ class Estacion extends Controllers{
         }
         die();
     }
+
     // Trae las ventas de un cierre específico.
     public function getVentasByCierre() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -431,7 +457,7 @@ class Estacion extends Controllers{
                 $idUser = intval($postData['iduser']); // Este es el ID del usuario que hizo las ventas.
                 $fechaCierre = strClean($postData['fechaCierre']);
 
-                // --- CORRECCIÓN: Obtener la estación del usuario de la venta, no del admin en sesión ---
+                // Obtener la estación del usuario de la venta, no del admin en sesión
                 $userInfo = $this->model->getUsuario($idUser);
                 $idEstacion = $userInfo['usuario_estacion_id'] ?? 0;
 
@@ -439,7 +465,6 @@ class Estacion extends Controllers{
                     throw new Exception("No se pudo determinar la estación para el usuario del cierre.");
                 }
 
-                // --- CORRECCIÓN: Pasar el idCierre al método del modelo ---
                 $arrData = $this->model->getDataVenta($fechaCierre, $idUser, $idEstacion, $idCierre);
 
                 if (empty($arrData)) {
@@ -454,6 +479,7 @@ class Estacion extends Controllers{
         }
         die();
     }
+
     // Trae las ventas abiertas (en curso) de un usuario específico.
     public function getVentasAbiertas() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -478,6 +504,7 @@ class Estacion extends Controllers{
         }
         die();
     }
+
     //Elimina una venta específica.
     public function deleteVenta() {
         if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -491,7 +518,7 @@ class Estacion extends Controllers{
                 $idVenta = intval($postData['idVenta']);
                 $idUser = intval($postData['idUser']);
                 $fechaTicket = $postData['fechaTicket'];
-                $deleted = $this->model->deleteVenta($idVenta,$fechaTicket,$idUser); // Se asume que esta función existe en el modelo.
+                $deleted = $this->model->deleteVenta($idVenta, $fechaTicket, $idUser);
                 if ($deleted) {
                     $arrResponse = ['success' => true, 'message' => 'Venta eliminada correctamente.'];
                 } else {
@@ -504,6 +531,7 @@ class Estacion extends Controllers{
         }
         die();
     }
+
     // obtener datos del cierre
     public function getDataCierre() {
         $arrResponse = array('success' => false, 'message' => '');
@@ -511,17 +539,16 @@ class Estacion extends Controllers{
 			 // Leer el cuerpo de la solicitud JSON
             $json = file_get_contents('php://input');
             $data = json_decode($json, true);
-			// --- INICIO DE LA CORRECCIÓN ---
 			// Verificar que los datos existan, incluyendo idCierre
 			if (!isset($data['idUser']) || !isset($data['fecha_venta']) || !isset($data['idCierre'])) {
 				throw new Exception("Error: Datos incompletos.");
 			}
             $idUser = $data['idUser'];
             $fechaVenta = $data['fecha_venta'];
-            $idCierre = intval($data['idCierre']); // Capturamos el idCierre
+            $idCierre = intval($data['idCierre']);
 
-            $request = $this->model->getDataCierre($idUser, $fechaVenta, $idCierre); // Pasamos los 3 parámetros
-            if (!empty($request)) { // La respuesta ahora es un array, no un número
+            $request = $this->model->getDataCierre($idUser, $fechaVenta, $idCierre);
+            if (!empty($request)) {
                 $arrResponse = ['success' => true, 'message' => 'Cierre obtenido', 'cierreData' => $request];
             } else {
                 $arrResponse['message'] = 'Error al obtener cierre.';
@@ -531,18 +558,12 @@ class Estacion extends Controllers{
         }
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
-        // --- FIN DE LA CORRECCIÓN ---
     }
+
     /**
      * Trae los datos de un cierre específico para ser impresos sin necesidad de cerrar el día.
      */
     public function getDatosParaReporte() {
-        // --- INICIO DE LA CORRECCIÓN ---
-        // Esta función se ha vuelto redundante. La lógica para obtener los datos de cierre
-        // ya está centralizada en `cerrarDia` y `cerrarTurnoPendiente`.
-        // El frontend ahora llama a `getDatosParaReporte` en el modelo a través de esas funciones.
-        // Se mantiene el método por si alguna parte antigua del código aún lo llama,
-        // pero se devuelve una respuesta indicando que está obsoleto.
         $arrResponse = [
             'success' => false, 
             'message' => 'Este endpoint está obsoleto. La impresión de reportes se gestiona desde el cierre.'
@@ -550,8 +571,8 @@ class Estacion extends Controllers{
         header('Content-Type: application/json');
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
-        // --- FIN DE LA CORRECCIÓN ---
     }
+
     // Agregar esta función en EstacionController.php
     public function getFechasConVentas() {
         $arrResponse = array('success' => false, 'message' => '');
@@ -564,6 +585,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     // traer data de litros por fecha
     public function getLitrosPorFecha() {
         $arrResponse = array('success' => false, 'message' => '');
@@ -597,9 +619,15 @@ class Estacion extends Controllers{
             $fecha = $data['fecha'];
             $type = $data['type'];
             $fechaFin = $data['fechaFin'] ?? null;
+            // Filtro opcional por combustible
+            $idCombustible = isset($data['idCombustible']) ? intval($data['idCombustible']) : null;
             
-            $reportData = $this->model->selectReporteLitros($fecha, $type, $fechaFin);
+            $reportData = $this->model->selectReporteLitros($fecha, $type, $fechaFin, $idCombustible);
             $totalLitros = $this->model->getLitrosPorFecha($fecha, $type, $fechaFin);
+
+            // --- Desglose por tipo de combustible ---
+            $litrosGasolina = $this->model->getLitrosPorFecha($fecha, $type, $fechaFin, 1);
+            $litrosDiesel   = $this->model->getLitrosPorFecha($fecha, $type, $fechaFin, 2);
             
             $arrResponse = [
                 'success' => true,
@@ -607,7 +635,9 @@ class Estacion extends Controllers{
                 'total' => $totalLitros,
                 'fecha' => $fecha,
                 'type' => $type,
-                'fechaFin' => $fechaFin
+                'fechaFin' => $fechaFin,
+                'litrosGasolina' => $litrosGasolina,
+                'litrosDiesel'   => $litrosDiesel
             ];
         } catch (Exception $e) {
             $arrResponse['message'] = 'Error: ' . $e->getMessage();
@@ -645,6 +675,7 @@ class Estacion extends Controllers{
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
     }
+
     public function mantenimiento(){
         // Validar nuevamente la sesión antes de mostrar el home
         if (!$this->validateSession()) {
@@ -660,6 +691,7 @@ class Estacion extends Controllers{
         ];
         $this->views->getViews($this, "mantenimiento", $data);
     }
+
     public function getOpenSales() {
         $arrResponse = ['success' => false, 'message' => ''];
         try {
