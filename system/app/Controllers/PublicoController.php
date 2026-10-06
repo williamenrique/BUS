@@ -1,6 +1,7 @@
 <?php
 header('Access-Control-Allow-Origin: *');
 require_once __DIR__ . '/../../../data/dompdf/autoload.inc.php';
+
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
@@ -24,10 +25,19 @@ class Publico extends Controllers {
     
     /**
      * Devuelve la lista de instituciones activas para los selectores.
+     * Aplica la función obtenerIniciales() del helper para generar abreviaturas.
      */
+   
     public function getInstituciones() {
+        //  echo obtenerIniciales("SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY");
         try {
             $instituciones = $this->model->getInstituciones();
+            
+            // Aplicar la función obtenerIniciales() del helper para generar abreviaturas
+            foreach ($instituciones as &$inst) {
+                $inst['iniciales'] = obtenerIniciales($inst['nombre']);
+            }
+            
             $arrResponse = ['success' => true, 'data' => $instituciones];
         } catch (Exception $e) {
             $arrResponse = ['success' => false, 'message' => 'Error: ' . $e->getMessage(), 'data' => []];

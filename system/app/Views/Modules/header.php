@@ -116,7 +116,7 @@
         <aside class="main-sidebar main-sidebar-custom sidebar-dark-primary elevation-4">
             <!-- Brand Logo -->
             <a href="<?= BASE_URL()?>" class="brand-link">
-            <!-- <img src="<?= IMG ?>logo.png" alt="AdminLTE Logo" class="brand-image img-circle elevation-3" style="opacity: .8"> -->
+            <img src="<?= IMG ?>logo.png" alt="Logo" class="brand-image img-circle elevation-3" style="opacity: .8">
             <span class="brand-text text-center font-weight-light">SITGO</span>
             </a>
 

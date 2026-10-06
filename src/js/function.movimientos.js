@@ -69,8 +69,8 @@ async function cargarInstituciones() {
             allInstituciones.forEach(inst => {
                 const option = document.createElement('option');
                 option.value = inst.id_institucion;
-                option.textContent = abreviarNombreInstitucion(inst.nombre);
-                option.title = inst.nombre;
+                option.textContent = abreviarNombreInstitucion(inst.iniciales);
+                option.title = inst.iniciales;
                 select.appendChild(option);
             });
 
