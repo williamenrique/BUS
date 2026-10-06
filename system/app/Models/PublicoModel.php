@@ -209,11 +209,6 @@ class PublicoModel extends Mysql {
     
     /**
      * Get despachos de almacén filtrados por institución.
-     * Solo despachos cuyas unidades pertenezcan a la institución indicada.
-     * NOTA: Si el despacho no tiene flota vinculada, NO se filtra.
-     * Las columnas operador, mecanico, despachador fueron eliminadas.
-     * Se obtienen los nombres mediante JOINs con table_personal usando los IDs.
-     * Usa CONCAT_WS para concatenar nombre y apellido saltando valores NULL.
      */
     public function getDespachosPublic($fechaInicio, $fechaFin, $idInstitucion) {
         $query = "
@@ -507,8 +502,6 @@ class PublicoModel extends Mysql {
     
     /**
      * Get complete unit history (Hoja de Vida) for public view
-     * Includes: despacho, aceite, mantenimiento, status
-     * Based on FlotaModel::selectHistorialUnidad
      */
     public function selectHistorialUnidad(int $idFlota, array $postData, int $perPage) {
         $fechaInicio = !empty($postData['fechaInicio']) ? $postData['fechaInicio'] : null;
@@ -680,17 +673,29 @@ class PublicoModel extends Mysql {
     
     /**
      * Get order details (orden de despacho) for public view.
-     * NO se filtra por institución porque es un detalle específico.
-     * Las columnas operador, mecanico, despachador fueron eliminadas.
-     * Se obtienen los nombres mediante JOINs con table_personal usando los IDs.
-     * Usa CONCAT_WS para concatenar nombre y apellido saltando valores NULL.
+     *
+     * IMPORTANTE: Este método devuelve los mismos campos que 
+     * OrdenModel::selectDepacho() para que reportePDFdesp.php funcione
+     * igual desde el panel de órdenes y desde la vista pública.
+     *
+     * Campos requeridos por reportePDFdesp.php:
+     *   - id_despacho, numero_orden, fecha_despacho, id_unidad
+     *   - marca_unidad, modelo_unidad, vim_unidad
+     *   - operador_nombre, mecanico_nombre, despachador_nombre
+     *   - observacion, usuario_registro
+     *   - articulos[] (id_producto, producto, cant_despacho, ubicacion)
      */
     public function getDetalleOrden($idDespacho) {
         $query = "
             SELECT 
                 d.id_despacho,
+                d.numero_orden,
+                d.id_institucion,
                 d.id_flota,
                 f.id_unidad,
+                f.vim_unidad,
+                ma.marca_unidad,
+                mo.modelo_unidad,
                 d.operador_id,
                 d.mecanico_id,
                 d.despachador_id,
@@ -700,9 +705,18 @@ class PublicoModel extends Mysql {
                 d.fecha_despacho,
                 d.observacion,
                 d.estado_orden,
-                d.status_despacho
+                d.status_despacho,
+                COALESCE(
+                    CONCAT_WS(' ', p_u.personal_nombre, NULLIF(p_u.personal_apellido, '0')),
+                    u.usuario_nick,
+                    'Sistema'
+                ) AS usuario_registro
             FROM table_alm_despacho d
             LEFT JOIN table_flota f ON d.id_flota = f.id_flota
+            LEFT JOIN table_flota_marca ma ON f.id_marca = ma.id_marca
+            LEFT JOIN table_flota_modelo mo ON f.id_modelo = mo.id_modelo
+            LEFT JOIN table_usuarios u ON d.user_id = u.usuario_id
+            LEFT JOIN table_personal p_u ON u.usuario_id_personal = p_u.id_personal
             LEFT JOIN table_personal p_op ON d.operador_id = p_op.id_personal
             LEFT JOIN table_personal p_mec ON d.mecanico_id = p_mec.id_personal
             LEFT JOIN table_personal p_desp ON d.despachador_id = p_desp.id_personal
@@ -717,11 +731,14 @@ class PublicoModel extends Mysql {
         $queryProductos = "
             SELECT 
                 rd.id_despacho,
+                p.id_producto,
                 p.producto,
                 p.present_producto,
-                rd.cant_despacho
+                rd.cant_despacho,
+                ub.ubicacion
             FROM table_alm_relacion_despacho rd
             JOIN table_alm_producto p ON rd.id_producto = p.id_producto
+            LEFT JOIN table_alm_ubicacion ub ON ub.id_ubicacion = p.id_ubicacion
             WHERE rd.id_despacho = ?
         ";
         $productos = $this->select_all($queryProductos, [$idDespacho]);
@@ -732,7 +749,7 @@ class PublicoModel extends Mysql {
     
     /**
      * =================================================================
-     * ESTACIÓN - SIN FILTRO POR INSTITUCIÓN (NO MODIFICADO)
+     * ESTACIÓN - SIN FILTRO POR INSTITUCIÓN
      * =================================================================
      */
     

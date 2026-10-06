@@ -343,39 +343,69 @@ function renderizarDetalleOrden(orden) {
     const btnPDF = resumenDiv.querySelector('.btn-despacho-pdf');
     if (btnPDF) {
         btnPDF.addEventListener('click', () => {
-            const reporteData = {
-                id_despacho: orden.id_despacho,
-                fecha_despacho: orden.fecha_despacho,
-                id_unidad: orden.id_unidad,
-                marca_unidad: orden.marca_unidad || '',
-                modelo_unidad: orden.modelo_unidad || '',
-                vim_unidad: orden.vim_unidad || '',
-                operador_nombre: orden.operador_nombre || '',
-                mecanico_nombre: orden.mecanico_nombre || '',
-                despachador_nombre: orden.despachador_nombre || '',
-                observacion: orden.observacion || '',
-                usuario_registro: orden.usuario_registro || orden.despachador_nombre || 'Sistema',
-                id_institucion: instSeleccionada.movimientos,
-                articulos: (orden.productos || []).map(prod => ({
-                    id_producto: prod.id_producto || '',
-                    producto: prod.producto,
-                    cant_despacho: prod.cant_despacho,
-                    ubicacion: prod.ubicacion || prod.present_producto || 'N/A'
-                }))
-            };
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '../../data/almacen/reportePDFdesp.php';
-            form.target = '_blank';
-            form.style.display = 'none';
-            const inputReporte = document.createElement('input');
-            inputReporte.type = 'hidden';
-            inputReporte.name = 'reporteData';
-            inputReporte.value = JSON.stringify(reporteData);
-            form.appendChild(inputReporte);
-            document.body.appendChild(form);
-            form.submit();
-            document.body.removeChild(form);
+            // Mostrar indicador de carga
+            btnPDF.disabled = true;
+            btnPDF.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generando...';
+
+            // Obtener los datos completos de la orden antes de generar el PDF
+            fetch('?url=Publico/getDetalleOrden', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    idDespacho: orden.id_despacho,
+                    id_institucion: instSeleccionada.movimientos
+                })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    const ordenCompleta = data.data;
+                    const reporteData = {
+                        id_despacho: ordenCompleta.id_despacho,
+                        numero_orden: ordenCompleta.numero_orden,
+                        fecha_despacho: ordenCompleta.fecha_despacho,
+                        id_unidad: ordenCompleta.id_unidad,
+                        marca_unidad: ordenCompleta.marca_unidad || '',
+                        modelo_unidad: ordenCompleta.modelo_unidad || '',
+                        vim_unidad: ordenCompleta.vim_unidad || '',
+                        operador_nombre: ordenCompleta.operador_nombre || '',
+                        mecanico_nombre: ordenCompleta.mecanico_nombre || '',
+                        despachador_nombre: ordenCompleta.despachador_nombre || '',
+                        observacion: ordenCompleta.observacion || '',
+                        usuario_registro: ordenCompleta.usuario_registro || ordenCompleta.despachador_nombre || 'Sistema',
+                        id_institucion: instSeleccionada.movimientos,
+                        articulos: (ordenCompleta.productos || []).map(prod => ({
+                            id_producto: prod.id_producto || '',
+                            producto: prod.producto,
+                            cant_despacho: prod.cant_despacho,
+                            ubicacion: prod.ubicacion || prod.present_producto || 'N/A'
+                        }))
+                    };
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = '../../data/almacen/reportePDFdesp.php';
+                    form.target = '_blank';
+                    form.style.display = 'none';
+                    const inputReporte = document.createElement('input');
+                    inputReporte.type = 'hidden';
+                    inputReporte.name = 'reporteData';
+                    inputReporte.value = JSON.stringify(reporteData);
+                    form.appendChild(inputReporte);
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+                } else {
+                    alert('Error al obtener los datos de la orden: ' + (data.message || 'Error desconocido'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error al generar el PDF: ' + error.message);
+            })
+            .finally(() => {
+                btnPDF.disabled = false;
+                btnPDF.innerHTML = '<i class="fas fa-file-pdf me-1"></i>PDF';
+            });
         });
     }
 }

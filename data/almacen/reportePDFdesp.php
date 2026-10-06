@@ -1,4 +1,8 @@
 <?php
+// Aumentar límite de tiempo para generación de PDF
+set_time_limit(300);
+ini_set('memory_limit', '256M');
+
 require_once  '../dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
@@ -246,11 +250,22 @@ $html .= '
 </body>
 </html>';
 
-$dompdf->loadHtml($html);
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
+try {
+    $dompdf->loadHtml($html);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
 
-$filename = "Orden_Despacho_" . str_pad($dataInfo['id_despacho'], 6, "0", STR_PAD_LEFT) . ".pdf";
-$dompdf->stream($filename, ["Attachment" => false]);
+    $filename = "Orden_Despacho_" . str_pad($dataInfo['id_despacho'], 6, "0", STR_PAD_LEFT) . ".pdf";
+    $dompdf->stream($filename, ["Attachment" => false]);
+} catch (Exception $e) {
+    error_log("reportePDFdesp ERROR generando PDF: " . $e->getMessage());
+    // Si falla la generación del PDF, mostrar error en lugar de PDF corrupto
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Error generando PDF</title></head><body>';
+    echo '<h1>Error generando el PDF</h1>';
+    echo '<p><strong>Error:</strong> ' . htmlspecialchars($e->getMessage()) . '</p>';
+    echo '<p><a href="javascript:history.back()">Volver</a></p>';
+    echo '</body></html>';
+}
 exit();
 ?>
