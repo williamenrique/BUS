@@ -6,8 +6,6 @@
 --              migra datos desde personal_tag, y prepara para eliminar personal_tag
 -- =====================================================================
 
-USE busyaracuydata;
-
 -- Deshabilitar verificación de claves foráneas temporalmente
 SET FOREIGN_KEY_CHECKS = 0;
 

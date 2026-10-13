@@ -10,7 +10,6 @@
 -- IMPORTANTE: Ejecutar este script SOLO después de haber actualizado todo el código
 -- que referencia estas columnas (ver documento LISTA_CAMBIOS_CODIGO.md)
 
-USE busyaracuydata;
 
 -- Deshabilitar verificación de claves foráneas temporalmente
 SET FOREIGN_KEY_CHECKS = 0;
