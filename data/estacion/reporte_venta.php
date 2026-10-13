@@ -14,7 +14,17 @@ $fecha = $data['fecha'];
 $type = $data['type'];
 $fechaFin = isset($data['fechaFin']) ? $data['fechaFin'] : null;
 
-// Función para formatear mes (YYYY-MM -> Nombre Mes YYYY)
+$litrosGasolina = isset($data['litrosGasolina']) ? (float)$data['litrosGasolina'] : null;
+$litrosDiesel   = isset($data['litrosDiesel'])   ? (float)$data['litrosDiesel']   : null;
+$hayDesgloseCombustible = ($litrosGasolina !== null && $litrosDiesel !== null && ($litrosGasolina > 0 || $litrosDiesel > 0));
+
+/**
+ * Formatea un número en formato venezolano.
+ */
+function fmtVE($valor, $decimales = 2) {
+    return number_format((float)$valor, $decimales, ',', '.');
+}
+
 function formatearMes($fechaYm) {
     $meses = [
         '01' => 'Enero', '02' => 'Febrero', '03' => 'Marzo',
@@ -65,6 +75,9 @@ $html = '
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         th { background-color: #f2f2f2; }
         .total { font-weight: bold; background-color: #e6e6e6; }
+        .combustible-box { background-color: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 4px; padding: 10px; margin-top: 15px; }
+        .combustible-box .titulo { font-weight: bold; font-size: 11px; color: #2e7d32; margin-bottom: 6px; }
+        .combustible-box .item { font-size: 10px; color: #333; margin-bottom: 3px; }
     </style>
 </head>
 <body>
@@ -76,6 +89,7 @@ $html = '
     <table>
         <thead>
             <tr>';
+
 if ($type == 'month') {
     if (!empty($fechaFin) && $fechaFin != $fecha) {
         $html .= '<th>Mes</th><th>Litros Vendidos</th>';
@@ -85,6 +99,7 @@ if ($type == 'month') {
 } else {
     $html .= '<th>Tipo Vehículo</th><th>Cantidad Ventas</th><th>Litros Vendidos</th>';
 }
+
 $html .= '</tr>
         </thead>
         <tbody>';
@@ -98,11 +113,11 @@ if (!empty($reportData)) {
             } else {
                 $html .= '<td>' . $row['fecha_venta'] . '</td>';
             }
-            $html .= '<td>' . number_format($row['total_litros'], 2, ',', '.') . ' L</td>';
+            $html .= '<td>' . fmtVE($row['total_litros']) . ' L</td>';
         } else {
             $html .= '<td>' . $row['tipo_vehiculo'] . '</td>';
             $html .= '<td>' . $row['cantidad_ventas'] . '</td>';
-            $html .= '<td>' . number_format($row['total_litros'], 2, ',', '.') . ' L</td>';
+            $html .= '<td>' . fmtVE($row['total_litros']) . ' L</td>';
         }
         $html .= '</tr>';
     }
@@ -112,13 +127,24 @@ if (!empty($reportData)) {
 
 $html .= '<tr class="total">';
 if ($type == 'month') {
-    $html .= '<td>TOTAL</td><td>' . number_format($totalLitros, 2, ',', '.') . ' L</td>';
+    $html .= '<td>TOTAL</td><td>' . fmtVE($totalLitros) . ' L</td>';
 } else {
-    $html .= '<td colspan="2">TOTAL</td><td>' . number_format($totalLitros, 2, ',', '.') . ' L</td>';
+    $html .= '<td colspan="2">TOTAL</td><td>' . fmtVE($totalLitros) . ' L</td>';
 }
 $html .= '</tr>
         </tbody>
-    </table>
+    </table>';
+
+if ($hayDesgloseCombustible) {
+    $html .= '
+    <div class="combustible-box">
+        <div class="titulo">⛽ DESGLOSE POR TIPO DE COMBUSTIBLE</div>
+        <div class="item"><strong>Gasolina:</strong> ' . fmtVE($litrosGasolina) . ' L</div>
+        <div class="item"><strong>Diesel:</strong> ' . fmtVE($litrosDiesel) . ' L</div>
+    </div>';
+}
+
+$html .= '
 </body>
 </html>';
 

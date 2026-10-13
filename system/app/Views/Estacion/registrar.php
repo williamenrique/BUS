@@ -37,11 +37,19 @@
 
                                 <form id="ventaForm">
                                     <div class="row">
-                                        <div class="col-sm-6 form-group">
+                                        <div class="col-sm-4 form-group">
                                             <label for="txtListTipoVehiculo">Tipo de Vehículo</label>
                                             <select id="txtListTipoVehiculo" class="form-control"></select>
                                         </div>
-                                        <div class="col-sm-6 form-group">
+                                        <!-- NUEVO: Tipo de Combustible (Gasolina por defecto) -->
+                                        <div class="col-sm-4 form-group">
+                                            <label for="txtListTipoCombustible">Tipo de Combustible</label>
+                                            <select id="txtListTipoCombustible" class="form-control">
+                                                <option value="1" selected>Gasolina</option>
+                                                <option value="2">Diesel</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-sm-4 form-group">
                                             <label for="txtLTS">Litros</label>
                                             <input type="number" id="txtLTS" placeholder="0.00" step="0.01" class="form-control">
                                         </div>
@@ -106,6 +114,16 @@
                                             <div class="card card-outline card-secondary">
                                                 <div class="card-header"><h4 class="card-title font-weight-bold">Por Tipo de Vehículo</h4></div>
                                                 <div class="card-body"><ul id="tiposVehiculosList" class="list-unstyled"></ul></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- NUEVO: Sección de desglose por tipo de combustible -->
+                                    <div class="row mt-3">
+                                        <div id="tiposCombustibleContainer" class="col-md-12" style="display: none;">
+                                            <div class="card card-outline card-info">
+                                                <div class="card-header"><h4 class="card-title font-weight-bold">Por Tipo de Combustible</h4></div>
+                                                <div class="card-body"><ul id="tiposCombustibleList" class="list-unstyled"></ul></div>
                                             </div>
                                         </div>
                                     </div>
