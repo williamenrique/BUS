@@ -589,6 +589,15 @@ class HomeModel extends Mysql {
 
 	public function updateUserStation(int $userId, int $stationId): bool
 	{
+		// Primero verificar si la estación ya está asignada
+		$sqlCheck = "SELECT usuario_estacion_id FROM table_usuarios WHERE usuario_id = ?";
+		$current = $this->select($sqlCheck, [$userId]);
+		
+		if ($current && intval($current['usuario_estacion_id']) === $stationId) {
+			// La estación ya está asignada, no hay nada que actualizar
+			return true;
+		}
+		
 		$sql = "UPDATE table_usuarios SET usuario_estacion_id = ? WHERE usuario_id = ?";
 		return $this->update($sql, [$stationId, $userId]);
 	}

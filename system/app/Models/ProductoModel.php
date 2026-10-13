@@ -3,27 +3,24 @@ class ProductoModel extends Mysql {
 
     private $id_institucion = 1;
 
+    // Whitelist de columnas permitidas para ORDER BY
+    private const COLUMNAS_ORDENABLES = [
+        'id_producto', 'producto', 'enlace_producto', 'empresa_proveedor',
+        'ubicacion', 'cant_producto', 'present_producto'
+    ];
+
     public function __construct(){
         parent::__construct();
     }
 
-    /**
-     * Establece la institución activa para las consultas.
-     */
     public function setInstitucion(int $id): void {
         $this->id_institucion = $id;
     }
 
-    /**
-     * Devuelve el id_institucion actual.
-     */
     public function getInstitucion(): int {
         return $this->id_institucion;
     }
 
-    /**
-     * Obtiene el nombre de una institución por su ID.
-     */
     public function getNombreInstitucion(int $id): string {
         $sql = "SELECT nombre FROM table_instituciones WHERE id_institucion = ?";
         $result = $this->select($sql, [$id]);
@@ -34,33 +31,21 @@ class ProductoModel extends Mysql {
     /********* SELECTS PARA FORMULARIOS ***************/
     /**************************************************/
 
-    /**
-     * Obtiene los tipos de enlace (compartidos entre instituciones).
-     */
     public function selectEnlace(){
         $sql = "SELECT * FROM table_alm_enlace_producto ORDER BY enlace_producto ASC";
         return $this->select_all($sql);
     }
 
-    /**
-     * Obtiene los proveedores (compartidos entre instituciones).
-     */
     public function selectProvee(){
         $sql = "SELECT * FROM table_proveedor WHERE status_proveedor = 1 ORDER BY empresa_proveedor ASC";
         return $this->select_all($sql);
     }
 
-    /**
-     * Obtiene las ubicaciones (compartidas entre instituciones).
-     */
     public function selectUbic(){
         $sql = "SELECT * FROM table_alm_ubicacion ORDER BY ubicacion ASC";
         return $this->select_all($sql);
     }
 
-    /**
-     * Obtiene los productos de la institución activa.
-     */
     public function selectListProductos(){
         $sql = "SELECT p.id_producto, p.producto, e.enlace_producto 
                 FROM table_alm_producto p
@@ -75,11 +60,7 @@ class ProductoModel extends Mysql {
     /********* CREACIÓN DE PRODUCTOS ******************/
     /**************************************************/
 
-    /**
-     * Inserta un nuevo producto en la institución activa.
-     */
     public function insertProducto(string $srtArticlo, int $intModelo, int $intProveedor, int $intUbicacion, float $srtCant, int $intOptionArticulo, string $strPresentArticulo){
-        // Verificar si ya existe EN LA MISMA INSTITUCIÓN
         $sql = "SELECT * FROM table_alm_producto 
                 WHERE producto = ? 
                   AND id_enlace_producto = ? 
@@ -103,62 +84,109 @@ class ProductoModel extends Mysql {
     }
 
     /**************************************************/
+    /********* HELPERS PRIVADOS ***********************/
+    /**************************************************/
+
+    /**
+     * Sanea el nombre de la columna para ORDER BY contra una whitelist.
+     */
+    private function sanitizarColumnaOrden(string $columna): string {
+        if (in_array($columna, self::COLUMNAS_ORDENABLES, true)) {
+            return $columna;
+        }
+        return 'id_producto';
+    }
+
+    /**
+     * Sanea la dirección del ORDER BY.
+     */
+    private function sanitizarDireccionOrden(string $dir): string {
+        return (strtoupper($dir) === 'ASC') ? 'ASC' : 'DESC';
+    }
+
+    /**************************************************/
     /********* LISTADO DE PRODUCTOS *******************/
     /**************************************************/
 
     /**
      * Obtiene los productos para DataTables (server-side).
+     * 
+     * IMPORTANTE: Se usa una subconsulta para evitar duplicados por JOIN
+     * y para que el ORDER BY funcione correctamente con alias.
      */
     public function getProductosServerSide(int $start, int $length, string $searchValue, string $orderColumn, string $orderDir): array
     {
-        $sqlBase = "FROM table_alm_producto p 
-                    LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
-                    LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
-                    LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
-                    LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
-                    WHERE p.status_producto = 1
-                      AND p.id_institucion = ?";
+        // Saneamiento de parámetros
+        $start  = max(0, (int)$start);
+        $length = ($length > 0 && $length <= 1000) ? (int)$length : 25;
+        $orderColumn = $this->sanitizarColumnaOrden($orderColumn);
+        $orderDir    = $this->sanitizarDireccionOrden($orderDir);
 
+        // --- Construcción de la cláusula WHERE común ---
+        $where = " WHERE p.status_producto = 1 AND p.id_institucion = ? ";
         $params = [$this->id_institucion];
 
-        // Búsqueda
-        if (!empty($searchValue)) {
-            $sqlBase .= " AND (p.producto LIKE ? OR 
-                               e.enlace_producto LIKE ? OR 
-                               prov.empresa_proveedor LIKE ? OR 
-                               u.ubicacion LIKE ?)";
-            $searchTerm = "%$searchValue%";
+        if ($searchValue !== '') {
+            $where .= " AND (p.producto LIKE ? 
+                              OR p.present_producto LIKE ?
+                              OR e.enlace_producto LIKE ? 
+                              OR prov.empresa_proveedor LIKE ? 
+                              OR u.ubicacion LIKE ?)";
+            $searchTerm = "%" . $searchValue . "%";
+            $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
         }
 
-        // Conteo total filtrado
-        $sqlFiltered = "SELECT COUNT(p.id_producto) as total " . $sqlBase;
-        $totalFiltered = $this->select($sqlFiltered, $params)['total'] ?? 0;
-
-        // Conteo total sin filtro
+        // --- Conteo total sin filtro ---
         $sqlTotal = "SELECT COUNT(p.id_producto) as total 
                      FROM table_alm_producto p 
                      WHERE p.status_producto = 1 
                        AND p.id_institucion = ?";
         $totalRecords = $this->select($sqlTotal, [$this->id_institucion])['total'] ?? 0;
 
-        // Consulta principal
-        $sql = "SELECT p.id_producto, p.producto, p.present_producto, 
-                       prov.empresa_proveedor, rel.cant_producto, u.ubicacion, e.enlace_producto " 
-                . $sqlBase . "
+        // --- Conteo filtrado (usando la misma lógica de joins que la consulta principal) ---
+        $sqlFilteredCount = "SELECT COUNT(DISTINCT p.id_producto) as total 
+                             FROM table_alm_producto p 
+                             LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
+                             LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
+                             LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
+                             LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                             " . $where;
+        $totalFiltered = $this->select($sqlFilteredCount, $params)['total'] ?? 0;
+
+        // --- Consulta principal usando subconsulta para evitar duplicados y permitir ORDER BY por alias ---
+        $sql = "SELECT * FROM (
+                    SELECT 
+                        p.id_producto, 
+                        p.producto, 
+                        p.present_producto, 
+                        MAX(prov.empresa_proveedor) AS empresa_proveedor, 
+                        COALESCE(SUM(rel.cant_producto), 0) AS cant_producto, 
+                        MAX(u.ubicacion) AS ubicacion, 
+                        MAX(e.enlace_producto) AS enlace_producto 
+                    FROM table_alm_producto p 
+                    LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
+                    LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
+                    LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
+                    LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                    " . $where . "
+                    GROUP BY p.id_producto, p.producto, p.present_producto
+                ) AS sub
                 ORDER BY $orderColumn $orderDir
                 LIMIT $start, $length";
+
         $data = $this->select_all($sql, $params);
 
-        return [ "data" => $data, "total" => $totalRecords, "total_filtered" => $totalFiltered ];
+        return [
+            "data" => $data,
+            "total" => $totalRecords,
+            "total_filtered" => $totalFiltered
+        ];
     }
 
-    /**
-     * Obtiene un producto específico de la institución activa.
-     */
     public function selectProducto(int $idProducto){
         $sql = "SELECT 
                     p.id_producto,
@@ -177,9 +205,6 @@ class ProductoModel extends Mysql {
         return $this->select($sql, [$idProducto, $this->id_institucion]);
     }
 
-    /**
-     * Actualiza la cantidad de stock de un producto.
-     */
     public function upCantProducto(int $intIdProducto, float $srtCantNew){
         $sql = "UPDATE table_alm_relacion_producto 
                 SET cant_producto = ? 
@@ -189,9 +214,6 @@ class ProductoModel extends Mysql {
         return $this->update($sql, $arrData);
     }
 
-    /**
-     * Elimina (soft delete) un producto.
-     */
     public function delProducto(int $intIdProducto){
         $sql = "UPDATE table_alm_producto 
                 SET status_producto = 0 
@@ -204,9 +226,6 @@ class ProductoModel extends Mysql {
     /********* HISTORIAL DE PRODUCTOS *****************/
     /**************************************************/
 
-    /**
-     * Obtiene un resumen del historial de despachos de la institución activa.
-     */
     public function getHistorySummary() {
         $sql = "SELECT 
                     p.id_producto, 
@@ -227,9 +246,6 @@ class ProductoModel extends Mysql {
         return $this->select_all($sql, [$this->id_institucion]);
     }
 
-    /**
-     * Obtiene el resumen del historial filtrado por rango de fechas.
-     */
     public function getHistorySummaryByDateRange($fechaInicio, $fechaFin) {
         $sql = "SELECT 
                     p.id_producto, 
@@ -251,12 +267,8 @@ class ProductoModel extends Mysql {
         return $this->select_all($sql, [$this->id_institucion, $fechaInicio, $fechaFin]);
     }
 
-    /**
-     * Obtiene el historial detallado paginado de un producto.
-     */
     public function getDetailHistoryPaginated(int $idProducto, int $page, int $perPage): array
     {
-        // Contar total
         $sqlCount = "SELECT COUNT(rd.id_despacho) as total 
                      FROM table_alm_relacion_despacho rd
                      JOIN table_alm_despacho d ON rd.id_despacho = d.id_despacho
@@ -295,9 +307,6 @@ class ProductoModel extends Mysql {
         ];
     }
 
-    /**
-     * Obtiene productos para reporte de inventario.
-     */
     public function selectProductosReporte()
     {
         $sql = "SELECT 
@@ -315,12 +324,8 @@ class ProductoModel extends Mysql {
         return $this->select_all($sql, [$this->id_institucion]);
     }
 
-    /**
-     * Actualiza los datos completos de un producto.
-     */
     public function updateFullProducto(int $idProducto, array $data)
     {
-        // Verificar duplicados EN LA MISMA INSTITUCIÓN
         $sql_check = "SELECT id_producto FROM table_alm_producto 
                       WHERE producto = ? 
                         AND id_enlace_producto = ? 
@@ -346,7 +351,8 @@ class ProductoModel extends Mysql {
         $arrData_relacion = [$data['id_proveedor'], $data['cant_producto'], $idProducto, $this->id_institucion];
         $request_relacion = $this->update($sql_relacion, $arrData_relacion);
 
-        return $request_producto || $request_relacion;    }
+        return $request_producto || $request_relacion;
+    }
 
     /**************************************************/
     /********* INVENTARIO *****************************/
@@ -354,30 +360,31 @@ class ProductoModel extends Mysql {
 
     /**
      * Obtiene productos para la vista de inventario.
+     * Misma lógica corregida que getProductosServerSide.
      */
     public function getInventario(int $start, int $length, string $searchValue, string $orderColumn, string $orderDir): array
     {
-        $sqlBase = "FROM table_alm_producto p 
-                    LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
-                    LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
-                    LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
-                    LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
-                    WHERE p.status_producto = 1
-                      AND p.id_institucion = ?";
+        $start  = max(0, (int)$start);
+        $length = ($length > 0 && $length <= 1000) ? (int)$length : 15;
+        $orderColumn = $this->sanitizarColumnaOrden($orderColumn);
+        $orderDir    = $this->sanitizarDireccionOrden($orderDir);
 
+        $where = " WHERE p.status_producto = 1 AND p.id_institucion = ? ";
         $params = [$this->id_institucion];
 
-        if (!empty($searchValue)) {
-            $sqlBase .= " AND (p.producto LIKE ? OR e.enlace_producto LIKE ? OR prov.empresa_proveedor LIKE ? OR u.ubicacion LIKE ?)";
-            $searchTerm = "%$searchValue%";
+        if ($searchValue !== '') {
+            $where .= " AND (p.producto LIKE ? 
+                              OR p.present_producto LIKE ?
+                              OR e.enlace_producto LIKE ? 
+                              OR prov.empresa_proveedor LIKE ? 
+                              OR u.ubicacion LIKE ?)";
+            $searchTerm = "%" . $searchValue . "%";
+            $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
             $params[] = $searchTerm;
         }
-
-        $sqlFiltered = "SELECT COUNT(p.id_producto) as total " . $sqlBase;
-        $totalFiltered = $this->select($sqlFiltered, $params)['total'] ?? 0;
 
         $sqlTotal = "SELECT COUNT(p.id_producto) as total 
                      FROM table_alm_producto p 
@@ -385,13 +392,41 @@ class ProductoModel extends Mysql {
                        AND p.id_institucion = ?";
         $totalRecords = $this->select($sqlTotal, [$this->id_institucion])['total'] ?? 0;
 
-        $sql = "SELECT p.id_producto, p.producto, p.present_producto, 
-                       prov.empresa_proveedor, rel.cant_producto, u.ubicacion, e.enlace_producto " 
-                . $sqlBase . "
+        $sqlFilteredCount = "SELECT COUNT(DISTINCT p.id_producto) as total 
+                             FROM table_alm_producto p 
+                             LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
+                             LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
+                             LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
+                             LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                             " . $where;
+        $totalFiltered = $this->select($sqlFilteredCount, $params)['total'] ?? 0;
+
+        $sql = "SELECT * FROM (
+                    SELECT 
+                        p.id_producto, 
+                        p.producto, 
+                        p.present_producto, 
+                        MAX(prov.empresa_proveedor) AS empresa_proveedor, 
+                        COALESCE(SUM(rel.cant_producto), 0) AS cant_producto, 
+                        MAX(u.ubicacion) AS ubicacion, 
+                        MAX(e.enlace_producto) AS enlace_producto 
+                    FROM table_alm_producto p 
+                    LEFT JOIN table_alm_relacion_producto rel ON p.id_producto = rel.id_producto
+                    LEFT JOIN table_proveedor prov ON rel.id_proveedor = prov.id_proveedor
+                    LEFT JOIN table_alm_ubicacion u ON p.id_ubicacion = u.id_ubicacion
+                    LEFT JOIN table_alm_enlace_producto e ON p.id_enlace_producto = e.id_enlace_producto
+                    " . $where . "
+                    GROUP BY p.id_producto, p.producto, p.present_producto
+                ) AS sub
                 ORDER BY $orderColumn $orderDir
                 LIMIT $start, $length";
+
         $data = $this->select_all($sql, $params);
 
-        return [ "data" => $data, "total" => $totalRecords, "total_filtered" => $totalFiltered ];
+        return [
+            "data" => $data,
+            "total" => $totalRecords,
+            "total_filtered" => $totalFiltered
+        ];
     }
 }

@@ -156,12 +156,17 @@ async function getProducto() {
 
 function inicializarDataTable() {
     tableProducto = $('#tableProducto').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
+        "processing": true,
+        "serverSide": true,
         "language": { "url": base_url + "src/plugins/js/es_es.json" },
         "ajax": {
-            "url": base_url + "Producto/getProductos?id_institucion=" + idInstitucionProducto,
+            "url": base_url + "Producto/getProductos",
             "type": "POST",
+            "data": function (d) {
+                // Enviar explícitamente todos los parámetros de DataTables
+                // junto con id_institucion
+                d.id_institucion = idInstitucionProducto;
+            },
             "dataSrc": "data"
         },
         "columns": [
@@ -193,7 +198,8 @@ function inicializarDataTable() {
         },
         "responsive": true,
         "bDestroy": true,
-        "iDisplayLength": 10,
+        "iDisplayLength": 25,
+        "lengthMenu": [[10, 25, 50, 100, -1], [10, 25, 50, 100, "Todos"]],
         "order": [[0, "desc"]],
         "dom": 'lfrtip'
     });
@@ -272,12 +278,15 @@ async function fntReporteProductosPDF() {
 
 function inicializarInventarioTable() {
     tableInventario = $('#tableInventario').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
+        "processing": true,
+        "serverSide": true,
         "language": { "url": base_url + "src/plugins/js/es_es.json" },
         "ajax": {
-            "url": base_url + "Producto/getInventario?id_institucion=" + idInstitucionProducto,
+            "url": base_url + "Producto/getInventario",
             "type": "POST",
+            "data": function (d) {
+                d.id_institucion = idInstitucionProducto;
+            },
             "dataSrc": "data"
         },
         "columns": [
@@ -337,11 +346,15 @@ async function fntReporteInventarioPDF() {
 
 function inicializarHistoryTable() {
     tableHistory = $('#tableHistory').DataTable({
-        "aProcessing": true,
-        "aServerSide": true,
+        "processing": true,
+        "serverSide": true,
         "language": { "url": base_url + "src/plugins/js/es_es.json" },
         "ajax": {
-            "url": base_url + "Producto/getHistorySummary?id_institucion=" + idInstitucionProducto,
+            "url": base_url + "Producto/getHistorySummary",
+            "type": "POST",
+            "data": function (d) {
+                d.id_institucion = idInstitucionProducto;
+            },
             "dataSrc": "data"
         },
         "columns": [

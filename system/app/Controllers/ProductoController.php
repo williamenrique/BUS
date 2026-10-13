@@ -213,27 +213,42 @@ class Producto extends Controllers{
 
     public function getProductos(){
         try {
-            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            // DataTables envía todo por POST. El id_institucion puede venir por GET o POST.
+            $idInstitucion = intval($_REQUEST['id_institucion'] ?? 1);
             $this->model->setInstitucion($idInstitucion);
 
             $draw = intval($_POST['draw'] ?? 0);
-            $start = intval($_POST['start'] ?? 0);
-            $length = intval($_POST['length'] ?? 10);
+            $start = max(0, intval($_POST['start'] ?? 0));
+            $length = intval($_POST['length'] ?? 25);
+            if ($length <= 0 || $length > 1000) { $length = 25; }
+
             $searchValue = $_POST['search']['value'] ?? '';
-            $orderColumnIndex = $_POST['order'][0]['column'] ?? 0;
+
+            $orderColumnIndex = intval($_POST['order'][0]['column'] ?? 0);
             $orderColumnName = $_POST['columns'][$orderColumnIndex]['data'] ?? 'id_producto';
-            $orderDir = $_POST['order'][0]['dir'] ?? 'desc';
+            // Evitar que un column data null rompa el ORDER BY
+            if ($orderColumnName === null || $orderColumnName === '' || $orderColumnName === 'null') {
+                $orderColumnName = 'id_producto';
+            }
+            $orderDir = strtoupper($_POST['order'][0]['dir'] ?? 'desc');
+            if ($orderDir !== 'ASC' && $orderDir !== 'DESC') { $orderDir = 'DESC'; }
 
             $productosData = $this->model->getProductosServerSide($start, $length, $searchValue, $orderColumnName, $orderDir);
 
             $arrResponse = [
                 "draw" => $draw,
-                "recordsTotal" => $productosData['total'],
-                "recordsFiltered" => $productosData['total_filtered'],
+                "recordsTotal" => (int)$productosData['total'],
+                "recordsFiltered" => (int)$productosData['total_filtered'],
                 "data" => $productosData['data']
             ];
         } catch (Exception $e) {
-            $arrResponse = ["error" => "Error al cargar productos: " . $e->getMessage()];
+            $arrResponse = [
+                "draw" => intval($_POST['draw'] ?? 0),
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "error" => "Error al cargar productos: " . $e->getMessage()
+            ];
         }
 
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
@@ -390,27 +405,40 @@ class Producto extends Controllers{
 
     public function getInventario() {
         try {
-            $idInstitucion = intval($_GET['id_institucion'] ?? 1);
+            $idInstitucion = intval($_REQUEST['id_institucion'] ?? 1);
             $this->model->setInstitucion($idInstitucion);
 
             $draw = intval($_POST['draw'] ?? 0);
-            $start = intval($_POST['start'] ?? 0);
-            $length = intval($_POST['length'] ?? 10);
+            $start = max(0, intval($_POST['start'] ?? 0));
+            $length = intval($_POST['length'] ?? 15);
+            if ($length <= 0 || $length > 1000) { $length = 15; }
+
             $searchValue = $_POST['search']['value'] ?? '';
-            $orderColumnIndex = $_POST['order'][0]['column'] ?? 0;
+
+            $orderColumnIndex = intval($_POST['order'][0]['column'] ?? 0);
             $orderColumnName = $_POST['columns'][$orderColumnIndex]['data'] ?? 'id_producto';
-            $orderDir = $_POST['order'][0]['dir'] ?? 'asc';
+            if ($orderColumnName === null || $orderColumnName === '' || $orderColumnName === 'null') {
+                $orderColumnName = 'id_producto';
+            }
+            $orderDir = strtoupper($_POST['order'][0]['dir'] ?? 'asc');
+            if ($orderDir !== 'ASC' && $orderDir !== 'DESC') { $orderDir = 'ASC'; }
 
             $inventarioData = $this->model->getInventario($start, $length, $searchValue, $orderColumnName, $orderDir);
 
             $arrResponse = [
                 "draw" => $draw,
-                "recordsTotal" => $inventarioData['total'],
-                "recordsFiltered" => $inventarioData['total_filtered'],
+                "recordsTotal" => (int)$inventarioData['total'],
+                "recordsFiltered" => (int)$inventarioData['total_filtered'],
                 "data" => $inventarioData['data']
             ];
         } catch (Exception $e) {
-            $arrResponse = ["error" => "Error al cargar el inventario: " . $e->getMessage()];
+            $arrResponse = [
+                "draw" => intval($_POST['draw'] ?? 0),
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "error" => "Error al cargar el inventario: " . $e->getMessage()
+            ];
         }
         echo json_encode($arrResponse, JSON_UNESCAPED_UNICODE);
         die();
