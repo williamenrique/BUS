@@ -299,3 +299,45 @@ if (!function_exists('icon_tag')) {
         return '<i data-lucide="' . e($name) . '"' . $class . '></i>';
     }
 }
+
+if (!function_exists('normalizar_mayusculas')){
+    /**
+     * Convierte a MAYÚSCULAS todos los campos string de un array.
+     * - $excepto: campos que se dejan intactos (ej: email, password)
+     * - $solo:    si se pasa, SOLO estos campos se convierten
+     */
+    function normalizar_mayusculas(array $data, array $excepto = [], array $solo = []): array{
+        foreach ($data as $key => $val){
+            if (!is_string($val)) continue;
+            if (!empty($solo) && !in_array($key, $solo, true)) continue;
+            if (in_array($key, $excepto, true)) continue;
+            $data[$key] = mb_strtoupper(trim($val), 'UTF-8');
+        }
+        return $data;
+    }
+}
+
+if (!function_exists('normalizar_email')){
+    /**
+     * Solo hace trim y lowercase en el dominio (no en la parte local).
+     * Ej: "Juan@MAIL.COM " → "Juan@mail.com"
+     */
+    function normalizar_email(string $email): string{
+        $email = trim($email);
+        if ($email === '' || !str_contains($email, '@')) return $email;
+        [$local, $domain] = explode('@', $email, 2);
+        return $local . '@' . strtolower($domain);
+    }
+}
+
+if (!function_exists('es_admin_sistema')){
+    /**
+     * Devuelve true si el usuario logueado pertenece al departamento de Sistemas.
+     * Compara por ID con DEPARTAMENTO_SISTEMA de config.php.
+     */
+    function es_admin_sistema(): bool{
+        $user = auth_user();
+        if (!$user) return false;
+        return (int)($user['departamento_id'] ?? 0) === (int)DEPARTAMENTO_SISTEMA;
+    }
+}

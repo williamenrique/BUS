@@ -52,7 +52,11 @@ define('LEGACY_SECRET_IV',  '101712');
 
 // Multi-tenant
 define('DEFAULT_INSTITUCION', 1);
-
+// ============================================
+// Recuperación de contraseña
+// ============================================
+define('DEPARTAMENTO_SISTEMA', 1);   // id del departamento de Sistemas
+define('PASSWORD_DEFAULT_RESET', '123456');
 // Nombres
 define('SITENAME', 'SITGO');
 define('SITGO_APP_NAME', 'SITGO');

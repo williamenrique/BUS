@@ -87,16 +87,21 @@
         <div class="flex items-start justify-between mb-3">
             <div>
                 <h3 class="text-lg font-semibold text-slate-800">Recuperar contraseña</h3>
-                <p class="text-xs text-slate-500">Se registrará tu solicitud para revisión del administrador.</p>
+                <p class="text-xs text-slate-500">
+                    Ingresa tu cédula o correo. Un administrador procesará tu solicitud.
+                </p>
             </div>
             <button id="closeForgot" class="text-slate-400 hover:text-slate-700 text-xl leading-none">&times;</button>
         </div>
 
         <form id="formForgot" novalidate>
-            <label class="block text-sm font-medium text-slate-700 mb-1">Usuario o correo electrónico</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">
+                Cédula o correo electrónico
+            </label>
             <input type="text" name="identificador" id="identificador" required
-                   class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-3"
-                   placeholder="usuario o correo@dominio.com">
+                   class="w-full px-3 py-2 rounded-lg border border-slate-300
+                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none mb-3"
+                   placeholder="V-12345678, usuario o correo@dominio.com">
 
             <div id="forgotMsg" class="hidden text-sm rounded-lg p-2 mb-3"></div>
 

@@ -78,6 +78,7 @@ class ControllerAuth extends Controller
             'nombre'             => trim(($user['personal_nombre'] ?? '') . ' ' . ($user['personal_apellido'] ?? '')),
             'email'              => $user['personal_email'] ?? '',
             'imagen'             => $user['usuario_imagen'] ?? '',
+            'es_sistema' => ((int)$user['usuario_departamento_id'] === (int)DEPARTAMENTO_SISTEMA),
         ];
         $_SESSION['last_activity'] = time();
         $_SESSION['csrf_token']    = bin2hex(random_bytes(32));

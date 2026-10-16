@@ -10,7 +10,7 @@ $nombreCorto    = $partes[0] ?? 'Usuario';
 $apellidoCorto  = $partes[1] ?? '';
 
 $avatarUrl = !empty($user['imagen'])
-    ? asset('uploads/' . $user['imagen'])
+    ? asset('uploads/storage/' . $user['imagen'])
     : asset('img/default.png');
 
 $iniciales = strtoupper(
@@ -162,14 +162,24 @@ $iniciales = strtoupper(
                 </div>
 
                 <div class="dropdown-wrap">
-                    <button id="btnNotifications" class="navbar-btn">
+                    <button id="btnNotifications" class="navbar-btn" aria-label="Notificaciones">
                         <?= icon_tag('bell', 'bell', 'w-5 h-5') ?>
-                        <?php if (!empty($notificaciones)): ?>
-                            <span class="notif-badge"><?= min(count($notificaciones), 9) ?></span>
-                        <?php endif; ?>
+                        <span class="notif-badge" id="notifBadgeGlobal" style="display:none;">0</span>
                     </button>
                     <div id="dropdownNotifications" class="dropdown-panel">
                         <div class="dropdown-header">Notificaciones</div>
+
+                        <?php if ((int)($user['departamento_id'] ?? 0) === (int)DEPARTAMENTO_SISTEMA): ?>
+                        <a id="notifItemRecuperar" href="<?= base_url('recuperar') ?>"
+                        class="dropdown-link" style="display:none; position:relative;">
+                            <span style="position:relative; display:flex; align-items:center;">
+                                <?= icon_tag('key-round', 'key-round', 'w-4 h-4') ?>
+                                <span id="notifBadgeRecuperar" class="notif-badge" style="display:none; top:-6px; right:-8px;">0</span>
+                            </span>
+                            <span>Solicitudes de recuperación</span>
+                        </a>
+                        <?php endif; ?>
+
                         <ul class="dropdown-list">
                             <?php if (empty($notificaciones)): ?>
                                 <li class="dropdown-empty">Sin notificaciones.</li>

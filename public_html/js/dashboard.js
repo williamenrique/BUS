@@ -155,4 +155,61 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }, 150);
     });
+
+    /* ============================================
+       Contador de recuperaciones (navbar)
+       ============================================ */
+    (function initContadorRecuperar(){
+        const item        = document.getElementById('notifItemRecuperar');
+        const badge       = document.getElementById('notifBadgeRecuperar');
+        const badgeGlobal = document.getElementById('notifBadgeGlobal');
+        const btnBell     = document.getElementById('btnNotifications');
+
+        if (badge)       badge.style.display = 'none';
+        if (badgeGlobal) badgeGlobal.style.display = 'none';
+        if (item)        item.style.display = 'none';
+        if (btnBell)     btnBell.classList.remove('has-notif');
+
+        // Si no hay item de recuperación, el usuario no es de Sistema
+        if (!item) {
+            // Exponer una función no-op para evitar errores desde otros módulos
+            window.sitgoUpdateContador = () => {};
+            return;
+        }
+
+        const update = async () => {
+            try{
+                const r = await fetch((window.SITGO_BASE || '/') + 'recuperar/contador', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const d = await r.json();
+                const count = d.ok ? Number(d.count) || 0 : 0;
+
+                if (count > 0){
+                    const txt = count > 9 ? '9+' : String(count);
+                    if (badge){
+                        badge.textContent = txt;
+                        badge.style.display = 'flex';
+                    }
+                    if (badgeGlobal){
+                        badgeGlobal.textContent = txt;
+                        badgeGlobal.style.display = 'flex';
+                    }
+                    item.style.display = '';
+                    if (btnBell) btnBell.classList.add('has-notif');
+                } else {
+                    if (badge)       badge.style.display = 'none';
+                    if (badgeGlobal) badgeGlobal.style.display = 'none';
+                    item.style.display = 'none';
+                    if (btnBell) btnBell.classList.remove('has-notif');
+                }
+            } catch (e){ /* silencioso */ }
+        };
+
+        // 👇 Exponer globalmente para que recuperar.js la invoque
+        window.sitgoUpdateContador = update;
+
+        update();
+        setInterval(update, 20000);
+    })();
 });

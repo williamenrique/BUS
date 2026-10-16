@@ -62,23 +62,23 @@ document.addEventListener('DOMContentLoaded', () => {
     cancelF?.addEventListener('click', closeModal);
     modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-    // Recuperar
+        // Recuperar
     formF?.addEventListener('submit', async (e) => {
         e.preventDefault();
         msgF.classList.add('hidden');
         btnFSub.disabled = true;
         btnFSub.textContent = 'Enviando...';
 
-        try {
+        try{
             const fd = new FormData(formF);
-            const r  = await fetch(window.SITGO_BASE + 'recuperar', {
+            const r = await fetch(window.SITGO_BASE + 'recuperar/solicitar', {
                 method: 'POST',
                 body: fd,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await r.json();
 
-            msgF.textContent = data.message || (data.ok ? 'Solicitud registrada.' : 'No se pudo procesar.');
+            msgF.textContent = data.message || (data.ok ? 'Solicitud enviada.' : 'No se pudo procesar.');
             msgF.className = 'text-sm rounded-lg p-2 mb-3 ' +
                 (data.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                          : 'bg-red-50 text-red-700 border border-red-200');
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch {
             msgF.textContent = 'Error de conexión.';
             msgF.className = 'text-sm rounded-lg p-2 mb-3 bg-red-50 text-red-700 border border-red-200';
-        } finally {
+        } finally{
             btnFSub.disabled = false;
             btnFSub.textContent = 'Enviar solicitud';
         }
