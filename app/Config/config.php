@@ -51,7 +51,12 @@ define('LEGACY_SECRET_KEY', '$busYaracuy');
 define('LEGACY_SECRET_IV',  '101712');
 
 // Multi-tenant
+// ============================================
+// Multi-institución
+// ============================================
+// Se puede sobrescribir; los IDs reales vienen de table_instituciones
 define('DEFAULT_INSTITUCION', 1);
+define('MULTI_INSTITUCION', true);   // activa el filtrado por institución
 // ============================================
 // Recuperación de contraseña
 // ============================================

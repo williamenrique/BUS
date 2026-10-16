@@ -1,0 +1,146 @@
+============================================
+ESTRUCTURA DE ARCHIVOS -
+============================================
+Fecha: 2026-10-16 22:25:04
+Raíz: C:\xampp\htdocs\BUS
+Total Items: 135
+Directorios: 51
+Archivos: 84
+Tamaño Total: 4 KB
+============================================
+
+📁 app
+  📁 Config
+    📄 config.php (2.8 KB)
+    📄 routes.php (7.2 KB)
+  📁 Controllers
+    📄 ControllerAuth.php (4.8 KB)
+    📄 ControllerDashboard.php (786 B)
+    📄 ControllerFlota.php (15.1 KB)
+    📄 ControllerPersonal.php (6.6 KB)
+    📄 ControllerRecuperar.php (7 KB)
+    📄 ControllerUsuario.php (16.8 KB)
+  📁 Core
+    📄 App.php (2.3 KB)
+    📄 AppException.php (68 B)
+    📄 Controller.php (1.4 KB)
+    📄 Database.php (821 B)
+    📄 Model.php (918 B)
+    📄 Validator.php (986 B)
+  📁 Helpers
+    📄 helpers.php (12.5 KB)
+  📁 Middleware
+    📄 AuthGuard.php (2.4 KB)
+    📄 RoleGuard.php (688 B)
+  📁 Models
+    📄 ModelDashboard.php (1.2 KB)
+    📄 ModelFlota.php (23.8 KB)
+    📄 ModelPersonal.php (7.5 KB)
+    📄 ModelRecuperar.php (3.3 KB)
+    📄 ModelUsuario.php (20.6 KB)
+  📁 Views
+    📁 auth
+      📄 Login.php (6 KB)
+    📁 dashboard
+      📄 index.php (2.4 KB)
+    📁 errores
+      📄 404.php (622 B)
+    📁 flota
+      📄 aceite.php (9.7 KB)
+      📄 historial.php (8.3 KB)
+      📄 index.php (12.9 KB)
+    📁 inc
+      📄 footer.php (1.1 KB)
+      📄 header.php (11.3 KB)
+    📁 personal
+      📄 index.php (7.6 KB)
+    📁 recuperar
+      📄 index.php (990 B)
+    📁 usuarios
+      📄 index.php (7.4 KB)
+📁 public_html
+  📁 css
+    📄 styles.css (51.1 KB)
+    📄 tailwind.min.css (64.6 KB)
+  📁 img
+    📄 default.png (941 B)
+    📄 logo.png (245.8 KB)
+  📁 js
+    📁 components
+      📄 DataTable.js (11.3 KB)
+      📄 SearchSelect.js (9.1 KB)
+    📄 aceite.js (11 KB)
+    📄 app.js (94 B)
+    📄 dashboard.js (9.6 KB)
+    📄 flota.js (21.5 KB)
+    📄 historial.js (11.4 KB)
+    📄 login.js (3.8 KB)
+    📄 personal.js (15.5 KB)
+    📄 recuperar.js (8.3 KB)
+    📄 usuarios.js (21 KB)
+    📄 utils.js (1012 B)
+  📁 uploads
+    📁 storage
+      📁 A0-25
+        📄 A0-25_default.png (941 B)
+      📁 ADMIN
+        📄 default.png (24.9 KB)
+      📁 AM-23
+        📄 default.png (245.8 KB)
+      📁 BM-19
+        📄 default.png (245.8 KB)
+      📁 DB-13
+        📄 profile_6a280cb17b91a2.24511689.jpeg (113.8 KB)
+      📁 DG-11
+        📄 profile_68eeae865b50e7.01552912.png (73.8 KB)
+      📁 DP-21
+        📄 default.png (245.8 KB)
+      📁 EL-08
+        📄 default.png (17.8 KB)
+      📁 FA-06
+        📄 default.png (17.8 KB)
+      📁 GR-05
+        📄 default.png (17.8 KB)
+      📁 HR-20
+        📄 default.png (245.8 KB)
+      📁 JG-22
+        📄 default.png (245.8 KB)
+      📁 JZ-10
+        📄 default.png (24.9 KB)
+      📁 KM-07
+        📄 default.png (17.8 KB)
+      📁 KM-15
+        📄 default.png (73.8 KB)
+      📁 MO-03
+        📄 default.png (17.8 KB)
+      📁 MR-24
+        📄 MR-24_default.png (941 B)
+      📁 NL-16
+        📄 profile_68ffeb47401ab3.36557297.jpeg (39.1 KB)
+      📁 OC-14
+        📄 default.png (73.8 KB)
+      📁 OM-17
+        📄 default.png (245.8 KB)
+      📁 RD-09
+        📄 default.png (17.8 KB)
+      📁 SM-12
+        📄 profile_68e3b3a42c2c05.48317417.png (73.8 KB)
+      📁 WILL
+        📄 profile_6928711aca9b87.19854429.png (941 B)
+      📁 YA-11
+        📄 default.png (17.8 KB)
+      📁 YM-12
+        📄 default.png (17.8 KB)
+      📁 YR-04
+        📄 default.png (17.8 KB)
+      📁 YS-18
+        📄 default.png (245.8 KB)
+  📄 estructura.php (31 KB)
+  📄 index.php (639 B)
+📁 sql
+  📄 MIGRACION ICONOS.sql (2.9 KB)
+  📄 README_MIGRACIONES.md (210 B)
+  📄 table_notificaciones alter.sql (133 B)
+📄 dd.html (2.6 KB)
+📄 ESTRUCTURA.MD (1.3 KB)
+📄 README.md (72 B)

@@ -88,18 +88,70 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ============================================
-       Marcar link activo
+       Marcar link activo (soporta subrutas y multi-institución)
+       Ej: /flota/i/1/historial/5 activa /flota/i/1
+           /flota/i/2 activa /flota/i/2 (no /flota/i/1)
        ============================================ */
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('#sidebar a.sidebar-link').forEach(link => {
-        try {
-            const href = new URL(link.href).pathname;
-            if (href === currentPath ||
-                (href !== '/' && currentPath.startsWith(href) && href.length > 1)) {
-                link.classList.add('active');
+    const currentPath = window.location.pathname.replace(/\/$/, '') || '/';
+
+    // Recolectar todos los links del sidebar con su path limpio
+    const sidebarLinks = Array.from(document.querySelectorAll('#sidebar a.sidebar-link'))
+        .map(link => {
+            try {
+                const href = new URL(link.href, window.location.origin);
+                const path = href.pathname.replace(/\/$/, '') || '/';
+                return { link, path };
+            } catch { return null; }
+        })
+        .filter(Boolean);
+
+    // Buscar el link MÁS específico que matchee:
+    // - 1º intenta match exacto
+    // - 2º intenta match por prefijo (el más largo gana)
+    let bestMatch = null;
+
+    sidebarLinks.forEach(({ link, path }) => {
+        if (path === '/') return;   // ignora raíz
+
+        // Match exacto
+        if (path === currentPath) {
+            if (!bestMatch || path.length > bestMatch.len || !bestMatch.exact) {
+                bestMatch = { link, len: path.length, exact: true };
             }
-        } catch {}
+            return;
+        }
+
+        // Match por prefijo: /flota/i/1/historial/5 empieza con /flota/i/1
+        if (currentPath.startsWith(path + '/')) {
+            if (!bestMatch || (path.length > bestMatch.len && !bestMatch.exact)) {
+                bestMatch = { link, len: path.length, exact: false };
+            }
+        }
     });
+
+    if (bestMatch){
+        bestMatch.link.classList.add('active');
+
+        // Auto-abrir el submenú padre si el link activo está dentro
+        const parentGroup = bestMatch.link.closest('.sidebar-group');
+        if (parentGroup && !parentGroup.classList.contains('open')){
+            parentGroup.classList.add('open');
+            const submenu = parentGroup.querySelector('.sidebar-submenu');
+            if (submenu){
+                submenu.style.maxHeight = submenu.scrollHeight + 'px';
+                submenu.style.opacity = '1';
+            }
+        }
+
+        // Auto-abrir submenús anidados (si el active está dentro de otro submenú)
+        let p = parentGroup;
+        while (p){
+            p.classList.add('open');
+            const sm = p.querySelector(':scope > .sidebar-submenu');
+            if (sm){ sm.style.maxHeight = sm.scrollHeight + 'px'; sm.style.opacity = '1'; }
+            p = p.parentElement.closest('.sidebar-group');
+        }
+    }
 
     /* ============================================
        DROPDOWNS navbar

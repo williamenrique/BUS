@@ -341,3 +341,118 @@ if (!function_exists('es_admin_sistema')){
         return (int)($user['departamento_id'] ?? 0) === (int)DEPARTAMENTO_SISTEMA;
     }
 }
+
+if (!function_exists('inst_actual')){
+    /**
+     * Devuelve el ID de la institución activa, en este orden:
+     *   1. Parámetro de URL /i/{id}
+     *   2. Sesión ($_SESSION['inst_activa'])
+     *   3. DEFAULT_INSTITUCION
+     *
+     * También cachea en sesión para que la navegación posterior
+     * mantenga la misma institución.
+     */
+    function inst_actual(?int $override = null): int{
+        if ($override !== null && $override > 0){
+            $_SESSION['inst_activa'] = $override;
+            return $override;
+        }
+
+        // 1) URL
+        if (!empty($_GET['inst']) && (int)$_GET['inst'] > 0){
+            $_SESSION['inst_activa'] = (int)$_GET['inst'];
+            return (int)$_GET['inst'];
+        }
+
+        // 2) Sesión
+        if (!empty($_SESSION['inst_activa'])){
+            return (int)$_SESSION['inst_activa'];
+        }
+
+        // 3) Default
+        return (int)DEFAULT_INSTITUCION;
+    }
+}
+
+if (!function_exists('inst_url')){
+    /**
+     * Construye una URL incluyendo la institución activa.
+     * Ej: inst_url('flota') → "flota/i/2" (si estamos en inst 2)
+     */
+    function inst_url(string $path, ?int $inst = null): string{
+        $inst = $inst ?? inst_actual();
+        $path = trim($path, '/');
+        return base_url($path . '/i/' . $inst);
+    }
+    if (!function_exists('inst_actual')){
+        /**
+         * Devuelve el ID de la institución activa.
+         * Prioridad: parámetro override → sesión → DEFAULT_INSTITUCION
+         */
+        function inst_actual(?int $override = null): int{
+            if ($override !== null && $override > 0){
+                $_SESSION['inst_activa'] = $override;
+                return $override;
+            }
+            if (!empty($_SESSION['inst_activa'])){
+                return (int)$_SESSION['inst_activa'];
+            }
+            return (int)DEFAULT_INSTITUCION;
+        }
+    }
+}
+
+if (!function_exists('inst_nombre_corto')){
+    /**
+     * Abrevia el nombre de una institución cuando es muy largo.
+     * - Si cabe en $maxLen, devuelve el nombre completo.
+     * - Si no, devuelve las iniciales de las palabras significativas
+     *   (ignora: de, del, la, el, y, de, para, por, etc.).
+     *
+     * Ej: "SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY"
+     *     → "SSLMTEY"
+     */
+    function inst_nombre_corto(string $nombre, int $maxLen = 28): string{
+        $nombre = trim($nombre);
+        if ($nombre === '') return '';
+
+        // Si cabe, se devuelve completo
+        if (mb_strlen($nombre, 'UTF-8') <= $maxLen){
+            return $nombre;
+        }
+
+        // Palabras ignoradas (conectores, preposiciones, artículos)
+        $ignorar = [
+            'de','del','la','las','el','los','y','e','o','u',
+            'a','al','en','con','por','para','un','una','unos','unas',
+            'the','of','and','&',
+        ];
+
+        // Limpiar signos de puntuación y dividir en palabras
+        $limpio = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $nombre);
+        $partes = preg_split('/\s+/u', $limpio, -1, PREG_SPLIT_NO_EMPTY);
+
+        if (!$partes){
+            return mb_substr($nombre, 0, $maxLen, 'UTF-8') . '…';
+        }
+
+        $iniciales = '';
+        foreach ($partes as $p){
+            $low = mb_strtolower($p, 'UTF-8');
+            if (in_array($low, $ignorar, true)) continue;
+            $iniciales .= mb_strtoupper(mb_substr($p, 0, 1, 'UTF-8'), 'UTF-8');
+        }
+
+        // Si quedó vacío, cortar por caracteres
+        if ($iniciales === ''){
+            return mb_substr($nombre, 0, $maxLen, 'UTF-8') . '…';
+        }
+
+        // Si aún es muy largo, limitar longitud
+        if (mb_strlen($iniciales, 'UTF-8') > $maxLen){
+            $iniciales = mb_substr($iniciales, 0, $maxLen, 'UTF-8') . '…';
+        }
+
+        return $iniciales;
+    }
+}

@@ -10,6 +10,7 @@
     // Variable global para que todos los módulos puedan construir URLs
     window.SITGO_BASE = "<?= BASE_URL ?>";
     console.log('SITGO_BASE =', window.SITGO_BASE);
+    window.SITGO_INST = <?= (int)($instId ?? 1) ?>;
 </script>
 
 <script src="<?= asset('js/components/DataTable.js') ?>"></script>
