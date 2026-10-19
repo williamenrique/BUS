@@ -80,11 +80,10 @@
                             <?= icon_tag('circle', 'circle', 'w-4 h-4') ?>
                         </span>
                         <input type="text" name="menu_icono" id="menu_icono" maxlength="50"
-                               placeholder="bus, users, package...">
+                            placeholder="Selecciona un icono...">
                     </div>
                     <small class="text-muted">
-                        Ver lista en <a href="https://lucide.dev/icons" target="_blank"
-                                        style="color:#3b82f6;">lucide.dev/icons</a>
+                        Haz clic en el botón <i data-lucide="layout-grid" style="width:12px;height:12px;display:inline-block;vertical-align:middle;"></i> para abrir el catálogo
                     </small>
                 </div>
 
@@ -236,7 +235,12 @@
                         </div>
                         <div class="form-group">
                             <label>Icono</label>
-                            <input type="text" id="sm_icono" maxlength="50" placeholder="bus, users...">
+                            <div class="icon-input-wrap">
+                                <span class="icon-preview" id="smIconPreview">
+                                    <?= icon_tag('circle', 'circle', 'w-4 h-4') ?>
+                                </span>
+                                <input type="text" id="sm_icono" maxlength="50" placeholder="Selecciona un icono...">
+                            </div>
                         </div>
                         <div class="form-group" style="grid-column: span 2;">
                             <label>Ruta <span class="req">*</span></label>
@@ -280,7 +284,7 @@
         </div>
     </div>
 </div>
-
+<script src="<?= asset('js/components/IconPicker.js') ?>"></script>
 <script>
     window.SITGO_BASE = "<?= BASE_URL ?>";
 </script>

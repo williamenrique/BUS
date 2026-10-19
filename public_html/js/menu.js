@@ -11,8 +11,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ============================================================
        INIT
        ============================================================ */
+        let iconPickerMenu = null;
+    let iconPickerSubmenu = null;
+
     (async () => {
         try{
+            initIconPickers();
             await cargarCombos();
             await cargarArbol();
             bindEvents();
@@ -21,6 +25,28 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('Error al inicializar: ' + e.message, 'error');
         }
     })();
+
+    /* ============================================================
+       INICIALIZAR ICON PICKERS
+       ============================================================ */
+    function initIconPickers(){
+        iconPickerMenu = new IconPicker({
+            inputId: 'menu_icono',
+            previewId: 'iconPreview',
+            onSelect: (name) => {
+                // El onSelect ya hace el sync del preview, pero por si acaso
+                console.log('Icono menú:', name);
+            }
+        });
+
+        iconPickerSubmenu = new IconPicker({
+            inputId: 'sm_icono',
+            previewId: 'smIconPreview',
+            onSelect: (name) => {
+                console.log('Icono submenú:', name);
+            }
+        });
+    }
 
     /* ============================================================
        API
@@ -251,15 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 e.target.closest('.menu-tipo-opt').classList.add('active');
                 actualizarTipoForm(e.target.value);
             });
-        });
-
-        // Preview de icono
-        $('menu_icono')?.addEventListener('input', (e) => {
-            const name = e.target.value.trim();
-            $('iconPreview').innerHTML = name
-                ? `<i data-lucide="${esc(name)}" class="w-4 h-4"></i>`
-                : `<i data-lucide="circle" class="w-4 h-4"></i>`;
-            if (window.lucide) lucide.createIcons();
         });
 
         // Botones asignar
