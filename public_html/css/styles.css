@@ -3518,3 +3518,540 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* ============================================
+   Módulo Despachos
+   ============================================ */
+
+/* Info unidad */
+.despacho-unidad-info {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .5rem;
+    padding: .75rem 1rem;
+    margin: 1rem 0;
+}
+
+.despacho-unidad-item {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.despacho-unidad-label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.despacho-unidad-item strong {
+    font-size: .85rem;
+    color: #0f172a;
+}
+
+/* Head artículos */
+.despacho-articulos-head {
+    margin: 1.25rem 0 .75rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.despacho-articulos-head h4 {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+    font-size: .9rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+/* ============================================
+   Formulario de artículo — layout limpio
+   ============================================ */
+.despacho-articulo-form {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    align-items: start;
+    margin-bottom: .5rem;
+}
+
+/* Cada columna */
+.despacho-articulo-form .despacho-field {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    margin: 0;
+    padding: 0;
+}
+
+/* Label */
+.despacho-articulo-form .despacho-field > label {
+    display: block;
+    margin: 0;
+    padding: 0;
+    font-size: .78rem;
+    font-weight: 500;
+    color: #475569;
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.2;
+}
+
+/* Inputs y selects — mismo alto */
+.despacho-articulo-form .despacho-field > select,
+.despacho-articulo-form .despacho-field > input,
+.despacho-articulo-form .despacho-field .despacho-cant-wrap > input {
+    width: 100%;
+    height: 38px;
+    padding: .45rem .65rem;
+    font-size: .82rem;
+    font-family: inherit;
+    border: 1px solid #cbd5e1;
+    border-radius: .4rem;
+    background: #fff;
+    outline: none;
+    box-sizing: border-box;
+    margin: 0;
+}
+
+.despacho-articulo-form .despacho-field > select:focus,
+.despacho-articulo-form .despacho-field > input:focus,
+.despacho-articulo-form .despacho-field .despacho-cant-wrap > input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.15);
+}
+
+/* Wrap cantidad + botón */
+.despacho-articulo-form .despacho-cant-wrap {
+    display: flex;
+    gap: .35rem;
+    align-items: stretch;
+    width: 100%;
+}
+
+.despacho-articulo-form .despacho-cant-wrap > input {
+    flex: 1;
+    min-width: 0;
+}
+
+.despacho-articulo-form .despacho-cant-wrap > .btn {
+    height: 38px;
+    width: 38px;
+    padding: 0;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+}
+
+/* Texto "Disponible" */
+.despacho-articulo-form .despacho-field > small,
+.despacho-articulo-form .despacho-disponible {
+    display: block;
+    margin-top: .25rem;
+    font-size: .7rem;
+    color: #94a3b8;
+    line-height: 1.3;
+    min-height: 1rem;
+}
+
+.despacho-articulo-form .despacho-disponible strong {
+    color: #334155;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .despacho-articulo-form { grid-template-columns: 1fr; }
+    .despacho-unidad-info { grid-template-columns: repeat(2, 1fr); }
+}
+/* ============================================
+   Historial de Productos
+   ============================================ */
+.historial-producto-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: .75rem;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+}
+
+.historial-producto-item {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+
+.historial-producto-label {
+    font-size: .7rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.historial-producto-item strong {
+    font-size: 1rem;
+    color: #0f172a;
+    font-weight: 700;
+}
+
+.historial-producto-link:hover {
+    color: #0ea5e9 !important;
+    text-decoration: underline !important;
+}
+
+/* Empty state heredado del módulo historial de unidad */
+.historial-empty h4 {
+    margin: 1rem 0 .35rem;
+    color: #0f172a;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.historial-empty p {
+    color: #64748b;
+    font-size: .85rem;
+    margin: 0;
+}
+
+/* ============================================
+   Módulo Compras
+   ============================================ */
+.compras-tabs {
+    display: flex;
+    gap: .25rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: .65rem;
+    padding: .35rem;
+    margin-bottom: 1.25rem;
+}
+
+.compras-tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    padding: .65rem 1rem;
+    border: none;
+    background: transparent;
+    border-radius: .4rem;
+    font-family: inherit;
+    font-size: .85rem;
+    font-weight: 500;
+    color: #64748b;
+    cursor: pointer;
+    transition: all .15s;
+    position: relative;
+}
+
+.compras-tab:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+.compras-tab.active {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(37,99,235,.3);
+}
+
+.compras-tab-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 .4rem;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+}
+
+.compras-tab.active .compras-tab-badge {
+    background: rgba(255,255,255,.3);
+}
+
+.compras-panel { display: block; }
+
+/* Filtros */
+.compras-filtros {
+    display: grid;
+    grid-template-columns: 160px 160px auto auto;
+    gap: .75rem;
+    align-items: end;
+}
+
+@media (max-width: 768px){
+    .compras-filtros { grid-template-columns: 1fr 1fr; }
+    .compras-tabs { flex-wrap: wrap; }
+    .compras-tab { flex: 1 1 100%; }
+}
+
+/* Info despacho en modal */
+.costo-info {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    padding: .85rem 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .5rem;
+}
+
+.costo-info > div {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+
+.costo-info-label {
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #94a3b8;
+    font-weight: 600;
+}
+
+.costo-info strong {
+    font-size: .9rem;
+    color: #0f172a;
+}
+
+/* Input en tabla */
+#tbodyArticulosCosto input {
+    width: 100%;
+    padding: .35rem .5rem;
+    font-size: .82rem;
+    border: 1px solid #cbd5e1;
+    border-radius: .35rem;
+    text-align: right;
+    outline: none;
+    font-family: inherit;
+}
+
+#tbodyArticulosCosto input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.15);
+}
+
+#tbodyArticulosCosto input:read-only {
+    background: #f1f5f9;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+/* tfoot */
+#tfootDetalle td {
+    font-weight: 700;
+    background: #f8fafc;
+    border-top: 2px solid #e2e8f0;
+}
+/* ============================================
+   Módulo Estación
+   ============================================ */
+.estacion-layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 1.25rem;
+    align-items: start;
+}
+
+@media (max-width: 1024px) {
+    .estacion-layout { grid-template-columns: 1fr; }
+}
+
+.estacion-tasa-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.estacion-tasa-label {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    color: #2563eb;
+}
+
+.estacion-tasa-value {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+.estacion-tasa-amount {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1;
+}
+
+.estacion-tasa-input {
+    width: 110px;
+    padding: .4rem .6rem;
+    font-size: .95rem;
+    border: 1px solid #cbd5e1;
+    border-radius: .4rem;
+    outline: none;
+}
+
+.estacion-tasa-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59,130,246,.15);
+}
+
+.estacion-tasa-date {
+    display: block;
+    font-size: .68rem;
+    color: #94a3b8;
+    margin-top: .25rem;
+}
+
+.estacion-card-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 1rem;
+}
+
+.estacion-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+@media (max-width: 640px) {
+    .estacion-stats { grid-template-columns: 1fr; }
+}
+
+.estacion-stat {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .85rem 1rem;
+    border-radius: .65rem;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(15,23,42,.08);
+}
+
+.estacion-stat-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .5rem;
+    background: rgba(255,255,255,.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.estacion-stat-label {
+    display: block;
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    opacity: .9;
+}
+
+.estacion-stat strong {
+    display: block;
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin-top: .1rem;
+}
+
+.stat-blue   { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+.stat-green  { background: linear-gradient(135deg, #16a34a, #15803d); }
+.stat-amber  { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+.estacion-desgloses {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.estacion-desglose {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .55rem;
+    padding: .75rem 1rem;
+}
+
+.estacion-desglose-title {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .78rem;
+    font-weight: 700;
+    color: #334155;
+    margin: 0 0 .5rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.estacion-desglose ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: .82rem;
+    color: #475569;
+}
+
+.estacion-desglose li {
+    padding: .2rem 0;
+}
+
+.estacion-actions {
+    display: flex;
+    gap: .5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+}
+
+.estacion-cierre-pendiente-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    padding: .65rem .85rem;
+    border: 1px solid #fecaca;
+    background: #fef2f2;
+    border-radius: .5rem;
+    margin-bottom: .5rem;
+    flex-wrap: wrap;
+}
+
+.estacion-cierre-pendiente-item strong {
+    color: #991b1b;
+    font-size: .85rem;
+}
+
+@media (max-width: 640px) {
+    .estacion-desgloses { grid-template-columns: 1fr; }
+}

@@ -108,4 +108,64 @@ return [
     ['path' => '/bienes/i/{inst}/guardar',            'method' => 'POST', 'handler' => 'ControllerBienes@guardar'],
     ['path' => '/bienes/i/{inst}/actualizar/{id}',    'method' => 'POST', 'handler' => 'ControllerBienes@actualizar'],
     ['path' => '/bienes/i/{inst}/eliminar/{id}',      'method' => 'POST', 'handler' => 'ControllerBienes@eliminar'],
+        // ============================================================
+    // Almacén · Productos (multi-institución)
+    // ============================================================
+    ['path' => '/productos/i/{inst}',                     'method' => 'GET',  'handler' => 'ControllerProductos@index'],
+    ['path' => '/productos/i/{inst}/listar',              'method' => 'GET',  'handler' => 'ControllerProductos@listar'],
+    ['path' => '/productos/i/{inst}/combos',              'method' => 'GET',  'handler' => 'ControllerProductos@combos'],
+    ['path' => '/productos/i/{inst}/obtener/{id}',        'method' => 'GET',  'handler' => 'ControllerProductos@obtener'],
+    ['path' => '/productos/i/{inst}/guardar',             'method' => 'POST', 'handler' => 'ControllerProductos@guardar'],
+    ['path' => '/productos/i/{inst}/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerProductos@actualizar'],
+    ['path' => '/productos/i/{inst}/agregar-stock/{id}',  'method' => 'POST', 'handler' => 'ControllerProductos@agregarStock'],
+    ['path' => '/productos/i/{inst}/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerProductos@eliminar'],
+    // ============================================================
+    // Almacén · Despachos (multi-institución)
+    // ============================================================
+    ['path' => '/despachos/i/{inst}',                     'method' => 'GET',  'handler' => 'ControllerDespachos@index'],         // 👈 ESTA
+    ['path' => '/despachos/i/{inst}/listar',              'method' => 'GET',  'handler' => 'ControllerDespachos@listar'],
+    ['path' => '/despachos/i/{inst}/combos',              'method' => 'GET',  'handler' => 'ControllerDespachos@combos'],
+    ['path' => '/despachos/i/{inst}/obtener/{id}',        'method' => 'GET',  'handler' => 'ControllerDespachos@obtener'],
+    ['path' => '/despachos/i/{inst}/guardar',             'method' => 'POST', 'handler' => 'ControllerDespachos@guardar'],
+    ['path' => '/despachos/i/{inst}/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerDespachos@actualizar'],
+    ['path' => '/despachos/i/{inst}/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerDespachos@eliminar'],
+    ['path' => '/despachos/i/{inst}/articulos/{id}',      'method' => 'GET',  'handler' => 'ControllerDespachos@articulos'],
+    ['path' => '/despachos/i/{inst}/stats',               'method' => 'GET',  'handler' => 'ControllerDespachos@stats'],
+        // Historial de productos
+    ['path' => '/despachos/i/{inst}/historial',              'method' => 'GET',  'handler' => 'ControllerDespachos@historialProductos'],
+    ['path' => '/despachos/i/{inst}/historial/listar',       'method' => 'GET',  'handler' => 'ControllerDespachos@historialListar'],
+    ['path' => '/despachos/i/{inst}/historial/detalle/{id}', 'method' => 'POST', 'handler' => 'ControllerDespachos@historialDetalle'],
+        // ============================================================
+    // Almacén · Compras (multi-institución)
+    // ============================================================
+    ['path' => '/compras/i/{inst}',                       'method' => 'GET',  'handler' => 'ControllerCompras@index'],
+    ['path' => '/compras/i/{inst}/pendientes',            'method' => 'GET',  'handler' => 'ControllerCompras@pendientes'],
+    ['path' => '/compras/i/{inst}/costeadas',             'method' => 'GET',  'handler' => 'ControllerCompras@costeadas'],
+    ['path' => '/compras/i/{inst}/articulos/{id}',        'method' => 'GET',  'handler' => 'ControllerCompras@articulosDespacho'],
+    ['path' => '/compras/i/{inst}/asignar-costo',         'method' => 'POST', 'handler' => 'ControllerCompras@asignarCosto'],
+    ['path' => '/compras/i/{inst}/detalle/{id}',          'method' => 'GET',  'handler' => 'ControllerCompras@detalleCosteado'],
+    ['path' => '/compras/i/{inst}/anular/{id}',           'method' => 'POST', 'handler' => 'ControllerCompras@anularCosto'],
+    ['path' => '/compras/i/{inst}/flota',                 'method' => 'GET',  'handler' => 'ControllerCompras@flota'],
+    ['path' => '/compras/i/{inst}/conteo-ordenes',        'method' => 'POST', 'handler' => 'ControllerCompras@conteoOrdenes'],
+        // ============================================================
+    // Estación de Servicio
+    // ============================================================
+    ['path' => '/estacion/registrar',                   'method' => 'GET',  'handler' => 'ControllerEstacion@registrar'],
+    ['path' => '/estacion/initial-data',                'method' => 'GET',  'handler' => 'ControllerEstacion@initialData'],
+    ['path' => '/estacion/update-tasa',                 'method' => 'POST', 'handler' => 'ControllerEstacion@updateTasa'],
+    ['path' => '/estacion/registrar-venta',             'method' => 'POST', 'handler' => 'ControllerEstacion@registrarVenta'],
+    ['path' => '/estacion/cerrar-dia',                  'method' => 'POST', 'handler' => 'ControllerEstacion@cerrarDia'],
+    ['path' => '/estacion/cerrar-turno-pendiente',      'method' => 'POST', 'handler' => 'ControllerEstacion@cerrarTurnoPendiente'],
+    ['path' => '/estacion/detalle-ventas',              'method' => 'POST', 'handler' => 'ControllerEstacion@getDetalleVentas'],
+    ['path' => '/estacion/ticket/{id}',                 'method' => 'POST', 'handler' => 'ControllerEstacion@getTicket'],
+    ['path' => '/estacion/reporte-pdf',                 'method' => 'POST', 'handler' => 'ControllerEstacion@generarReportePdf'],
+    ['path' => '/estacion/tasa-actual',                 'method' => 'GET',  'handler' => 'ControllerEstacion@getTasaCurrent'],
+    ['path' => '/estacion/dataventa',                   'method' => 'GET',  'handler' => 'ControllerEstacion@dataventa'],
+    ['path' => '/estacion/historial-cierres',           'method' => 'GET',  'handler' => 'ControllerEstacion@getHistorialCierres'],
+    ['path' => '/estacion/ventas-cierre',               'method' => 'POST', 'handler' => 'ControllerEstacion@getVentasByCierre'],
+    ['path' => '/estacion/eliminar-venta',              'method' => 'POST', 'handler' => 'ControllerEstacion@deleteVenta'],
+    ['path' => '/estacion/eliminar-cierre',             'method' => 'POST', 'handler' => 'ControllerEstacion@deleteCierre'],
+    ['path' => '/estacion/mantenimiento',               'method' => 'GET',  'handler' => 'ControllerEstacion@mantenimiento'],
+    ['path' => '/estacion/ventas-abiertas',             'method' => 'GET',  'handler' => 'ControllerEstacion@getOpenSales'],
+    ['path' => '/estacion/cerrar-venta/{id}',           'method' => 'POST', 'handler' => 'ControllerEstacion@closeSale'],
 ];
