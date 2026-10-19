@@ -1,34 +1,29 @@
 console.log('✅ estacion.js cargado');
 
 document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initQZTrayConnection === 'function') initQZTrayConnection();
+
     const API = (window.SITGO_BASE || '/') + 'estacion';
     const $ = id => document.getElementById(id);
 
     let state = {
         tiposVehiculo: [],
         tiposPago: [],
+        tiposCombustible: [],
         tasa: 0,
         userId: 0,
         idEstacion: 0,
-        esSistema: false,
     };
 
     /* ============================================================
        INIT
        ============================================================ */
     (async () => {
-        try{
-            await cargar();
-            bindEvents();
-        } catch (e){
-            console.error(e);
-            toast('Error al inicializar: ' + e.message, 'error');
-        }
+        await cargar();
+        bindEvents();
+        updatePreview();
     })();
 
-    /* ============================================================
-       API
-       ============================================================ */
     async function fetchJSON(url, opts = {}){
         try{
             const r = await fetch(url, {
@@ -37,56 +32,60 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const ct = r.headers.get('content-type') || '';
             if (!ct.includes('application/json')){
-                return { ok: false, message: `Error ${r.status}`, type: 'unknown' };
+                return { ok: false, message: `Error ${r.status}` };
             }
             return await r.json();
         } catch {
-            return { ok: false, message: 'Error de conexión', type: 'network' };
+            return { ok: false, message: 'Error de conexión' };
         }
     }
 
     async function cargar(){
         const d = await fetchJSON(API + '/initial-data');
-        if (!d.ok) throw new Error(d.message || 'initial-data');
+        if (!d.ok){ toast('Error al cargar datos: ' + d.message, 'error'); return; }
 
-        state.tiposVehiculo = d.tiposVehiculo || [];
-        state.tiposPago     = d.tiposPago || [];
-        state.userId        = d.idUser;
-        state.idEstacion    = d.idEstacion;
-        state.esSistema     = !!d.esSistema;
+        state.tiposVehiculo    = d.tiposVehiculo || [];
+        state.tiposPago        = d.tiposPago || [];
+        state.tiposCombustible = d.tiposCombustible || [];
+        state.userId           = d.idUser;
+        state.idEstacion       = d.idEstacion;
+
+        // Selects
+        llenar($('tipoVehiculo'), state.tiposVehiculo, 'Seleccione...');
+        llenar($('tipoPago'),     state.tiposPago,     'Seleccione...');
+
+        // Combustibles
+        const selComb = $('tipoCombustible');
+        selComb.innerHTML = '';
+        if (state.tiposCombustible.length){
+            state.tiposCombustible.forEach(c => {
+                const o = document.createElement('option');
+                o.value = c.id;
+                o.textContent = c.nombre;
+                if (String(c.id) === '1') o.selected = true;
+                selComb.appendChild(o);
+            });
+        }
 
         // Tasa
         if (d.tasa && d.tasa.tasa_dia){
             state.tasa = parseFloat(d.tasa.tasa_dia);
             aplicarTasa(d.tasa);
-        } else {
-            $('tasaDisplay').textContent = '0.00';
-            $('tasaInput').style.display = '';
-            $('btnUpdateTasa').style.display = '';
-            $('tasaLastUpdate').textContent = 'Sin actualizar';
         }
 
-        // Selects
-        llenarSelect($('tipoVehiculo'), d.tiposVehiculo, 'id', 'nombre', 'Seleccione...');
-        llenarSelect($('tipoPago'),     d.tiposPago,     'id', 'nombre', 'Seleccione...');
-
-        // Tickets
+        // Render
         renderTickets(d.ultimosTickets || []);
-
-        // Resumen
         renderResumen(d.resumen);
-
-        // Cierres pendientes
         renderPendientes(d.ventasPendientes || []);
     }
 
-    function llenarSelect(sel, items, vKey, lKey, ph){
+    function llenar(sel, items, ph){
         if (!sel) return;
         sel.innerHTML = `<option value="">${ph}</option>`;
-        (items || []).forEach(it => {
+        items.forEach(it => {
             const o = document.createElement('option');
-            o.value = it[vKey];
-            o.textContent = it[lKey];
+            o.value = it.id;
+            o.textContent = it.nombre;
             sel.appendChild(o);
         });
     }
@@ -98,14 +97,14 @@ document.addEventListener('DOMContentLoaded', () => {
         state.tasa = tasa;
 
         if (tasaObj.tasa_update && tasaObj.tasa_update !== '0000-00-00 00:00:00'){
-            const fechaUpdate = new Date(tasaObj.tasa_update.replace(/-/g, '/'));
+            const fUpd = new Date(tasaObj.tasa_update.replace(/-/g, '/'));
             const opts = { day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' };
-            $('tasaLastUpdate').textContent = 'Últ. actualización: ' + fechaUpdate.toLocaleDateString('es-VE', opts);
+            $('tasaLastUpdate').textContent = 'Últ. actualización: ' + fUpd.toLocaleDateString('es-VE', opts);
 
             const hoy = new Date();
-            const mismaFecha = fechaUpdate.getFullYear() === hoy.getFullYear()
-                && fechaUpdate.getMonth() === hoy.getMonth()
-                && fechaUpdate.getDate() === hoy.getDate();
+            const mismaFecha = fUpd.getFullYear() === hoy.getFullYear()
+                && fUpd.getMonth() === hoy.getMonth()
+                && fUpd.getDate() === hoy.getDate();
 
             if (mismaFecha){
                 $('tasaInput').style.display = 'none';
@@ -125,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       RENDER TICKETS
+       TICKETS / RESUMEN / PENDIENTES
        ============================================================ */
     function renderTickets(tickets){
         const tbody = $('tbodyTickets');
@@ -133,13 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = '<tr><td colspan="5" class="dt-empty">Sin tickets registrados</td></tr>';
             return;
         }
-
         tbody.innerHTML = tickets.map(t => `
             <tr>
                 <td><strong>#${t.id_venta}</strong></td>
                 <td>${esc(t.hora_venta || '')}</td>
-                <td>${esc(t.tipoVehiculo || '')}</td>
-                <td class="text-right">${parseFloat(t.litros || 0).toFixed(2)}</td>
+                <td>${esc(t.tipoVehiculo)} <span style="color:#94a3b8; font-size:.7rem;">· ${esc(t.tipoCombustible || '')}</span></td>
+                <td class="text-right">${parseFloat(t.litros).toFixed(2)} L</td>
                 <td class="text-right">
                     <button class="action-btn" data-action="print" data-id="${t.id_venta}" data-fecha="${t.fecha_venta}" data-user="${t.id_user}" title="Reimprimir">
                         <i data-lucide="printer" class="w-4 h-4"></i>
@@ -147,45 +145,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
             </tr>
         `).join('');
-
         if (window.lucide) lucide.createIcons();
 
         tbody.querySelectorAll('[data-action="print"]').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                const id = btn.dataset.id;
-                const fecha = btn.dataset.fecha;
-                const idUser = btn.dataset.user;
-                await reimprimirTicket(id, fecha, idUser);
-            });
+            btn.addEventListener('click', () => reimprimir(btn.dataset.id, btn.dataset.fecha, btn.dataset.user));
         });
     }
 
-    /* ============================================================
-       RENDER RESUMEN
-       ============================================================ */
     function renderResumen(r){
-        if (!r){ return; }
-
+        if (!r) return;
         $('totalVehiculos').textContent = r.total_ventas ?? 0;
         $('totalLitros').textContent    = parseFloat(r.total_litros || 0).toFixed(2) + ' L';
         $('totalBolivares').textContent = parseFloat(r.total_bs || 0).toFixed(2) + ' Bs';
 
+        // Pagos
         const pagos = [];
-        if (parseFloat(r.total_divisa) > 0)
-            pagos.push(`<li>${iconHtml('dollar-sign')} Divisa: <strong>$${parseFloat(r.total_divisa).toFixed(2)}</strong></li>`);
-        if (parseFloat(r.total_efectivo) > 0)
-            pagos.push(`<li>${iconHtml('banknote')} Efectivo: <strong>Bs ${parseFloat(r.total_efectivo).toFixed(2)}</strong></li>`);
-        if (parseFloat(r.total_debito) > 0)
-            pagos.push(`<li>${iconHtml('credit-card')} Punto de venta: <strong>Bs ${parseFloat(r.total_debito).toFixed(2)}</strong></li>`);
-
+        if (parseFloat(r.total_divisa) > 0)   pagos.push(`<li>${icon('dollar-sign')} Divisa: <strong>$${parseFloat(r.total_divisa).toFixed(2)}</strong></li>`);
+        if (parseFloat(r.total_efectivo) > 0) pagos.push(`<li>${icon('banknote')} Efectivo: <strong>Bs ${parseFloat(r.total_efectivo).toFixed(2)}</strong></li>`);
+        if (parseFloat(r.total_debito) > 0)   pagos.push(`<li>${icon('credit-card')} Punto: <strong>Bs ${parseFloat(r.total_debito).toFixed(2)}</strong></li>`);
         $('tiposPagosList').innerHTML = pagos.join('');
         $('tiposPagosContainer').style.display = pagos.length ? '' : 'none';
 
+        // Vehículos
         const veh = (r.tiposVehiculo || []).map(v =>
-            `<li>${iconHtml('car')} ${esc(v.tipo_vehiculo)}: <strong>${v.cantidad}</strong></li>`
+            `<li>${icon('car')} ${esc(v.tipo_vehiculo)}: <strong>${v.cantidad}</strong></li>`
         );
         $('tiposVehiculosList').innerHTML = veh.join('');
         $('tiposVehiculosContainer').style.display = veh.length ? '' : 'none';
+
+        // Combustibles
+        const comb = (r.tiposCombustible || []).map(c =>
+            `<li>${icon('droplet')} ${esc(c.tipo_combustible)}: <strong>${c.cantidad}</strong> venta(s) — <strong>${parseFloat(c.litros).toFixed(2)} L</strong></li>`
+        );
+        $('tiposCombustibleList').innerHTML = comb.join('');
+        $('tiposCombustibleContainer').style.display = comb.length ? '' : 'none';
 
         $('btnCerrarDia').style.display  = (r.total_ventas > 0) ? '' : 'none';
         $('btnGenerarPDF').style.display = (r.total_ventas > 0) ? '' : 'none';
@@ -193,40 +186,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.lucide) lucide.createIcons();
     }
 
-    /* ============================================================
-       RENDER PENDIENTES
-       ============================================================ */
     function renderPendientes(ventas){
         const sec = $('cierrePendienteSection');
         const cont = $('cierrePendienteList');
-
-        if (!ventas || !ventas.length){
-            sec.style.display = 'none';
-            return;
-        }
-
+        if (!ventas || !ventas.length){ sec.style.display = 'none'; return; }
         sec.style.display = '';
         cont.innerHTML = ventas.map(v => `
             <div class="estacion-cierre-pendiente-item">
                 <strong>Día sin cierre: ${formatFecha(v.fecha_venta)}</strong>
                 <div style="display:flex; gap:.35rem;">
-                    <button class="btn btn-danger btn-sm" data-action="cerrar-pendiente"
-                            data-fecha="${v.fecha_venta}" data-user="${v.id_user}">
-                        Cerrar día
-                    </button>
-                    <button class="btn btn-ghost btn-sm" data-action="pdf-pendiente"
-                            data-fecha="${v.fecha_venta}" data-user="${v.id_user}">
-                        PDF
-                    </button>
+                    <button class="btn btn-danger btn-sm" data-action="cerrar-pend" data-fecha="${v.fecha_venta}" data-user="${v.id_user}">Cerrar día</button>
+                    <button class="btn btn-ghost btn-sm" data-action="pdf-pend" data-fecha="${v.fecha_venta}" data-user="${v.id_user}">PDF</button>
                 </div>
             </div>
         `).join('');
 
-        cont.querySelectorAll('[data-action="cerrar-pendiente"]').forEach(btn => {
-            btn.addEventListener('click', () => cerrarPendiente(btn.dataset.fecha, btn.dataset.user));
+        cont.querySelectorAll('[data-action="cerrar-pend"]').forEach(b => {
+            b.addEventListener('click', () => cerrarPendiente(b.dataset.fecha, b.dataset.user));
         });
-        cont.querySelectorAll('[data-action="pdf-pendiente"]').forEach(btn => {
-            btn.addEventListener('click', () => generarPDFDia(btn.dataset.user, btn.dataset.fecha));
+        cont.querySelectorAll('[data-action="pdf-pend"]').forEach(b => {
+            b.addEventListener('click', () => generarPDF(b.dataset.fecha, b.dataset.user));
         });
     }
 
@@ -237,15 +216,17 @@ document.addEventListener('DOMContentLoaded', () => {
         $('litros')?.addEventListener('input', calcularMonto);
         $('tipoPago')?.addEventListener('change', calcularMonto);
         $('tasaInput')?.addEventListener('input', calcularMonto);
+        $('tipoVehiculo')?.addEventListener('change', updatePreview);
+        $('tipoCombustible')?.addEventListener('change', updatePreview);
 
         $('btnUpdateTasa')?.addEventListener('click', actualizarTasa);
         $('formVenta')?.addEventListener('submit', registrarVenta);
         $('btnCerrarDia')?.addEventListener('click', cerrarDia);
-        $('btnGenerarPDF')?.addEventListener('click', () => generarPDFDia(state.userId, fechaHoy()));
+        $('btnGenerarPDF')?.addEventListener('click', () => generarPDF(fechaHoy(), state.userId));
     }
 
     /* ============================================================
-       CALCULAR MONTO
+       CÁLCULO
        ============================================================ */
     function calcularMonto(){
         const tp = $('tipoPago')?.value;
@@ -253,13 +234,36 @@ document.addEventListener('DOMContentLoaded', () => {
         const tasa = parseFloat($('tasaInput')?.value || $('tasaDisplay')?.textContent) || state.tasa;
 
         let monto = 0;
-        if (tp === '1') monto = lts * 0.5;                // Divisa
-        else if (tp === '2' || tp === '3') monto = lts * 0.5 * tasa; // Efectivo / Punto (Bs)
+        if (tp === '1') monto = lts * 0.5;
+        else if (tp === '2' || tp === '3') monto = lts * 0.5 * tasa;
         $('monto').value = monto ? monto.toFixed(2) : '';
+        updatePreview();
+    }
+
+    function updatePreview(){
+        const veh  = $('tipoVehiculo')?.selectedOptions[0]?.text || '';
+        const pago = $('tipoPago')?.selectedOptions[0]?.text || '';
+        const comb = $('tipoCombustible')?.selectedOptions[0]?.text || 'Gasolina';
+        const lts  = $('litros')?.value || '';
+        const mt   = $('monto')?.value || '';
+        const simbolo = $('tipoPago')?.value === '1' ? '$' : 'Bs';
+
+        $('ticketPreview').textContent = `====== ESTACIÓN DE SERVICIO ======
+
+TICKET DE VENTA
+Fecha: ${new Date().toLocaleString('es-VE')}
+----------------------------------
+Tipo Pago: ${pago}
+Tipo Vehículo: ${veh}
+Combustible: ${comb}
+Cantidad: ${lts} Litros
+Precio Total: ${mt} ${simbolo}
+=============================
+¡Gracias por su compra!`;
     }
 
     /* ============================================================
-       ACTUALIZAR TASA
+       ACCIONES
        ============================================================ */
     async function actualizarTasa(){
         const tasa = parseFloat($('tasaInput')?.value);
@@ -270,26 +274,21 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tasa })
         });
-
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-
         toast(d.message, 'success');
         await cargar();
     }
 
-    /* ============================================================
-       REGISTRAR VENTA
-       ============================================================ */
     async function registrarVenta(e){
         e.preventDefault();
 
         const payload = {
-            tipo_vehiculo: $('tipoVehiculo').value,
-            litros:        $('litros').value,
-            tipo_pago:     $('tipoPago').value,
-            monto:         $('monto').value,
-            tasa:          $('tasaInput')?.value || state.tasa,
-            id_estacion:   state.idEstacion,
+            tipo_vehiculo:    $('tipoVehiculo').value,
+            tipo_combustible: $('tipoCombustible').value || 1,
+            litros:           $('litros').value,
+            tipo_pago:        $('tipoPago').value,
+            monto:            $('monto').value,
+            tasa:             $('tasaInput')?.value || state.tasa,
         };
 
         if (!payload.tipo_vehiculo || !payload.tipo_pago || parseFloat(payload.litros) <= 0){
@@ -304,64 +303,62 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-
         toast(d.message, 'success');
 
-        // Imprimir ticket
-        if (d.ticketData){
-            try{ await imprimirTicket(d.ticketData, 0); } catch(err){ console.warn('Impresión falló:', err); }
+        if (d.ticketData && typeof fntImprimirTicket === 'function'){
+            try{ await fntImprimirTicket({ ticketData: d.ticketData, copia: 0 }); }
+            catch(e){ console.warn('Impresión falló:', e); }
         }
 
         $('formVenta').reset();
         $('monto').value = '';
+        $('tipoCombustible').value = '1';
+        updatePreview();
         await cargar();
     }
 
-    /* ============================================================
-       REIMPRIMIR
-       ============================================================ */
-    async function reimprimirTicket(id, fecha, idUser){
+    async function reimprimir(id, fecha, idUser){
         const d = await fetchJSON(API + '/ticket/' + id, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fecha, id_user: idUser })
         });
-
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-        try{ await imprimirTicket(d.ticketData, 1); toast('Ticket enviado a impresión.', 'success'); }
-        catch(err){ toast('Error al imprimir: ' + err.message, 'error'); }
+        if (typeof fntImprimirTicket === 'function'){
+            try{ await fntImprimirTicket({ ticketData: d.ticketData, copia: 1 }); toast('Ticket enviado.', 'success'); }
+            catch(e){ toast('Error: ' + e.message, 'error'); }
+        }
     }
 
-    /* ============================================================
-       CERRAR DÍA
-       ============================================================ */
     async function cerrarDia(){
         if (!confirm('¿Cerrar el día actual? No se podrán registrar más ventas para esta fecha.')) return;
 
         const fecha = fechaHoy();
 
-        // 1. Imprimir detalle antes de cerrar
-        const detalle = await fetchJSON(API + '/detalle-ventas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, id_user: state.userId })
-        });
-        if (detalle.ok && detalle.data){
-            try{ await imprimirDetallado(detalle.data); } catch(err){ console.warn(err); }
+        // Imprimir detallado (con modo)
+        if (typeof fntPreguntarModoDetallado === 'function'){
+            const modo = await fntPreguntarModoDetallado();
+            if (modo){
+                const detalle = await fetchJSON(API + '/detalle-ventas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, id_user: state.userId })
+                });
+                if (detalle.ok && typeof fntImprimirDetallado === 'function'){
+                    try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
+                }
+            }
         }
 
-        // 2. Cerrar
         const d = await fetchJSON(API + '/cerrar-dia', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, id_estacion: state.idEstacion })
+            body: JSON.stringify({ fecha })
         });
-
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
 
-        // 3. Imprimir cierre
-        if (d.dataCierre){
-            try{ await imprimirCierre(d.dataCierre); } catch(err){ console.warn(err); }
+        if (d.dataCierre && typeof fntImprimirCierre === 'function'){
+            try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
         }
 
         toast(d.message, 'success');
@@ -371,13 +368,18 @@ document.addEventListener('DOMContentLoaded', () => {
     async function cerrarPendiente(fecha, idUser){
         if (!confirm(`¿Cerrar el día ${formatFecha(fecha)}?`)) return;
 
-        const detalle = await fetchJSON(API + '/detalle-ventas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, id_user: idUser })
-        });
-        if (detalle.ok && detalle.data){
-            try{ await imprimirDetallado(detalle.data); } catch(err){ console.warn(err); }
+        if (typeof fntPreguntarModoDetallado === 'function'){
+            const modo = await fntPreguntarModoDetallado();
+            if (modo){
+                const detalle = await fetchJSON(API + '/detalle-ventas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, id_user: idUser })
+                });
+                if (detalle.ok && typeof fntImprimirDetallado === 'function'){
+                    try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
+                }
+            }
         }
 
         const d = await fetchJSON(API + '/cerrar-turno-pendiente', {
@@ -387,75 +389,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
 
-        if (d.dataCierre){
-            try{ await imprimirCierre(d.dataCierre); } catch(err){ console.warn(err); }
+        if (d.dataCierre && typeof fntImprimirCierre === 'function'){
+            try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
         }
-
         toast(d.message, 'success');
         await cargar();
     }
 
-    async function generarPDFDia(idUser, fecha){
+    async function generarPDF(fecha, idUser){
         const d = await fetchJSON(API + '/reporte-pdf', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ fecha, id_user: idUser })
         });
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-        toast('Datos preparados. Genera el PDF con tu driver.', 'success');
-        // Aquí llamas tu generación de PDF
-        // generarPDF(d.data);
-    }
-
-    /* ============================================================
-       IMPRESIÓN — STUBS
-       ============================================================
-       Aquí conectas tu aplicación de terceros para la impresora térmica.
-       Ejemplo con QZ Tray:
-       
-       async function imprimirTicket(ticket, copia){
-           const texto = formatearTicket(ticket, copia);
-           await qz.print(configTermica, texto);
-       }
-       ============================================================ */
-    async function imprimirTicket(ticket, copia = 0){
-        console.log('[PRINT TICKET]', { ticket, copia });
-        const texto = formatearTicketTexto(ticket, copia);
-        // TODO: conectar QZ Tray u otra librería
-        // await qz.print(config, texto);
-        // Por ahora solo lo mostramos en consola
-        console.log(texto);
-    }
-
-    async function imprimirDetallado(ventas){
-        console.log('[PRINT DETALLADO]', ventas);
-        // TODO: conectar impresora
-    }
-
-    async function imprimirCierre(cierre){
-        console.log('[PRINT CIERRE]', cierre);
-        // TODO: conectar impresora
-    }
-
-    function formatearTicketTexto(t, copia){
-        const simbolo = (t.id_tipo_pago == 1) ? '$' : 'Bs';
-        return `
-================================
-  ESTACIÓN DE SERVICIO
-  ${copia ? '*** COPIA ***' : ''}
-================================
-Ticket #: ${t.id_venta}
-Fecha: ${t.fecha_venta} ${t.hora_venta || ''}
---------------------------------
-Tipo: ${t.tipoVehiculo || ''}
-Pago: ${t.tipoPago || ''}
-Litros: ${t.litros}
-Monto: ${simbolo} ${t.monto}
-Tasa: ${t.tasa_dia}
---------------------------------
-¡Gracias por su compra!
-================================
-        `.trim();
+        if (typeof fntGenerarPDF === 'function'){
+            fntGenerarPDF({ idUser, fecha });
+        } else {
+            toast('Datos preparados.', 'success');
+        }
     }
 
     /* ============================================================
@@ -463,27 +415,19 @@ Tasa: ${t.tasa_dia}
        ============================================================ */
     function fechaHoy(){
         const d = new Date();
-        const dd = String(d.getDate()).padStart(2, '0');
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        return `${yyyy}-${mm}-${dd}`;
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
-
     function formatFecha(f){
         if (!f) return '—';
-        const [y, m, d] = f.split('-');
-        return `${d}/${m}/${y}`;
+        const [y,m,d] = f.split('-'); return `${d}/${m}/${y}`;
     }
-
-    function iconHtml(name){
+    function icon(name){
         return `<i data-lucide="${name}" class="w-4 h-4" style="display:inline-block;vertical-align:middle;margin-right:.35rem;"></i>`;
     }
-
     function esc(s){
         if (s == null) return '';
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     }
-
     function toast(msg, type = 'success'){
         let c = document.querySelector('.toast-container');
         if (!c){ c = document.createElement('div'); c.className = 'toast-container'; document.body.appendChild(c); }

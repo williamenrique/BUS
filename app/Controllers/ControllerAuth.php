@@ -4,7 +4,7 @@ namespace App\Controllers;
 use App\Core\Controller;
 use App\Core\Validator;
 use App\Models\ModelUsuario;
-use App\Middleware\AuthGuard;
+use App\Models\ModelEstacion;
 
 class ControllerAuth extends Controller
 {
@@ -31,6 +31,7 @@ class ControllerAuth extends Controller
 
         if ($v->fails()) {
             $this->json(['ok' => false, 'errors' => $v->errors()], 422);
+            return;
         }
 
         $model = new ModelUsuario();
@@ -38,11 +39,13 @@ class ControllerAuth extends Controller
 
         if (!$user) {
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
+            return;
         }
 
         $check = verify_password($pass, (string)$user['usuario_password']);
         if (!$check['ok']) {
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
+            return;
         }
 
         // Rehash si es legacy
@@ -73,7 +76,7 @@ class ControllerAuth extends Controller
             'rol_nombre'         => $user['rol_nombre'],
             'departamento_id'    => (int)$user['usuario_departamento_id'],
             'departamento_nombre'=> $user['departamento_nombre'],
-            'estacion_id'        => (int)$user['usuario_estacion_id'],
+            'estacion_id'        => 0, // se hidrata desde table_usuario_sessions abajo
             'personal_id'        => (int)($user['usuario_id_personal'] ?? 0),
             'nombre'             => trim(($user['personal_nombre'] ?? '') . ' ' . ($user['personal_apellido'] ?? '')),
             'email'              => $user['personal_email'] ?? '',
@@ -82,9 +85,9 @@ class ControllerAuth extends Controller
         ];
         $_SESSION['last_activity'] = time();
         $_SESSION['csrf_token']    = bin2hex(random_bytes(32));
-        $_SESSION['db_session_id'] = $newSid;   // 👈 guardamos el id vinculado a BD
+        $_SESSION['db_session_id'] = $newSid;
 
-        // Registrar la NUEVA sesión
+        // Registrar la NUEVA sesión (id_estacion queda NULL)
         $model->registrarSesion(
             $newSid,
             (int)$user['usuario_id'],
@@ -92,7 +95,36 @@ class ControllerAuth extends Controller
             $_SERVER['HTTP_USER_AGENT'] ?? ''
         );
 
-        $this->json(['ok' => true, 'redirect' => base_url('dashboard')]);
+        // =====================================================
+        // DETERMINAR REDIRECT FINAL (UN SOLO json())
+        // =====================================================
+        $depId     = (int)$user['usuario_departamento_id'];
+        $esSistema = ($depId === (int)DEPARTAMENTO_SISTEMA);
+        $esEstacion= ($depId === (int)DEPARTAMENTO_ESTACION);
+
+        $redirect = base_url('dashboard');
+
+        if ($esEstacion) {
+            // ¿La sesión recién creada tiene estación? (por ahora será 0/NULL)
+            try {
+                $mEst  = new ModelEstacion();
+                $idEst = $mEst->obtenerEstacionSesion($newSid);
+            } catch (\Throwable $e) {
+                error_log('SITGO login estacion lookup: ' . $e->getMessage());
+                $idEst = 0;
+            }
+
+            if ($idEst > 0) {
+                // Rehidratar por si el usuario ya había elegido estación antes (no debería en login nuevo)
+                $_SESSION['user']['estacion_id'] = $idEst;
+                $redirect = base_url('estacion/registrar');
+            } else {
+                $redirect = base_url('estacion/seleccionar');
+            }
+        }
+
+        $this->json(['ok' => true, 'redirect' => $redirect]);
+        return;
     }
 
     public function logout(): void
@@ -119,6 +151,7 @@ class ControllerAuth extends Controller
 
         if ($ident === '') {
             $this->json(['ok' => false, 'message' => 'Debes indicar tu usuario o correo.'], 422);
+            return;
         }
 
         $model = new ModelUsuario();
@@ -126,7 +159,6 @@ class ControllerAuth extends Controller
             ? $model->findByEmail($ident)
             : $model->findByNick($ident);
 
-        // Respondemos OK aunque no exista (por seguridad)
         if ($user) {
             $model->registrarRecuperacion((int)$user['usuario_id'], $ident);
         }

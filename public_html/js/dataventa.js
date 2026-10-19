@@ -1,0 +1,417 @@
+console.log('✅ dataventa.js cargado');
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initQZTrayConnection === 'function') initQZTrayConnection();
+
+    const API = (window.SITGO_BASE || '/') + 'estacion';
+    const $ = id => document.getElementById(id);
+
+    let ventasCierreActual = null;
+    let dtCierres = null;
+    let dtOpenSales = null;
+    let dtVentasCierre = null;
+    let filtroFechaActivo = false;
+
+    /* ============================================================
+       INIT
+       ============================================================ */
+    (async () => {
+        await cargarLitrosTotales();
+        await cargarFechaPorDefecto();
+
+        initDataTables();
+        bindEventos();
+    })();
+
+    /* ============================================================
+       FETCH HELPER
+       ============================================================ */
+    async function fetchJSON(url, opts = {}){
+        try{
+            const r = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                ...opts
+            });
+            const ct = r.headers.get('content-type') || '';
+            return ct.includes('application/json') ? await r.json() : { ok: false, message: `Error ${r.status}` };
+        } catch { return { ok: false, message: 'Error de conexión' }; }
+    }
+
+    /* ============================================================
+       CARGA INICIAL
+       ============================================================ */
+    async function cargarLitrosTotales(){
+        const litros = await fetchJSON(API + '/litros-totales');
+        if (litros.ok) $('totalLitrosSistema').textContent = fmtLitros(litros.total) + ' L';
+    }
+
+    async function cargarFechaPorDefecto(){
+        const d = new Date();
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        $('searchDateDay').value = `${yyyy}-${mm}-${dd}`;
+        $('searchDateMonth').value = `${yyyy}-${mm}`;
+        await cargarLitrosFecha();
+    }
+
+    async function cargarLitrosFecha(){
+        const type = $('searchType').value;
+        const fecha = type === 'month' ? $('searchDateMonth').value : $('searchDateDay').value;
+        if (!fecha) return;
+
+        const d = await fetchJSON(API + '/litros-por-fecha', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fecha, type })
+        });
+        if (d.ok) $('totalLitrosFecha').textContent = fmtLitros(d.total) + ' L';
+    }
+
+    /* ============================================================
+       DATATABLES
+       ============================================================ */
+    function initDataTables(){
+        // ---- Ventas abiertas ----
+        dtOpenSales = new DataTable({
+            tbodyId: 'tbodyOpenSales',
+            endpoint: API + '/open-sales/listar',
+            columns: ['Empleado', 'Fecha', 'Litros', 'Acciones'],
+            noDataMessage: 'No hay ventas abiertas',
+            searchInputId: 'filtroBuscarOpen',
+            limitSelectorId: 'filtroLimitOpen',
+            paginationId: 'paginationOpenSales',
+            totalId: 'totalOpenSales',
+            startId: 'startOpenSales',
+            endId: 'endOpenSales',
+            renderRow: (v) => `
+                <tr>
+                    <td>${esc(v.nombre)} ${esc(v.apellido)}</td>
+                    <td>${formatFecha(v.fecha_venta)}</td>
+                    <td class="text-right">${fmtLitros(v.total_litros)} L</td>
+                    <td class="text-right">
+                        <div class="actions">
+                            <button class="action-btn" data-action="ver-abiertas" data-user="${v.id_user}" data-fecha="${v.fecha_venta}" title="Ver tickets">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                            <button class="action-btn delete" data-action="del-abiertas" data-user="${v.id_user}" data-fecha="${v.fecha_venta}" title="Eliminar">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`,
+            onDataLoaded: () => bindOpenSalesActions()
+        });
+
+        // ---- Cierres ----
+        dtCierres = new DataTable({
+            tbodyId: 'tbodyCierres',
+            endpoint: API + '/cierres/listar',
+            columns: ['#','Empleado','Tasa','Fecha','Efectivo Bs','P. Venta Bs','Total Bs','Litros','Acciones'],
+            noDataMessage: 'Sin cierres registrados',
+            searchInputId: 'filtroBuscarCierres',
+            limitSelectorId: 'filtroLimitCierres',
+            paginationId: 'paginationCierres',
+            totalId: 'totalCierres',
+            startId: 'startCierres',
+            endId: 'endCierres',
+            getExtraParams: () => {
+                if (!filtroFechaActivo) return {};
+                const tipoFecha = $('searchType')?.value || 'day';
+                const fecha = tipoFecha === 'month'
+                    ? ($('searchDateMonth')?.value || '')
+                    : ($('searchDateDay')?.value || '');
+                if (!fecha) return {};
+                return { fecha, tipoFecha };
+            },
+            renderRow: (c) => `
+                <tr>
+                    <td><strong>#${c.id_cierre}</strong></td>
+                    <td>${esc(c.usuario_nombres)} ${esc(c.usuario_apellidos)}</td>
+                    <td>${fmtNum(c.tasa_dia, 2)}</td>
+                    <td>${formatFecha(c.fecha_cierre)}</td>
+                    <td class="text-right">${fmtNum(c.efectivo_bs, 2)}</td>
+                    <td class="text-right">${fmtNum(c.debito_bs, 2)}</td>
+                    <td class="text-right"><strong>${fmtNum(c.total_bs, 2)}</strong></td>
+                    <td class="text-right">${fmtLitros(c.total_litros_vendidos)}</td>
+                    <td class="text-right">
+                        <div class="actions">
+                            <button class="action-btn" data-action="ver" data-id="${c.id_cierre}" data-user="${c.id_user}" data-fecha="${c.fecha_cierre}" title="Ver ventas">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                            <button class="action-btn delete" data-action="del-cierre" data-id="${c.id_cierre}" data-user="${c.id_user}" data-fecha="${c.fecha_cierre}" title="Eliminar cierre">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`,
+            onDataLoaded: () => bindCierresActions()
+        });
+
+        // ---- Detalle del cierre ----
+        dtVentasCierre = new DataTable({
+            tbodyId: 'tbodyVentasCierre',
+            endpoint: API + '/ventas-cierre/listar',
+            columns: ['#','Hora','Vehículo','Combustible','Litros','Pago','Monto',''],
+            noDataMessage: 'Sin ventas en este cierre',
+            searchInputId: 'filtroBuscarVentasCierre',
+            limitSelectorId: 'filtroLimitVentasCierre',
+            paginationId: 'paginationVentasCierre',
+            totalId: 'totalVentasCierre',
+            startId: 'startVentasCierre',
+            endId: 'endVentasCierre',
+            autoLoad: false,
+            getExtraParams: () => {
+                if (!ventasCierreActual?.id_cierre) return {};
+                return { id_cierre: ventasCierreActual.id_cierre };
+            },
+            renderRow: (v) => `
+                <tr>
+                    <td>#${v.id_venta}</td>
+                    <td>${esc(v.hora_venta || '')}</td>
+                    <td>${esc(v.tipo_vehiculo)}</td>
+                    <td>${esc(v.tipo_combustible || '—')}</td>
+                    <td class="text-right">${fmtLitros(v.litros)}</td>
+                    <td>${esc(v.tipo_pago)}</td>
+                    <td class="text-right">${fmtNum(v.monto, 2)}</td>
+                    <td class="text-right">
+                        <button class="action-btn" data-action="print" data-id="${v.id_venta}" data-user="${v.id_user}" data-fecha="${v.fecha_venta}" title="Reimprimir">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>`,
+            onDataLoaded: () => bindVentasCierreActions()
+        });
+    }
+
+    function bindCierresActions(){
+        const tbody = $('tbodyCierres');
+        if (!tbody || tbody._bound) return;
+        tbody._bound = true;
+
+        tbody.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-action]');
+            if (!b) return;
+            const { action, id, user, fecha } = b.dataset;
+            if (action === 'ver')        verCierre(id, user, fecha);
+            if (action === 'del-cierre') eliminarCierre(id, user, fecha);
+        });
+    }
+
+    function bindOpenSalesActions(){
+        const tbody = $('tbodyOpenSales');
+        if (!tbody || tbody._bound) return;
+        tbody._bound = true;
+
+        tbody.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-action]');
+            if (!b) return;
+            const { action, user, fecha } = b.dataset;
+            if (action === 'ver-abiertas') verVentasAbiertas(user, fecha);
+            if (action === 'del-abiertas') eliminarAbiertas(user, fecha);
+        });
+    }
+
+    function bindVentasCierreActions(){
+        const tbody = $('tbodyVentasCierre');
+        if (!tbody || tbody._bound) return;
+        tbody._bound = true;
+
+        tbody.addEventListener('click', async (e) => {
+            const b = e.target.closest('[data-action="print"]');
+            if (!b) return;
+            const { id, user, fecha } = b.dataset;
+            const t = await fetchJSON(API + '/ticket/' + id, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha, id_user: user })
+            });
+            if (t.ok && typeof fntImprimirTicket === 'function'){
+                await fntImprimirTicket({ ticketData: t.ticketData, copia: 1 });
+            }
+        });
+    }
+
+    /* ============================================================
+       EVENTOS
+       ============================================================ */
+    function bindEventos(){
+        $('searchType')?.addEventListener('change', (e) => {
+            const esMes = e.target.value === 'month';
+            $('searchDateDay').style.display   = esMes ? 'none' : '';
+            $('searchDateMonth').style.display = esMes ? '' : 'none';
+
+            cargarLitrosFecha();
+            filtroFechaActivo = true;
+            dtCierres?.changePage(1);
+        });
+
+        $('searchDateDay')?.addEventListener('change', () => {
+            cargarLitrosFecha();
+            filtroFechaActivo = true;
+            dtCierres?.changePage(1);
+        });
+
+        $('searchDateMonth')?.addEventListener('change', () => {
+            cargarLitrosFecha();
+            filtroFechaActivo = true;
+            dtCierres?.changePage(1);
+        });
+
+        $('btnImprimirCierre')?.addEventListener('click', async () => {
+            if (!ventasCierreActual) return;
+            if (typeof fntImprimirCierre === 'function'){
+                await fntImprimirCierre(ventasCierreActual);
+            }
+        });
+
+        $('btnImprimirPdf')?.addEventListener('click', () => {
+            if (!ventasCierreActual) return;
+            const fecha = ventasCierreActual.fecha_cierre;
+            const idUser = ventasCierreActual.usuario_id;
+            if (typeof fntGenerarPDF === 'function') fntGenerarPDF({ idUser, fecha });
+        });
+    }
+
+    /* ============================================================
+       ACCIONES
+       ============================================================ */
+    async function verCierre(idCierre, idUser, fecha){
+        ventasCierreActual = {
+            fecha_cierre: fecha,
+            usuario_id: idUser,
+            id_cierre: idCierre,
+        };
+
+        const dataCierre = await fetchJSON(API + '/data-cierre', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_cierre: idCierre })
+        });
+        if (dataCierre.ok && dataCierre.cierreData){
+            ventasCierreActual = Object.assign({}, dataCierre.cierreData, {
+                usuario_id: idUser,
+                id_cierre: idCierre,
+            });
+        }
+
+        $('cierreTitle').textContent = `Detalle del cierre #${idCierre} · ${formatFecha(fecha)}`;
+        $('ventasCierreSection').style.display = '';
+        $('ventasCierreSection').scrollIntoView({ behavior: 'smooth' });
+
+        if (dtVentasCierre){
+            dtVentasCierre.refresh();
+        }
+    }
+
+    async function verVentasAbiertas(idUser, fecha){
+        const d = await fetchJSON(API + '/ventas-abiertas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_user: idUser, fecha })
+        });
+        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+
+        $('cierreTitle').textContent = `Ventas abiertas · ${formatFecha(fecha)}`;
+        $('ventasCierreSection').style.display = '';
+        $('ventasCierreSection').scrollIntoView({ behavior: 'smooth' });
+
+        if (dtVentasCierre) dtVentasCierre._abort?.abort();
+
+        const tbody = $('tbodyVentasCierre');
+        if (!d.data.length){
+            tbody.innerHTML = '<tr><td colspan="8" class="dt-empty">Sin ventas</td></tr>';
+            $('startVentasCierre').textContent = '0';
+            $('endVentasCierre').textContent   = '0';
+            $('totalVentasCierre').textContent = '0';
+            $('paginationVentasCierre').innerHTML = '';
+        } else {
+            tbody.innerHTML = d.data.map(v => `
+                <tr>
+                    <td>#${v.numero_venta}</td>
+                    <td>${esc(v.hora_venta || '')}</td>
+                    <td>${esc(v.tipo_vehiculo)}</td>
+                    <td>${esc(v.tipo_combustible || '—')}</td>
+                    <td class="text-right">${fmtLitros(v.cantidad_litros)}</td>
+                    <td>${esc(v.tipo_pago)}</td>
+                    <td class="text-right">${fmtNum(v.monto, 2)}</td>
+                    <td class="text-right"></td>
+                </tr>
+            `).join('');
+            if (window.lucide) lucide.createIcons();
+            $('startVentasCierre').textContent = '1';
+            $('endVentasCierre').textContent   = String(d.data.length);
+            $('totalVentasCierre').textContent = String(d.data.length);
+            $('paginationVentasCierre').innerHTML = '';
+        }
+    }
+
+    async function eliminarCierre(idCierre, idUser, fecha){
+        if (!confirm(`¿Eliminar el cierre #${idCierre}? Las ventas volverán a "abiertas".`)) return;
+        const d = await fetchJSON(API + '/eliminar-cierre', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_cierre: idCierre, id_user: idUser, id_estacion: 0, fecha })
+        });
+        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+        toast(d.message, 'success');
+        dtCierres?.refresh();
+        dtOpenSales?.refresh();
+    }
+
+    async function eliminarAbiertas(idUser, fecha){
+        if (!confirm('¿Eliminar TODAS las ventas abiertas de este usuario/fecha?')) return;
+        const d = await fetchJSON(API + '/eliminar-ventas-abiertas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_user: idUser, fecha })
+        });
+        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+        toast(d.message, 'success');
+        dtOpenSales?.refresh();
+    }
+
+    /* ============================================================
+       HELPERS
+       ============================================================ */
+    function formatFecha(f){
+        if (!f) return '—';
+        const [y,m,d] = f.split('-'); return `${d}/${m}/${y}`;
+    }
+
+    /**
+     * Formatea un número con separador de miles (.) y decimales (,)
+     * Ej: 1234.5 → "1.234,50"
+     *     null/'' → "0,00"
+     */
+    function fmtNum(val, decimals = 2){
+        const n = parseFloat(val);
+        if (!isFinite(n)) return (0).toFixed(decimals).replace('.', ',');
+        return n.toLocaleString('es-VE', {
+            minimumFractionDigits: decimals,
+            maximumFractionDigits: decimals,
+        });
+    }
+
+    /**
+     * Igual que fmtNum pero pensado para litros.
+     * Ej: 12.5 → "12,50"
+     */
+    function fmtLitros(val){
+        return fmtNum(val, 2);
+    }
+
+    function esc(s){
+        if (s == null) return '';
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function toast(msg, type = 'success'){
+        let c = document.querySelector('.toast-container');
+        if (!c){ c = document.createElement('div'); c.className = 'toast-container'; document.body.appendChild(c); }
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.textContent = msg;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
+    }
+});

@@ -9,131 +9,213 @@ use App\Middleware\AuthGuard;
 class ControllerEstacion extends Controller{
 
     /* ============================================================
-       VISTAS
+       HELPERS
+       ============================================================ */
+    private function esSistema(): bool{
+        $u = auth_user();
+        return (int)($u['departamento_id'] ?? 0) === DEPARTAMENTO_SISTEMA;
+    }
+
+    private function esEstacion(): bool{
+        $u = auth_user();
+        return (int)($u['departamento_id'] ?? 0) === DEPARTAMENTO_ESTACION;
+    }
+
+    private function idEstacion(): int{
+        $u = auth_user();
+        if (!empty($u['estacion_id'])){
+            return (int)$u['estacion_id'];
+        }
+
+        try{
+            $mEst = new ModelEstacion();
+            $idEst = $mEst->obtenerEstacionSesion(session_id());
+            if ($idEst > 0){
+                $_SESSION['user']['estacion_id'] = $idEst;
+            }
+            return $idEst;
+        } catch (\Throwable $e){
+            error_log('ControllerEstacion::idEstacion: ' . $e->getMessage());
+            return 0;
+        }
+    }
+
+    private function query(string $key, $default = null){
+        if (!isset($_GET[$key])) return $default;
+        $val = $_GET[$key];
+        return is_string($val) ? trim($val) : $val;
+    }
+
+    /* ============================================================
+       SELECCIÓN DE ESTACIÓN
+       ============================================================ */
+    public function seleccionar(): void{
+        AuthGuard::check();
+        $u = auth_user();
+
+        if ($this->esSistema()){
+            $this->redirect('dashboard');
+            return;
+        }
+
+        if ($this->idEstacion() > 0){
+            $this->redirect('estacion/registrar');
+            return;
+        }
+
+        $mUser = new ModelUsuario();
+        $mEst  = new ModelEstacion();
+
+        $this->view('estacion.seleccionar', [
+            'user'        => $u,
+            'menu'        => $mUser->getMenuJerarquico((int)$u['id'], (int)$u['departamento_id']),
+            'pageTitle'   => 'Seleccionar estación',
+            'estaciones'  => $mEst->estaciones(),
+            'scripts'     => ['estacion-seleccionar.js'],
+        ], false);
+    }
+
+    public function guardarSeleccion(): void{
+        AuthGuard::check();
+        $d = $this->input();
+        $idEstacion = (int)($d['id_estacion'] ?? 0);
+
+        if ($idEstacion <= 0){
+            $this->json(['ok' => false, 'message' => 'Selecciona una estación.'], 422);
+            return;
+        }
+
+        $mEst = new ModelEstacion();
+        $est  = $mEst->findEstacion($idEstacion);
+        if (!$est){
+            $this->json(['ok' => false, 'message' => 'Estación inválida.'], 422);
+            return;
+        }
+
+        $actual = $mEst->obtenerEstacionSesion(session_id());
+        if ($actual > 0 && $actual !== $idEstacion){
+            $this->json([
+                'ok'      => false,
+                'message' => 'Ya tienes una estación asignada en esta sesión. Cierra sesión para cambiarla.',
+            ], 422);
+            return;
+        }
+
+        $this->safe(function() use ($idEstacion, $est){
+            $mEst = new ModelEstacion();
+            $sid  = session_id();
+
+            $ok = $mEst->guardarEstacionSesion($sid, $idEstacion);
+            if (!$ok){
+                $this->json([
+                    'ok'      => false,
+                    'message' => 'No se pudo guardar la estación. La sesión no existe en BD.',
+                ], 500);
+                return;
+            }
+
+            $_SESSION['user']['estacion_id'] = $idEstacion;
+            $_SESSION['user']['estacion']    = $est['estacion'];
+
+            $this->json([
+                'ok'       => true,
+                'message'  => 'Estación seleccionada: ' . $est['estacion'],
+                'redirect' => base_url('estacion/registrar'),
+            ]);
+        });
+    }
+
+    /* ============================================================
+       VENTA
        ============================================================ */
     public function registrar(): void{
         AuthGuard::check();
-        $user = auth_user();
-        $mUser = new ModelUsuario();
 
+        if (!$this->esEstacion() && !$this->esSistema()){
+            http_response_code(403);
+            echo 'Acceso restringido.';
+            return;
+        }
+
+        $u = auth_user();
+
+        if ($this->esEstacion() && $this->idEstacion() === 0){
+            $this->redirect('estacion/seleccionar');
+            return;
+        }
+
+        $mUser = new ModelUsuario();
         $this->view('estacion.registrar', [
-            'user'      => $user,
-            'menu'      => $mUser->getMenuJerarquico((int)$user['id'], (int)$user['departamento_id']),
+            'user'      => $u,
+            'menu'      => $mUser->getMenuJerarquico((int)$u['id'], (int)$u['departamento_id']),
             'pageTitle' => 'Estación · Registrar venta',
             'scripts'   => ['estacion.js'],
         ]);
     }
 
-    public function dataventa(): void{
-        AuthGuard::check();
-        $user = auth_user();
-        $mUser = new ModelUsuario();
-
-        $this->view('estacion.dataventa', [
-            'user'      => $user,
-            'menu'      => $mUser->getMenuJerarquico((int)$user['id'], (int)$user['departamento_id']),
-            'pageTitle' => 'Estación · Historial',
-            'scripts'   => ['dataventa.js'],
-        ]);
-    }
-
-    public function mantenimiento(): void{
-        AuthGuard::check();
-        $user = auth_user();
-        $mUser = new ModelUsuario();
-
-        $this->view('estacion.mantenimiento', [
-            'user'      => $user,
-            'menu'      => $mUser->getMenuJerarquico((int)$user['id'], (int)$user['departamento_id']),
-            'pageTitle' => 'Estación · Mantenimiento',
-            'scripts'   => ['mantenimiento.js'],
-        ]);
-    }
-
-    /* ============================================================
-       HELPERS
-       ============================================================ */
-    private function esSistema(): bool{
-        $u = auth_user();
-        return ($u['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($u['es_sistema'] ?? 0) === 1;
-    }
-
-    private function idEstacion(): int{
-        $u = auth_user();
-        if ($this->esSistema()) return 0;
-        return (int)($u['estacion_id'] ?? 0);
-    }
-
-    /* ============================================================
-       DATA INICIAL
-       ============================================================ */
     public function initialData(): void{
         AuthGuard::check();
+        $u = auth_user();
+        $idUser = (int)$u['id'];
+        $idEst  = $this->idEstacion();
+        $hoy    = date('Y-m-d');
 
-        $this->safe(function(){
+        $this->safe(function() use ($idUser, $idEst, $hoy, $u){
             $m = new ModelEstacion();
-            $u = auth_user();
-            $idUser  = (int)$u['id'];
-            $idEst   = $this->idEstacion();
-            $hoy     = date('Y-m-d');
 
             $this->json([
-                'ok'              => true,
-                'tiposVehiculo'   => $m->tiposVehiculo(),
-                'tiposPago'       => $m->tiposPago(),
-                'tasa'            => $m->getTasa(),
-                'ultimosTickets'  => $m->ultimosTickets($idUser, $hoy, $idEst),
-                'resumen'         => $m->resumenDia($idUser, $hoy, $idEst),
-                'ventasPendientes'=> $m->ventasPendientes($idUser, $idEst),
-                'idUser'          => $idUser,
-                'idEstacion'      => $idEst,
-                'esSistema'       => $this->esSistema(),
-                'estacionNombre'  => $u['departamento_nombre'] === 'SISTEMA' ? 'Administrador' : ($u['departamento_nombre'] ?? ''),
+                'ok'                => true,
+                'tiposVehiculo'     => $m->tiposVehiculo(),
+                'tiposPago'         => $m->tiposPago(),
+                'tiposCombustible'  => $m->tiposCombustible(),
+                'tasa'              => $m->getTasa(),
+                'ultimosTickets'    => $m->ultimosTickets($idUser, $hoy, $idEst),
+                'resumen'           => $m->resumenDia($idUser, $hoy, $idEst),
+                'ventasPendientes'  => $m->ventasPendientes($idUser, $idEst),
+                'idUser'            => $idUser,
+                'idEstacion'        => $idEst,
+                'estacionNombre'    => $u['estacion'] ?? '',
+                'esSistema'         => $this->esSistema(),
             ]);
         });
     }
 
-    /* ============================================================
-       ACTUALIZAR TASA
-       ============================================================ */
     public function updateTasa(): void{
         AuthGuard::check();
-
         $d = $this->input();
         $tasa = (float)($d['tasa'] ?? 0);
-
         if ($tasa <= 0){
-            $this->json(['ok' => false, 'message' => 'Ingresa una tasa válida.'], 422);
+            $this->json(['ok' => false, 'message' => 'Tasa inválida.'], 422);
             return;
         }
 
-        $this->safe(function() use ($tasa){
-            $res = (new ModelEstacion())->updateTasa($tasa);
+        $isAdmin = $this->esSistema();
+
+        $this->safe(function() use ($tasa, $isAdmin){
+            $m = new ModelEstacion();
+            $res = $m->updateTasa($tasa, $isAdmin);
             if ($res === 'already_updated'){
                 $this->json(['ok' => false, 'message' => 'La tasa ya fue modificada hoy.'], 422);
                 return;
             }
-            $this->json(['ok' => true, 'message' => 'Tasa actualizada correctamente.']);
+            $this->json(['ok' => true, 'message' => 'Tasa actualizada.']);
         });
     }
 
-    /* ============================================================
-       REGISTRAR VENTA
-       ============================================================ */
     public function registrarVenta(): void{
         AuthGuard::check();
-
         $d = $this->input();
         if (empty($d)) $d = $_POST;
 
-        $tipoVehiculo = (int)($d['tipo_vehiculo'] ?? 0);
-        $litros       = (float)($d['litros'] ?? 0);
-        $tipoPago     = (int)($d['tipo_pago'] ?? 0);
-        $monto        = (float)($d['monto'] ?? 0);
-        $tasa         = (float)($d['tasa'] ?? 0);
+        $tipoVehiculo   = (int)($d['tipo_vehiculo'] ?? 0);
+        $tipoCombustible= (int)($d['tipo_combustible'] ?? 1);
+        $litros         = (float)($d['litros'] ?? 0);
+        $tipoPago       = (int)($d['tipo_pago'] ?? 0);
+        $monto          = (float)($d['monto'] ?? 0);
+        $tasa           = (float)($d['tasa'] ?? 0);
 
         if ($tipoVehiculo <= 0 || $litros <= 0 || $tipoPago <= 0 || $monto <= 0 || $tasa <= 0){
-            $this->json(['ok' => false, 'message' => 'Datos incompletos o inválidos.'], 422);
+            $this->json(['ok' => false, 'message' => 'Datos incompletos.'], 422);
             return;
         }
 
@@ -141,72 +223,54 @@ class ControllerEstacion extends Controller{
         $idUser = (int)$u['id'];
         $idEst  = $this->idEstacion();
 
-        if ($idEst === 0 && !$this->esSistema()){
+        if ($idEst === 0){
             $this->json(['ok' => false, 'message' => 'No tienes estación asignada.'], 422);
             return;
         }
 
-        // Si es admin, debe venir id_estacion explícito o usar la estación 1 por defecto
-        if ($this->esSistema()){
-            $idEst = (int)($d['id_estacion'] ?? 1);
-        }
-
-        $this->safe(function() use ($idUser, $idEst, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa){
+        $this->safe(function() use ($idUser, $idEst, $tipoVehiculo, $tipoCombustible, $litros, $tipoPago, $monto, $tasa){
             $m = new ModelEstacion();
-            $numTicket = $m->setVenta($idUser, $idEst, $tipoVehiculo, $litros, $tipoPago, $monto, $tasa);
-
-            if ($numTicket <= 0){
+            $num = $m->setVenta($idUser, $idEst, $tipoVehiculo, $tipoCombustible, $litros, $tipoPago, $monto, $tasa);
+            if ($num <= 0){
                 $this->json(['ok' => false, 'message' => 'No se pudo registrar la venta.'], 500);
                 return;
             }
-
-            $ticket = $m->getTicketData($numTicket, $idUser, date('Y-m-d'), $idEst);
-
+            $ticket = $m->getTicketData($num, $idUser, date('Y-m-d'), $idEst);
             $this->json([
                 'ok'         => true,
-                'message'    => 'Venta registrada. Ticket #' . $numTicket,
-                'numTicket'  => $numTicket,
+                'message'    => 'Venta registrada. Ticket #' . $num,
+                'numTicket'  => $num,
                 'ticketData' => $ticket,
             ]);
         });
     }
 
-    /* ============================================================
-       CERRAR DÍA
-       ============================================================ */
     public function cerrarDia(): void{
         AuthGuard::check();
-
         $d = $this->input();
         $fecha = $d['fecha'] ?? date('Y-m-d');
+
         $u = auth_user();
         $idUser = (int)$u['id'];
         $idEst  = $this->idEstacion();
-        if ($this->esSistema()) $idEst = (int)($d['id_estacion'] ?? 1);
 
         $this->safe(function() use ($idUser, $idEst, $fecha){
             $m = new ModelEstacion();
-
             $idCierre = $m->setDailyCierre($idUser, $fecha, $idEst);
-
-            $dataCierre    = $m->dataCierre($idCierre);
-            $dataDetallado = $m->getDetallado($idUser, $fecha, $idEst, false);
-
             $this->json([
                 'ok'           => true,
-                'message'      => 'Día cerrado correctamente.',
+                'message'      => 'Día cerrado.',
                 'idCierre'     => $idCierre,
-                'dataCierre'   => $dataCierre,
-                'dataDetallado'=> $dataDetallado,
+                'dataCierre'   => $m->dataCierre($idCierre),
+                'dataDetallado'=> $m->getDetallado($idUser, $fecha, $idEst, false),
             ]);
         });
     }
 
     public function cerrarTurnoPendiente(): void{
         AuthGuard::check();
-
         $d = $this->input();
-        $fecha = $d['fecha'] ?? '';
+        $fecha  = $d['fecha'] ?? '';
         $idUser = (int)($d['id_user'] ?? 0);
 
         if ($fecha === '' || $idUser <= 0){
@@ -216,45 +280,35 @@ class ControllerEstacion extends Controller{
 
         $this->safe(function() use ($idUser, $fecha){
             $m = new ModelEstacion();
-            $u = $m->usuarioInfo($idUser);
-            $idEst = (int)($u['usuario_estacion_id'] ?? 0);
+            $uInfo = $m->usuarioInfo($idUser);
+            $idEst = (int)($uInfo['usuario_estacion_id'] ?? 0);
 
             $idCierre = $m->setDailyCierre($idUser, $fecha, $idEst);
-            $dataCierre = $m->dataCierre($idCierre);
-            $dataDetallado = $m->getDetallado($idUser, $fecha, $idEst, false);
 
             $this->json([
                 'ok'           => true,
-                'message'      => 'Turno cerrado correctamente.',
-                'dataCierre'   => $dataCierre,
-                'dataDetallado'=> $dataDetallado,
+                'message'      => 'Turno cerrado.',
+                'dataCierre'   => $m->dataCierre($idCierre),
+                'dataDetallado'=> $m->getDetallado($idUser, $fecha, $idEst, false),
             ]);
         });
     }
 
-    /* ============================================================
-       DETALLE VENTAS / TICKET / PDF
-       ============================================================ */
     public function getDetalleVentas(): void{
         AuthGuard::check();
-
         $d = $this->input();
         $fecha  = $d['fecha'] ?? date('Y-m-d');
         $idUser = (int)($d['id_user'] ?? 0);
         $this->safe(function() use ($idUser, $fecha){
             $m = new ModelEstacion();
-            $u = $m->usuarioInfo($idUser);
-            $idEst = (int)($u['usuario_estacion_id'] ?? 0);
-            $this->json([
-                'ok'   => true,
-                'data' => $m->getDetallado($idUser, $fecha, $idEst, false),
-            ]);
+            $uInfo = $m->usuarioInfo($idUser);
+            $idEst = (int)($uInfo['usuario_estacion_id'] ?? 0);
+            $this->json(['ok' => true, 'data' => $m->getDetallado($idUser, $fecha, $idEst, false)]);
         });
     }
 
     public function getTicket(string $id): void{
         AuthGuard::check();
-
         $d = $this->input();
         $idUser = (int)($d['id_user'] ?? 0);
         $fecha  = $d['fecha'] ?? date('Y-m-d');
@@ -262,7 +316,9 @@ class ControllerEstacion extends Controller{
 
         $this->safe(function() use ($idVenta, $idUser, $fecha){
             $m = new ModelEstacion();
-            $ticket = $m->getTicketData($idVenta, $idUser, $fecha, $this->idEstacion());
+            $uInfo = $m->usuarioInfo($idUser);
+            $idEst = (int)($uInfo['usuario_estacion_id'] ?? 0);
+            $ticket = $m->getTicketData($idVenta, $idUser, $fecha, $idEst);
             if (!$ticket){
                 $this->json(['ok' => false, 'message' => 'Ticket no encontrado.'], 404);
                 return;
@@ -273,16 +329,13 @@ class ControllerEstacion extends Controller{
 
     public function generarReportePdf(): void{
         AuthGuard::check();
-
         $d = $this->input();
         $fecha  = $d['fecha'] ?? date('Y-m-d');
         $idUser = (int)($d['id_user'] ?? 0);
-
         $this->safe(function() use ($idUser, $fecha){
             $m = new ModelEstacion();
-            $u = $m->usuarioInfo($idUser);
-            $idEst = (int)($u['usuario_estacion_id'] ?? 0);
-
+            $uInfo = $m->usuarioInfo($idUser);
+            $idEst = (int)($uInfo['usuario_estacion_id'] ?? 0);
             $this->json([
                 'ok'   => true,
                 'data' => [
@@ -293,9 +346,6 @@ class ControllerEstacion extends Controller{
         });
     }
 
-    /* ============================================================
-       TASA ACTUAL
-       ============================================================ */
     public function getTasaCurrent(): void{
         AuthGuard::check();
         $this->safe(function(){
@@ -304,76 +354,154 @@ class ControllerEstacion extends Controller{
     }
 
     /* ============================================================
-       HISTORIAL DE CIERRES
+       DATAVENTA (Solo depto Sistema)
        ============================================================ */
+    public function dataventa(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){
+            http_response_code(403);
+            echo 'Acceso restringido. Solo departamento Sistema.';
+            return;
+        }
+        $u = auth_user();
+        $mUser = new ModelUsuario();
+
+        $this->view('estacion.dataventa', [
+            'user'      => $u,
+            'menu'      => $mUser->getMenuJerarquico((int)$u['id'], (int)$u['departamento_id']),
+            'pageTitle' => 'Estación · Data Venta',
+            'scripts'   => ['dataventa.js'],
+        ]);
+    }
+
+    public function getLitrosTotales(): void{
+        AuthGuard::check();
+        $this->safe(function(){
+            $this->json(['ok' => true, 'total' => (new ModelEstacion())->litrosTotales()]);
+        });
+    }
+
+    public function getLitrosPorFecha(): void{
+        AuthGuard::check();
+        $d = $this->input();
+        $fecha = $d['fecha'] ?? '';
+        $type  = $d['type'] ?? 'day';
+        $this->safe(function() use ($fecha, $type){
+            $this->json(['ok' => true, 'total' => (new ModelEstacion())->litrosPorFecha($fecha, $type)]);
+        });
+    }
+
     public function getHistorialCierres(): void{
         AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $this->safe(function(){
             $this->json(['ok' => true, 'data' => (new ModelEstacion())->historialCierres()]);
         });
     }
 
-    public function getVentasByCierre(): void{
+    public function listarCierres(): void{
         AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
 
-        $d = $this->input();
-        $idCierre = (int)($d['id_cierre'] ?? 0);
-        $idUser   = (int)($d['id_user'] ?? 0);
-        $fecha    = $d['fecha'] ?? '';
+        $q         = (string)($this->query('q', '') ?? '');
+        $limit     = max(1, min(100, (int)($this->query('limit', 10) ?? 10)));
+        $offset    = max(0, (int)($this->query('offset', 0) ?? 0));
+        $fecha     = (string)($this->query('fecha', '') ?? '');
+        $tipoFecha = (string)($this->query('tipoFecha', 'day') ?? 'day');
 
-        if ($idCierre <= 0 || $idUser <= 0 || $fecha === ''){
-            $this->json(['ok' => false, 'message' => 'Datos incompletos.'], 422);
-            return;
-        }
-
-        $this->safe(function() use ($idCierre, $idUser, $fecha){
+        $this->safe(function() use ($q, $limit, $offset, $fecha, $tipoFecha){
+            $m = new ModelEstacion();
+            $res = $m->listarCierresPaginado($q, $limit, $offset, [
+                'fecha'     => $fecha,
+                'tipoFecha' => $tipoFecha,
+            ]);
             $this->json([
-                'ok'   => true,
-                'data' => (new ModelEstacion())->ventasPorCierre($idCierre, $idUser, $fecha),
+                'ok'             => true,
+                'data'           => $res['data'],
+                'total'          => $res['total'],
+                'totalFiltrados' => $res['totalFiltrados'],
             ]);
         });
     }
 
-    /* ============================================================
-       ELIMINAR / CERRAR VENTAS
-       ============================================================ */
-    public function deleteVenta(): void{
+    public function listarVentasAbiertasPaginado(): void{
         AuthGuard::check();
-        $d = $this->input();
-        $idVenta = (int)($d['id_venta'] ?? 0);
-        $idUser  = (int)($d['id_user'] ?? 0);
-        $fecha   = $d['fecha'] ?? '';
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
 
-        $this->safe(function() use ($idVenta, $idUser, $fecha){
-            $ok = (new ModelEstacion())->deleteVenta($idVenta, $fecha, $idUser);
-            if (!$ok){
-                $this->json(['ok' => false, 'message' => 'No se pudo eliminar la venta.'], 500);
-                return;
-            }
-            $this->json(['ok' => true, 'message' => 'Venta eliminada.']);
+        $q      = (string)($this->query('q', '') ?? '');
+        $limit  = max(1, min(100, (int)($this->query('limit', 10) ?? 10)));
+        $offset = max(0, (int)($this->query('offset', 0) ?? 0));
+
+        $this->safe(function() use ($q, $limit, $offset){
+            $m = new ModelEstacion();
+            $res = $m->listarVentasAbiertasPaginado($q, $limit, $offset);
+            $this->json([
+                'ok'             => true,
+                'data'           => $res['data'],
+                'total'          => $res['total'],
+                'totalFiltrados' => $res['totalFiltrados'],
+            ]);
         });
     }
 
-    public function deleteCierre(): void{
+    /**
+     * NUEVO · Ventas de un cierre paginadas.
+     * Query string: id_cierre (obligatorio), q, limit, offset
+     */
+    public function listarVentasCierre(): void{
         AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+
+        $idCierre = (int)($this->query('id_cierre', 0) ?? 0);
+        if ($idCierre <= 0){
+            $this->json(['ok' => false, 'message' => 'id_cierre requerido.'], 422);
+            return;
+        }
+
+        $q      = (string)($this->query('q', '') ?? '');
+        $limit  = max(1, min(100, (int)($this->query('limit', 10) ?? 10)));
+        $offset = max(0, (int)($this->query('offset', 0) ?? 0));
+
+        $this->safe(function() use ($idCierre, $q, $limit, $offset){
+            $m = new ModelEstacion();
+            $res = $m->listarVentasCierrePaginado($idCierre, $q, $limit, $offset);
+            $this->json([
+                'ok'             => true,
+                'data'           => $res['data'],
+                'total'          => $res['total'],
+                'totalFiltrados' => $res['totalFiltrados'],
+            ]);
+        });
+    }
+
+    public function getVentasByCierre(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $idCierre = (int)($d['id_cierre'] ?? 0);
         $idUser   = (int)($d['id_user'] ?? 0);
-        $idEst    = (int)($d['id_estacion'] ?? 0);
         $fecha    = $d['fecha'] ?? '';
+        $this->safe(function() use ($idCierre, $idUser, $fecha){
+            $this->json(['ok' => true, 'data' => (new ModelEstacion())->ventasPorCierre($idCierre, $idUser, $fecha)]);
+        });
+    }
 
-        $this->safe(function() use ($idCierre, $idUser, $idEst, $fecha){
-            $ok = (new ModelEstacion())->deleteCierre($idCierre, $idUser, $idEst, $fecha);
-            if (!$ok){
-                $this->json(['ok' => false, 'message' => 'No se pudo eliminar el cierre.'], 500);
-                return;
-            }
-            $this->json(['ok' => true, 'message' => 'Cierre eliminado y ventas reabiertas.']);
+    public function getVentasAbiertas(): void{
+        AuthGuard::check();
+        $d = $this->input();
+        $idUser = (int)($d['id_user'] ?? 0);
+        $fecha  = $d['fecha'] ?? '';
+        $this->safe(function() use ($idUser, $fecha){
+            $m = new ModelEstacion();
+            $uInfo = $m->usuarioInfo($idUser);
+            $idEst = (int)($uInfo['usuario_estacion_id'] ?? 0);
+            $this->json(['ok' => true, 'data' => $m->getDetallado($idUser, $fecha, $idEst, false)]);
         });
     }
 
     public function getOpenSales(): void{
         AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $this->safe(function(){
             $this->json(['ok' => true, 'data' => (new ModelEstacion())->ventasAbiertas()]);
         });
@@ -381,14 +509,80 @@ class ControllerEstacion extends Controller{
 
     public function closeSale(string $id): void{
         AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+        $d = $this->input();
         $idVenta = (int)$id;
-        $this->safe(function() use ($idVenta){
-            $ok = (new ModelEstacion())->cerrarVenta($idVenta);
-            if (!$ok){
-                $this->json(['ok' => false, 'message' => 'No se pudo cerrar la venta.'], 500);
-                return;
-            }
+        $fecha   = $d['fecha'] ?? '';
+        $idUser  = (int)($d['id_user'] ?? 0);
+        $this->safe(function() use ($idVenta, $fecha, $idUser){
+            $ok = (new ModelEstacion())->closeSale($idVenta, $fecha, $idUser);
+            if (!$ok){ $this->json(['ok'=>false,'message'=>'No se pudo cerrar la venta.'], 500); return; }
             $this->json(['ok' => true, 'message' => 'Venta cerrada.']);
+        });
+    }
+
+    public function deleteVenta(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+        $d = $this->input();
+        $this->safe(function() use ($d){
+            $ok = (new ModelEstacion())->deleteVenta((int)($d['id_venta']??0), $d['fecha']??'', (int)($d['id_user']??0));
+            if (!$ok){ $this->json(['ok'=>false,'message'=>'No se pudo eliminar.'], 500); return; }
+            $this->json(['ok' => true, 'message' => 'Venta eliminada.']);
+        });
+    }
+
+    public function deleteCierre(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+        $d = $this->input();
+        $this->safe(function() use ($d){
+            $ok = (new ModelEstacion())->deleteCierre(
+                (int)($d['id_cierre']??0), (int)($d['id_user']??0),
+                (int)($d['id_estacion']??0), $d['fecha']??''
+            );
+            if (!$ok){ $this->json(['ok'=>false,'message'=>'No se pudo eliminar el cierre.'], 500); return; }
+            $this->json(['ok' => true, 'message' => 'Cierre eliminado y ventas reabiertas.']);
+        });
+    }
+
+    public function deleteCierreTotal(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+        $d = $this->input();
+        $this->safe(function() use ($d){
+            $ok = (new ModelEstacion())->deleteCierreTotal(
+                (int)($d['id_cierre']??0), (int)($d['id_user']??0), $d['fecha']??''
+            );
+            if (!$ok){ $this->json(['ok'=>false,'message'=>'No se pudo eliminar.'], 500); return; }
+            $this->json(['ok' => true, 'message' => 'Cierre y ventas eliminados.']);
+        });
+    }
+
+    public function deleteAllOpenSales(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+        $d = $this->input();
+        $this->safe(function() use ($d){
+            $ok = (new ModelEstacion())->deleteAllOpenSales((int)($d['id_user']??0), $d['fecha']??'');
+            if (!$ok){ $this->json(['ok'=>false,'message'=>'No se pudo eliminar.'], 500); return; }
+            $this->json(['ok' => true, 'message' => 'Ventas eliminadas.']);
+        });
+    }
+
+    public function generarReporteLitros(): void{
+        AuthGuard::check();
+        $this->json(['ok' => false, 'message' => 'Función de reporte litros se gestiona en el frontend.'], 200);
+    }
+
+    public function getDataCierre(): void{
+        AuthGuard::check();
+        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
+        $d = $this->input();
+        $this->safe(function() use ($d){
+            $data = (new ModelEstacion())->dataCierre((int)($d['id_cierre'] ?? 0));
+            if (!$data){ $this->json(['ok'=>false,'message'=>'Cierre no encontrado.'], 404); return; }
+            $this->json(['ok' => true, 'cierreData' => $data]);
         });
     }
 }

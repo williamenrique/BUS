@@ -60,7 +60,9 @@ define('MULTI_INSTITUCION', true);   // activa el filtrado por institución
 // ============================================
 // Recuperación de contraseña
 // ============================================
-define('DEPARTAMENTO_SISTEMA', 1);   // id del departamento de Sistemas
+
+define('DEPARTAMENTO_SISTEMA',   1);   // "Sistema"
+define('DEPARTAMENTO_ESTACION',  2);   // "Estacion"
 define('PASSWORD_DEFAULT_RESET', '123456');
 // Nombres
 define('SITENAME', 'SITGO');

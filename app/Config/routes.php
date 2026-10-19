@@ -122,7 +122,7 @@ return [
     // ============================================================
     // Almacén · Despachos (multi-institución)
     // ============================================================
-    ['path' => '/despachos/i/{inst}',                     'method' => 'GET',  'handler' => 'ControllerDespachos@index'],         // 👈 ESTA
+    ['path' => '/despachos/i/{inst}',                     'method' => 'GET',  'handler' => 'ControllerDespachos@index'],
     ['path' => '/despachos/i/{inst}/listar',              'method' => 'GET',  'handler' => 'ControllerDespachos@listar'],
     ['path' => '/despachos/i/{inst}/combos',              'method' => 'GET',  'handler' => 'ControllerDespachos@combos'],
     ['path' => '/despachos/i/{inst}/obtener/{id}',        'method' => 'GET',  'handler' => 'ControllerDespachos@obtener'],
@@ -147,25 +147,46 @@ return [
     ['path' => '/compras/i/{inst}/anular/{id}',           'method' => 'POST', 'handler' => 'ControllerCompras@anularCosto'],
     ['path' => '/compras/i/{inst}/flota',                 'method' => 'GET',  'handler' => 'ControllerCompras@flota'],
     ['path' => '/compras/i/{inst}/conteo-ordenes',        'method' => 'POST', 'handler' => 'ControllerCompras@conteoOrdenes'],
-        // ============================================================
+    // ============================================================
     // Estación de Servicio
     // ============================================================
-    ['path' => '/estacion/registrar',                   'method' => 'GET',  'handler' => 'ControllerEstacion@registrar'],
-    ['path' => '/estacion/initial-data',                'method' => 'GET',  'handler' => 'ControllerEstacion@initialData'],
-    ['path' => '/estacion/update-tasa',                 'method' => 'POST', 'handler' => 'ControllerEstacion@updateTasa'],
-    ['path' => '/estacion/registrar-venta',             'method' => 'POST', 'handler' => 'ControllerEstacion@registrarVenta'],
-    ['path' => '/estacion/cerrar-dia',                  'method' => 'POST', 'handler' => 'ControllerEstacion@cerrarDia'],
-    ['path' => '/estacion/cerrar-turno-pendiente',      'method' => 'POST', 'handler' => 'ControllerEstacion@cerrarTurnoPendiente'],
-    ['path' => '/estacion/detalle-ventas',              'method' => 'POST', 'handler' => 'ControllerEstacion@getDetalleVentas'],
-    ['path' => '/estacion/ticket/{id}',                 'method' => 'POST', 'handler' => 'ControllerEstacion@getTicket'],
-    ['path' => '/estacion/reporte-pdf',                 'method' => 'POST', 'handler' => 'ControllerEstacion@generarReportePdf'],
-    ['path' => '/estacion/tasa-actual',                 'method' => 'GET',  'handler' => 'ControllerEstacion@getTasaCurrent'],
-    ['path' => '/estacion/dataventa',                   'method' => 'GET',  'handler' => 'ControllerEstacion@dataventa'],
-    ['path' => '/estacion/historial-cierres',           'method' => 'GET',  'handler' => 'ControllerEstacion@getHistorialCierres'],
-    ['path' => '/estacion/ventas-cierre',               'method' => 'POST', 'handler' => 'ControllerEstacion@getVentasByCierre'],
-    ['path' => '/estacion/eliminar-venta',              'method' => 'POST', 'handler' => 'ControllerEstacion@deleteVenta'],
-    ['path' => '/estacion/eliminar-cierre',             'method' => 'POST', 'handler' => 'ControllerEstacion@deleteCierre'],
-    ['path' => '/estacion/mantenimiento',               'method' => 'GET',  'handler' => 'ControllerEstacion@mantenimiento'],
-    ['path' => '/estacion/ventas-abiertas',             'method' => 'GET',  'handler' => 'ControllerEstacion@getOpenSales'],
-    ['path' => '/estacion/cerrar-venta/{id}',           'method' => 'POST', 'handler' => 'ControllerEstacion@closeSale'],
+    // Selección de estación al login
+    ['path' => '/estacion/seleccionar',           'method' => 'GET',  'handler' => 'ControllerEstacion@seleccionar'],
+    ['path' => '/estacion/seleccionar',           'method' => 'POST', 'handler' => 'ControllerEstacion@guardarSeleccion'],
+
+    // Venta (departamento Estación)
+    ['path' => '/estacion/registrar',             'method' => 'GET',  'handler' => 'ControllerEstacion@registrar'],
+    ['path' => '/estacion/initial-data',          'method' => 'GET',  'handler' => 'ControllerEstacion@initialData'],
+    ['path' => '/estacion/update-tasa',           'method' => 'POST', 'handler' => 'ControllerEstacion@updateTasa'],
+    ['path' => '/estacion/registrar-venta',       'method' => 'POST', 'handler' => 'ControllerEstacion@registrarVenta'],
+    ['path' => '/estacion/cerrar-dia',            'method' => 'POST', 'handler' => 'ControllerEstacion@cerrarDia'],
+    ['path' => '/estacion/cerrar-turno-pendiente','method' => 'POST', 'handler' => 'ControllerEstacion@cerrarTurnoPendiente'],
+    ['path' => '/estacion/detalle-ventas',        'method' => 'POST', 'handler' => 'ControllerEstacion@getDetalleVentas'],
+    ['path' => '/estacion/ticket/{id}',           'method' => 'POST', 'handler' => 'ControllerEstacion@getTicket'],
+    ['path' => '/estacion/reporte-pdf',           'method' => 'POST', 'handler' => 'ControllerEstacion@generarReportePdf'],
+    ['path' => '/estacion/tasa-actual',           'method' => 'GET',  'handler' => 'ControllerEstacion@getTasaCurrent'],
+
+    // DataVenta (departamento Sistema)
+    ['path' => '/estacion/dataventa',             'method' => 'GET',  'handler' => 'ControllerEstacion@dataventa'],
+    ['path' => '/estacion/litros-totales',        'method' => 'GET',  'handler' => 'ControllerEstacion@getLitrosTotales'],
+    ['path' => '/estacion/litros-por-fecha',      'method' => 'POST', 'handler' => 'ControllerEstacion@getLitrosPorFecha'],
+    ['path' => '/estacion/historial-cierres',     'method' => 'GET',  'handler' => 'ControllerEstacion@getHistorialCierres'],
+    ['path' => '/estacion/ventas-cierre',         'method' => 'POST', 'handler' => 'ControllerEstacion@getVentasByCierre'],
+    ['path' => '/estacion/ventas-abiertas',       'method' => 'POST', 'handler' => 'ControllerEstacion@getVentasAbiertas'],
+    ['path' => '/estacion/open-sales',            'method' => 'GET',  'handler' => 'ControllerEstacion@getOpenSales'],
+    ['path' => '/estacion/cerrar-venta/{id}',     'method' => 'POST', 'handler' => 'ControllerEstacion@closeSale'],
+    ['path' => '/estacion/eliminar-venta',        'method' => 'POST', 'handler' => 'ControllerEstacion@deleteVenta'],
+    ['path' => '/estacion/eliminar-cierre',       'method' => 'POST', 'handler' => 'ControllerEstacion@deleteCierre'],
+    ['path' => '/estacion/eliminar-cierre-total', 'method' => 'POST', 'handler' => 'ControllerEstacion@deleteCierreTotal'],
+    ['path' => '/estacion/eliminar-ventas-abiertas','method' => 'POST','handler' => 'ControllerEstacion@deleteAllOpenSales'],
+    ['path' => '/estacion/reporte-litros',        'method' => 'POST', 'handler' => 'ControllerEstacion@generarReporteLitros'],
+    ['path' => '/estacion/data-cierre',           'method' => 'POST', 'handler' => 'ControllerEstacion@getDataCierre'],
+
+    // DataTable paginado (admin)
+    ['path' => '/estacion/cierres/listar',        'method' => 'GET',  'handler' => 'ControllerEstacion@listarCierres'],
+    ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
+        // DataTable paginado (admin)
+    ['path' => '/estacion/cierres/listar',        'method' => 'GET',  'handler' => 'ControllerEstacion@listarCierres'],
+    ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
+    ['path' => '/estacion/ventas-cierre/listar',  'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasCierre'],
 ];

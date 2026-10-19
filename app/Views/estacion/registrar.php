@@ -1,6 +1,6 @@
 <?php
 $user = auth_user();
-$esAdmin = ($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es_sistema'] ?? 0) === 1;
+$esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es_sistema'] ?? 0) === 1;
 ?>
 
 <div class="page-header">
@@ -10,13 +10,17 @@ $esAdmin = ($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es
             Estación de Servicio
         </h2>
         <p class="page-subtitle">
-            <?= $esAdmin ? 'Vista de Administrador' : ($user['departamento_nombre'] ?? 'Sin estación asignada') ?>
+            <?= $esSistema ? 'Vista de Administrador' : e($user['estacion'] ?? $user['departamento_nombre'] ?? 'Sin estación asignada') ?>
         </p>
     </div>
-    <a href="<?= base_url('estacion/dataventa') ?>" class="btn btn-ghost">
-        <?= icon_tag('history', 'history', 'w-4 h-4') ?>
-        <span>Historial</span>
-    </a>
+    <div style="display:flex; gap:.5rem;">
+        <?php if ($esSistema): ?>
+            <a href="<?= base_url('estacion/dataventa') ?>" class="btn btn-ghost">
+                <?= icon_tag('bar-chart-3', 'bar-chart-3', 'w-4 h-4') ?>
+                <span>Data Venta</span>
+            </a>
+        <?php endif; ?>
+    </div>
 </div>
 
 <!-- ============================================ -->
@@ -49,7 +53,7 @@ $esAdmin = ($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es
 <!-- ============================================ -->
 <div class="estacion-layout">
 
-    <!-- ============ COLUMNA IZQUIERDA ============ -->
+    <!-- COLUMNA IZQUIERDA -->
     <div class="estacion-main">
 
         <!-- FORM VENTA -->
@@ -65,6 +69,13 @@ $esAdmin = ($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es
                         <div class="form-group">
                             <label>Tipo de vehículo</label>
                             <select id="tipoVehiculo" name="tipo_vehiculo"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo de combustible</label>
+                            <select id="tipoCombustible" name="tipo_combustible">
+                                <option value="1" selected>Gasolina</option>
+                                <option value="2">Diesel</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label>Litros</label>
@@ -124,18 +135,16 @@ $esAdmin = ($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es
 
                 <div class="estacion-desgloses">
                     <div id="tiposPagosContainer" class="estacion-desglose" style="display:none;">
-                        <h4 class="estacion-desglose-title">
-                            <?= icon_tag('wallet', 'wallet', 'w-4 h-4') ?>
-                            Por tipo de pago
-                        </h4>
+                        <h4 class="estacion-desglose-title"><?= icon_tag('wallet', 'wallet', 'w-4 h-4') ?> Por tipo de pago</h4>
                         <ul id="tiposPagosList"></ul>
                     </div>
                     <div id="tiposVehiculosContainer" class="estacion-desglose" style="display:none;">
-                        <h4 class="estacion-desglose-title">
-                            <?= icon_tag('car', 'car', 'w-4 h-4') ?>
-                            Por tipo de vehículo
-                        </h4>
+                        <h4 class="estacion-desglose-title"><?= icon_tag('car', 'car', 'w-4 h-4') ?> Por tipo de vehículo</h4>
                         <ul id="tiposVehiculosList"></ul>
+                    </div>
+                    <div id="tiposCombustibleContainer" class="estacion-desglose" style="display:none; grid-column: 1 / -1;">
+                        <h4 class="estacion-desglose-title"><?= icon_tag('droplet', 'droplet', 'w-4 h-4') ?> Por tipo de combustible</h4>
+                        <ul id="tiposCombustibleList"></ul>
                     </div>
                 </div>
 
@@ -165,15 +174,26 @@ $esAdmin = ($user['departamento_nombre'] ?? '') === 'SISTEMA' || (int)($user['es
 
     </div>
 
-    <!-- ============ COLUMNA DERECHA ============ -->
+    <!-- COLUMNA DERECHA -->
     <div class="estacion-side">
+
+        <!-- VISTA PREVIA TICKET -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="estacion-card-title">
+                    <?= icon_tag('receipt', 'receipt', 'w-5 h-5') ?>
+                    Vista previa del ticket
+                </h3>
+                <pre id="ticketPreview" class="estacion-preview"></pre>
+            </div>
+        </div>
 
         <!-- TICKETS DEL DÍA -->
         <div class="card">
             <div class="card-body">
                 <h3 class="estacion-card-title">
-                    <?= icon_tag('receipt', 'receipt', 'w-5 h-5') ?>
-                    Tickets de venta del día
+                    <?= icon_tag('list', 'list', 'w-5 h-5') ?>
+                    Tickets del día
                 </h3>
 
                 <div class="table-wrap">

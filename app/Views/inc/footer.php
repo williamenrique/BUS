@@ -12,12 +12,14 @@
     console.log('SITGO_BASE =', window.SITGO_BASE);
     window.SITGO_INST = <?= (int)($instId ?? 1) ?>;
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.min.js"></script>
 <script src="<?= asset('js/components/DataTable.js') ?>"></script>
 <script src="<?= asset('js/components/SearchSelect.js') ?>"></script>
 <script src="<?= asset('js/utils.js') ?>"></script>       <!-- 👈 IMPORTANTE -->
 <script src="<?= asset('js/app.js') ?>"></script>
 <script src="<?= asset('js/dashboard.js') ?>"></script>
+<script src="<?= asset('js/function.imprimirQZ.js') ?>"></script>
+<script src="<?= asset('js/notifications.js') ?>"></script>
 
 <?php if (!empty($scripts)): ?>
     <?php foreach ($scripts as $s): ?>

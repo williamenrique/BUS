@@ -1,0 +1,10 @@
+[2026-10-19 15:23:33] [APP] Call to undefined method App\Controllers\ControllerEstacion::get()
+  SQLSTATE: 0
+  Mensaje: Call to undefined method App\Controllers\ControllerEstacion::get()
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerEstacion.php:433
+------------------------------------------------------------
+[2026-10-19 15:23:33] [APP] Call to undefined method App\Controllers\ControllerEstacion::get()
+  SQLSTATE: 0
+  Mensaje: Call to undefined method App\Controllers\ControllerEstacion::get()
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerEstacion.php:404
+------------------------------------------------------------
