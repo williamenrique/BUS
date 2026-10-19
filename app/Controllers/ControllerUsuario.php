@@ -8,9 +8,9 @@ use App\Middleware\AuthGuard;
 
 class ControllerUsuario extends Controller{
 
-    /**
-     * Vista principal.
-     */
+    /* ============================================================
+       VISTA PRINCIPAL
+       ============================================================ */
     public function index(): void{
         AuthGuard::check();
         $user = auth_user();
@@ -24,9 +24,9 @@ class ControllerUsuario extends Controller{
         ]);
     }
 
-    /**
-     * Listado paginado con filtros.
-     */
+    /* ============================================================
+       LISTAR (paginado)
+       ============================================================ */
     public function listar(): void{
         AuthGuard::check();
 
@@ -57,9 +57,9 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Combos para el formulario.
-     */
+    /* ============================================================
+       COMBOS
+       ============================================================ */
     public function combos(): void{
         AuthGuard::check();
         $m = new ModelUsuario();
@@ -75,9 +75,9 @@ class ControllerUsuario extends Controller{
         ]);
     }
 
-    /**
-     * Obtiene un usuario por ID (sin contraseña).
-     */
+    /* ============================================================
+       OBTENER
+       ============================================================ */
     public function obtener(string $id): void{
         AuthGuard::check();
         $row = (new ModelUsuario())->find((int)$id);
@@ -87,9 +87,9 @@ class ControllerUsuario extends Controller{
         $this->json(['ok' => true, 'data' => $row]);
     }
 
-    /**
-     * Endpoint: devuelve el siguiente nick disponible para un personal.
-     */
+    /* ============================================================
+       SIGUIENTE NICK
+       ============================================================ */
     public function siguienteNick(): void{
         AuthGuard::check();
 
@@ -108,13 +108,9 @@ class ControllerUsuario extends Controller{
         $this->json(['ok' => true, 'nick' => $nick]);
     }
 
-    /**
-     * Crea un usuario.
-     * - Nick autogenerado en MAYÚSCULAS
-     * - Password por defecto '123456'
-     * - Estación opcional → 0
-     * - Imagen: si no suben una, se copia default.png a la carpeta del usuario
-     */
+    /* ============================================================
+       GUARDAR (crear)
+       ============================================================ */
     public function guardar(): void{
         AuthGuard::check();
 
@@ -122,7 +118,6 @@ class ControllerUsuario extends Controller{
         if (empty($d)) $d = $_POST;
         $d = $this->normalizar($d);
 
-        // Personal obligatorio
         if (empty($d['usuario_id_personal'])){
             $this->json([
                 'ok' => false,
@@ -130,21 +125,18 @@ class ControllerUsuario extends Controller{
             ], 422);
         }
 
-        // Estación opcional → 0
         $d['usuario_estacion_id'] = !empty($d['usuario_estacion_id'])
             ? (int)$d['usuario_estacion_id']
             : 0;
 
         $m = new ModelUsuario();
 
-        // Nick autogenerado (MAYÚSCULAS)
         $nick = $m->generarNickDesdePersonal((int)$d['usuario_id_personal']);
         if (!$nick){
             $this->json(['ok' => false, 'message' => 'No se pudo generar el usuario.'], 500);
         }
         $d['usuario_nick'] = $nick;
 
-        // Validaciones
         $v = new Validator();
         $v->required('usuario_rol_id',          $d['usuario_rol_id'] ?? '', 'Rol')
           ->required('usuario_departamento_id', $d['usuario_departamento_id'] ?? '', 'Departamento');
@@ -154,19 +146,14 @@ class ControllerUsuario extends Controller{
             $this->json(['ok' => false, 'errors' => ['usuario_nick' => 'El usuario generado ya existe. Intenta de nuevo.']], 422);
         }
 
-        // ============================================================
-        // IMAGEN: subida o default.png
-        // ============================================================
         if (!empty($_FILES['usuario_imagen']['name'])){
             $img = $this->subirImagen($_FILES['usuario_imagen'], $d['usuario_nick']);
             if (!$img['ok']) $this->json(['ok' => false, 'errors' => ['usuario_imagen' => $img['msg']]], 422);
             $d['usuario_imagen'] = $img['file'];
         } else {
-            // Copiar default.png al folder del usuario
             $d['usuario_imagen'] = $this->copiarDefault($d['usuario_nick']);
         }
 
-        // Password por defecto
         $d['usuario_password'] = hash_password('123456');
 
         try{
@@ -182,10 +169,9 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Actualiza un usuario. No toca nick ni contraseña.
-     * Si sube nueva imagen, borra la anterior.
-     */
+    /* ============================================================
+       ACTUALIZAR
+       ============================================================ */
     public function actualizar(string $id): void{
         AuthGuard::check();
         $id = (int)$id;
@@ -207,13 +193,11 @@ class ControllerUsuario extends Controller{
         $existente = $m->find($id);
         if (!$existente) $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
 
-        // Imagen nueva (opcional) → borra la anterior si no es la default
         if (!empty($_FILES['usuario_imagen']['name'])){
             $img = $this->subirImagen($_FILES['usuario_imagen'], $existente['usuario_nick']);
             if (!$img['ok']) $this->json(['ok' => false, 'errors' => ['usuario_imagen' => $img['msg']]], 422);
             $d['usuario_imagen'] = $img['file'];
 
-            // Borrar imagen anterior (si no es _default.png)
             $old = $existente['usuario_imagen'] ?? '';
             if ($old && strpos($old, '_default.png') === false){
                 $this->borrarArchivo($old);
@@ -228,9 +212,9 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Elimina la imagen del usuario y restaura la default.
-     */
+    /* ============================================================
+       ELIMINAR IMAGEN
+       ============================================================ */
     public function eliminarImagen(string $id): void{
         AuthGuard::check();
         $id = (int)$id;
@@ -239,13 +223,11 @@ class ControllerUsuario extends Controller{
         $u = $m->find($id);
         if (!$u) $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
 
-        // Borrar archivo actual si no es _default.png
         $actual = $u['usuario_imagen'] ?? '';
         if ($actual && strpos($actual, '_default.png') === false){
             $this->borrarArchivo($actual);
         }
 
-        // Copiar default
         $default = $this->copiarDefault($u['usuario_nick']);
 
         try{
@@ -260,9 +242,9 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Restablece la contraseña.
-     */
+    /* ============================================================
+       RESET PASSWORD
+       ============================================================ */
     public function resetPassword(string $id): void{
         AuthGuard::check();
         $id = (int)$id;
@@ -284,9 +266,9 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Elimina un usuario (y su carpeta de imágenes).
-     */
+    /* ============================================================
+       ELIMINAR
+       ============================================================ */
     public function eliminar(string $id): void{
         AuthGuard::check();
         $id = (int)$id;
@@ -301,9 +283,7 @@ class ControllerUsuario extends Controller{
         if (!$u) $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
 
         try{
-            // Borrar carpeta completa del usuario
             $this->borrarCarpetaUsuario($u['usuario_nick']);
-
             $m->delete($id);
             $this->json(['ok' => true, 'message' => 'Usuario eliminado.']);
         } catch (\Throwable $e){
@@ -311,9 +291,9 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Activa / desactiva un usuario.
-     */
+    /* ============================================================
+       CAMBIAR STATUS
+       ============================================================ */
     public function cambiarStatus(string $id): void{
         AuthGuard::check();
         $id = (int)$id;
@@ -338,12 +318,113 @@ class ControllerUsuario extends Controller{
     }
 
     /* ============================================================
-       HELPERS PRIVADOS
+       MENÚS ASIGNADOS AL USUARIO
        ============================================================ */
 
     /**
-     * Normaliza el nick a MAYÚSCULAS.
+     * Devuelve el árbol completo de menús activos + los IDs asignados
+     * al usuario indicado.
+     * GET /usuarios/menus/{id}
      */
+    public function menusAsignados(string $id): void{
+        AuthGuard::check();
+        $id = (int)$id;
+
+        try{
+            $db = \App\Core\Database::getConnection();
+
+            // Árbol completo de menús activos
+            $sql = "SELECT menu_id, menu_padre_id, menu_nombre, menu_icono,
+                           menu_ruta, menu_orden, menu_es_desplegable
+                    FROM table_men_menu
+                    WHERE menu_estado = 1
+                    ORDER BY menu_orden ASC, menu_id ASC";
+            $stmt = $db->query($sql);
+            $flat = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            // Construir árbol
+            $byId = [];
+            foreach ($flat as $item){
+                $item['children'] = [];
+                $byId[$item['menu_id']] = $item;
+            }
+            $tree = [];
+            foreach ($byId as $mid => &$item){
+                $parent = $item['menu_padre_id'];
+                if ($parent && isset($byId[$parent])){
+                    $byId[$parent]['children'][] = &$item;
+                } else {
+                    $tree[] = &$item;
+                }
+            }
+            unset($item);
+
+            // Menús ya asignados al usuario
+            $stmt = $db->prepare(
+                "SELECT menu_id FROM table_men_usuario_menu WHERE usuario_id = :uid"
+            );
+            $stmt->execute(['uid' => $id]);
+            $asignados = array_column($stmt->fetchAll(\PDO::FETCH_ASSOC), 'menu_id');
+
+            $this->json([
+                'ok'        => true,
+                'arbol'     => $tree,
+                'asignados' => array_map('intval', $asignados),
+            ]);
+        } catch (\Throwable $e){
+            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Guarda los menús asignados al usuario. Reemplaza todo lo anterior.
+     * POST /usuarios/menus/guardar/{id}
+     */
+    public function guardarMenus(string $id): void{
+        AuthGuard::check();
+        $id = (int)$id;
+
+        $d = $this->input();
+        if (empty($d)) $d = $_POST;
+
+        $menus = $d['menus'] ?? [];
+        if (!is_array($menus)) $menus = [];
+
+        $db = \App\Core\Database::getConnection();
+        try{
+            $db->beginTransaction();
+
+            $stmt = $db->prepare("DELETE FROM table_men_usuario_menu WHERE usuario_id = :uid");
+            $stmt->execute(['uid' => $id]);
+
+            if (!empty($menus)){
+                $stmt = $db->prepare(
+                    "INSERT INTO table_men_usuario_menu (usuario_id, menu_id)
+                     VALUES (:uid, :mid)"
+                );
+                foreach ($menus as $mid){
+                    $mid = (int)$mid;
+                    if ($mid > 0){
+                        $stmt->execute(['uid' => $id, 'mid' => $mid]);
+                    }
+                }
+            }
+
+            $db->commit();
+            $this->json([
+                'ok'      => true,
+                'message' => 'Menús asignados correctamente. (' . count($menus) . ' seleccionados)'
+            ]);
+        } catch (\Throwable $e){
+            $db->rollBack();
+            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /* ============================================================
+       HELPERS PRIVADOS
+       ============================================================ */
+
     private function normalizar(array $d): array{
         if (isset($d['usuario_nick'])){
             $d['usuario_nick'] = strtoupper(trim((string)$d['usuario_nick']));
@@ -351,25 +432,15 @@ class ControllerUsuario extends Controller{
         return $d;
     }
 
-    /**
-     * Sanitiza el nick para usarlo como nombre de carpeta.
-     */
     private function sanitizarCarpeta(string $nick): string{
         $carpeta = preg_replace('/[^A-Za-z0-9_-]/', '_', strtoupper(trim($nick)));
         return $carpeta === '' ? 'USUARIO' : $carpeta;
     }
 
-    /**
-     * Devuelve la ruta física base de storage.
-     */
     private function storageBase(): string{
         return PUBLIC_PATH . 'uploads' . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR;
     }
 
-    /**
-     * Copia public_html/img/default.png a la carpeta del usuario.
-     * Devuelve la ruta relativa para guardar en BD ('NICK/NICK_default.png').
-     */
     private function copiarDefault(string $nick): string{
         $carpeta    = $this->sanitizarCarpeta($nick);
         $baseDir    = $this->storageBase();
@@ -385,7 +456,6 @@ class ControllerUsuario extends Controller{
 
         if (!file_exists($origen)) return '';
 
-        // Si ya existe, no copiar de nuevo
         if (!file_exists($destino)){
             if (!copy($origen, $destino)) return '';
         }
@@ -393,9 +463,6 @@ class ControllerUsuario extends Controller{
         return $carpeta . '/' . $nombre;
     }
 
-    /**
-     * Borra un archivo de la carpeta storage.
-     */
     private function borrarArchivo(string $rutaRelativa): void{
         if ($rutaRelativa === '') return;
         $path = $this->storageBase() . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $rutaRelativa);
@@ -404,9 +471,6 @@ class ControllerUsuario extends Controller{
         }
     }
 
-    /**
-     * Borra toda la carpeta de un usuario.
-     */
     private function borrarCarpetaUsuario(string $nick): void{
         $carpeta = $this->sanitizarCarpeta($nick);
         $dir = $this->storageBase() . $carpeta . DIRECTORY_SEPARATOR;
@@ -418,17 +482,8 @@ class ControllerUsuario extends Controller{
         @rmdir($dir);
     }
 
-    /**
-     * Sube una imagen a public_html/uploads/storage/{NICK}/{archivo}.
-     * Validaciones:
-     *   - Máx 2MB
-     *   - Solo JPG / PNG / WEBP
-     *   - Verifica que sea imagen real (getimagesize)
-     *   - Mínimo 50x50 px
-     *   - Máximo 2000x2000 px
-     */
     private function subirImagen(array $file, string $nick): array{
-        $maxSize = 2 * 1024 * 1024; // 2MB
+        $maxSize = 2 * 1024 * 1024;
         $tipos   = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
 
         if ($file['error'] !== UPLOAD_ERR_OK){
@@ -441,13 +496,11 @@ class ControllerUsuario extends Controller{
             return ['ok' => false, 'msg' => 'El archivo es demasiado pequeño.'];
         }
 
-        // MIME real (no confiar en el que envía el navegador)
         $mime = @mime_content_type($file['tmp_name']);
         if (!isset($tipos[$mime])){
             return ['ok' => false, 'msg' => 'Formato no permitido. Solo JPG, PNG o WEBP.'];
         }
 
-        // Verificar que sea imagen real
         $info = @getimagesize($file['tmp_name']);
         if ($info === false){
             return ['ok' => false, 'msg' => 'El archivo no es una imagen válida.'];
@@ -459,7 +512,6 @@ class ControllerUsuario extends Controller{
             return ['ok' => false, 'msg' => 'La imagen no puede superar 2000x2000 px.'];
         }
 
-        // Preparar carpeta
         $carpeta    = $this->sanitizarCarpeta($nick);
         $baseDir    = $this->storageBase();
         $carpetaDir = $baseDir . $carpeta . DIRECTORY_SEPARATOR;
@@ -470,7 +522,6 @@ class ControllerUsuario extends Controller{
             }
         }
 
-        // Nombre final: {NICK}_{timestamp}_{rand}.ext
         $nombre = $carpeta . '_' . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . '.' . $tipos[$mime];
 
         if (!move_uploaded_file($file['tmp_name'], $carpetaDir . $nombre)){

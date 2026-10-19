@@ -88,6 +88,40 @@
                     </div>
                 </div>
             </div>
+                        <!-- ============================================ -->
+            <!-- MENÚS ASIGNADOS (solo en modo edición)        -->
+            <!-- ============================================ -->
+            <div class="form-group full" id="blockMenus" style="display:none; margin-top:1.5rem;">
+                <div class="menus-asign-header">
+                    <label style="margin:0;">
+                        <?= icon_tag('menu', 'menu', 'w-4 h-4') ?>
+                        <span>Menús con acceso</span>
+                    </label>
+                    <div class="menus-asign-actions">
+                        <button type="button" class="btn btn-ghost btn-sm" id="btnMenuExpandir">
+                            <?= icon_tag('chevrons-down', 'chevrons-down', 'w-4 h-4') ?>
+                            <span>Expandir</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btnMenuMarcarTodos">
+                            <?= icon_tag('check-square', 'check-square', 'w-4 h-4') ?>
+                            <span>Todos</span>
+                        </button>
+                        <button type="button" class="btn btn-ghost btn-sm" id="btnMenuLimpiar">
+                            <?= icon_tag('square', 'square', 'w-4 h-4') ?>
+                            <span>Ninguno</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="menus-asign-help">
+                    Marca los menús que este usuario puede ver en el sidebar.
+                    Si no marcas ningún menú, heredará los del departamento.
+                </div>
+
+                <div id="menusTree" class="menus-asign-tree">
+                    <div class="menus-asign-loading">Cargando menús...</div>
+                </div>
+            </div>
 
             <div class="form-actions">
                 <button type="button" id="btnCancelar" class="btn btn-ghost">

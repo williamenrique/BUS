@@ -26,7 +26,7 @@ class ControllerMenu extends Controller{
     }
 
     /* ============================================================
-       ÁRBOL (JSON)
+       ÁRBOL
        ============================================================ */
     public function arbol(): void{
         AuthGuard::check();
@@ -49,7 +49,7 @@ class ControllerMenu extends Controller{
     }
 
     /* ============================================================
-       COMBOS (menús padre, usuarios, departamentos)
+       COMBOS
        ============================================================ */
     public function combos(): void{
         AuthGuard::check();
@@ -63,7 +63,7 @@ class ControllerMenu extends Controller{
     }
 
     /* ============================================================
-       GUARDAR (crear)
+       GUARDAR
        ============================================================ */
     public function guardar(): void{
         AuthGuard::check();
@@ -99,7 +99,6 @@ class ControllerMenu extends Controller{
         $m = new ModelMenu();
         if (!$m->find($id)){ $this->json(['ok' => false, 'message' => 'Menú no encontrado.'], 404); return; }
 
-        // Evitar ciclos: padre no puede ser el mismo ni un descendiente
         if (!empty($d['menu_padre_id']) && (int)$d['menu_padre_id'] === $id){
             $this->json(['ok' => false, 'errors' => ['menu_padre_id' => 'Un menú no puede ser padre de sí mismo.']], 422);
             return;
@@ -187,7 +186,7 @@ class ControllerMenu extends Controller{
     }
 
     /* ============================================================
-       USUARIOS ASIGNADOS
+       USUARIOS ASIGNADOS (del MENÚ)
        ============================================================ */
     public function usuariosAsignados(string $id): void{
         AuthGuard::check();
@@ -232,7 +231,7 @@ class ControllerMenu extends Controller{
     }
 
     /* ============================================================
-       DEPARTAMENTOS ASIGNADOS
+       DEPARTAMENTOS ASIGNADOS (del MENÚ)
        ============================================================ */
     public function departamentosAsignados(string $id): void{
         AuthGuard::check();

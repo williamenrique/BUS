@@ -7,6 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = id => document.getElementById(id);
     let dt = null;
     let ssPersonal = null;   // instancia del SearchSelect de personal
+        let menusArbol = [];
+    let menusSeleccionados = new Set();
 
     /* ============================================
        RENDER ROW (fila de tabla)
@@ -318,6 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 $('wrapPreview').style.display = 'none';
             }
+                        // Cargar menús del usuario
+            $('blockMenus').style.display = '';
+            await cargarMenusUsuario(id);
 
             $('formSectionTitle').textContent = 'Editar Usuario';
             $('formSectionSubtitle').textContent = `Editando a "${u.usuario_nick}"`;
@@ -350,8 +355,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = $('usuario_id').value;
 
         const fd = new FormData(form);
-
+                // Incluir menús asignados (solo en edición)
+        if (id){
+            fd.append('menus_json', JSON.stringify([...menusSeleccionados]));
+        }
         const btn = $('btnGuardar');
+        
         btn.disabled = true;
         const btnText = btn.querySelector('.btn-text');
         const original = btnText.textContent;
@@ -385,8 +394,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!id && d.nick){
                 msg = `Usuario "${d.nick}" creado. Contraseña por defecto: 123456`;
             }
-            toast(msg, 'success');
+                        // Guardar menús asignados (solo en edición)
+            if (id && menusSeleccionados.size >= 0){
+                try{
+                    await fetchJSON(API + '/menus/guardar/' + id, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ menus: [...menusSeleccionados] })
+                    });
+                } catch (e){
+                    console.warn('Error al guardar menús:', e);
+                }
+            }
 
+            toast(d.message, 'success');
             form.reset();
             $('usuario_id').value = '';
             cerrarFormulario();
@@ -496,6 +517,9 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         $('usuario_id').value = '';
         $('wrapPreview').style.display = 'none';
+                $('blockMenus').style.display = 'none';
+        menusArbol = [];
+        menusSeleccionados.clear();
         ssPersonal?.clear();
         limpiarErrores();
 
@@ -530,4 +554,185 @@ document.addEventListener('DOMContentLoaded', () => {
         c.appendChild(t);
         setTimeout(() => t.remove(), 3500);
     }
+
+        /* ============================================================
+       MENÚS DEL USUARIO
+       ============================================================ */
+    async function cargarMenusUsuario(userId){
+        const cont = $('menusTree');
+        cont.innerHTML = `<div class="menus-asign-loading">Cargando menús...</div>`;
+
+        try{
+            const d = await fetchJSON(API + '/menus/' + userId);
+            if (!d.ok) throw new Error(d.message);
+
+            menusArbol = d.arbol || [];
+            menusSeleccionados = new Set((d.asignados || []).map(Number));
+
+            renderMenusTree();
+        } catch (e){
+            cont.innerHTML = `<div class="menus-asign-loading" style="color:#dc2626;">
+                Error: ${esc(e.message)}
+            </div>`;
+        }
+    }
+
+    function renderMenusTree(){
+        const cont = $('menusTree');
+        if (!menusArbol.length){
+            cont.innerHTML = `<div class="menus-asign-loading">Sin menús registrados.</div>`;
+            return;
+        }
+        cont.innerHTML = `<ul class="menus-tree-list">${menusArbol.map(renderMenuNode).join('')}</ul>`;
+        if (window.lucide) lucide.createIcons();
+
+        // Toggle de submenús
+        cont.querySelectorAll('[data-toggle-sub]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const li = btn.closest('.menus-tree-item');
+                li.classList.toggle('collapsed');
+                btn.style.transform = li.classList.contains('collapsed') ? 'rotate(0deg)' : 'rotate(90deg)';
+            });
+        });
+
+        // Marcar/desmarcar menús
+        cont.querySelectorAll('input[type="checkbox"][data-menu-id]').forEach(chk => {
+            chk.addEventListener('change', (e) => {
+                const mid = Number(e.target.dataset.menuId);
+                if (e.target.checked){
+                    menusSeleccionados.add(mid);
+                } else {
+                    menusSeleccionados.delete(mid);
+                }
+                // Sincronizar hijos
+                sincronizarHijos(mid, e.target.checked);
+            });
+        });
+    }
+
+    function renderMenuNode(n){
+        const marcado = menusSeleccionados.has(Number(n.menu_id));
+        const tieneHijos = n.children && n.children.length > 0;
+        const icono = n.menu_icono || 'circle';
+
+        return `
+            <li class="menus-tree-item" data-id="${n.menu_id}">
+                <div class="menus-tree-row">
+                    <div class="menus-tree-left">
+                        ${tieneHijos
+                            ? `<button type="button" class="menus-tree-toggle" data-toggle-sub="1">
+                                 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                               </button>`
+                            : `<span class="menus-tree-spacer"></span>`}
+                        <label class="menus-tree-check">
+                            <input type="checkbox"
+                                   data-menu-id="${n.menu_id}"
+                                   ${marcado ? 'checked' : ''}>
+                            <span class="menus-tree-icon">
+                                <i data-lucide="${esc(icono)}" class="w-3.5 h-3.5"></i>
+                            </span>
+                            <span class="menus-tree-name">${esc(n.menu_nombre)}</span>
+                        </label>
+                    </div>
+                    ${n.menu_ruta ? `<code class="menus-tree-ruta">/${esc(n.menu_ruta)}</code>` : ''}
+                </div>
+                ${tieneHijos ? `<ul class="menus-tree-children">${n.children.map(renderMenuNode).join('')}</ul>` : ''}
+            </li>`;
+    }
+
+    /**
+     * Marca/desmarca recursivamente los hijos cuando se cambia el padre.
+     */
+    function sincronizarHijos(parentId, checked){
+        const nodo = buscarNodo(menusArbol, parentId);
+        if (!nodo || !nodo.children) return;
+
+        const marcarRec = (n) => {
+            const mid = Number(n.menu_id);
+            if (checked) menusSeleccionados.add(mid);
+            else         menusSeleccionados.delete(mid);
+
+            const chk = document.querySelector(`input[data-menu-id="${mid}"]`);
+            if (chk) chk.checked = checked;
+
+            if (n.children) n.children.forEach(marcarRec);
+        };
+
+        nodo.children.forEach(marcarRec);
+
+        // Sincronizar el padre con el estado de sus hijos (si algún hijo está marcado, marcar padre)
+        sincronizarPadres(parentId);
+    }
+
+    function sincronizarPadres(nodoId){
+        // Buscar el padre de este nodo
+        let padre = null;
+        const buscar = (nodos) => {
+            for (const n of nodos){
+                if (n.children){
+                    for (const h of n.children){
+                        if (Number(h.menu_id) === Number(nodoId)){
+                            padre = n;
+                            return true;
+                        }
+                    }
+                    if (buscar(n.children)) return true;
+                }
+            }
+            return false;
+        };
+        buscar(menusArbol);
+
+        if (padre){
+            const hijos = padre.children || [];
+            const algunMarcado = hijos.some(h => menusSeleccionados.has(Number(h.menu_id)));
+            const chk = document.querySelector(`input[data-menu-id="${padre.menu_id}"]`);
+            if (chk) chk.checked = algunMarcado;
+            if (algunMarcado) menusSeleccionados.add(Number(padre.menu_id));
+            else              menusSeleccionados.delete(Number(padre.menu_id));
+
+            sincronizarPadres(padre.menu_id);
+        }
+    }
+
+    function buscarNodo(nodos, id){
+        for (const n of nodos){
+            if (Number(n.menu_id) === Number(id)) return n;
+            if (n.children){
+                const found = buscarNodo(n.children, id);
+                if (found) return found;
+            }
+        }
+        return null;
+    }
+
+    // Botones de acciones masivas
+    $('btnMenuMarcarTodos')?.addEventListener('click', () => {
+        menusSeleccionados = new Set();
+        const marcarRec = (nodos) => {
+            nodos.forEach(n => {
+                menusSeleccionados.add(Number(n.menu_id));
+                if (n.children) marcarRec(n.children);
+            });
+        };
+        marcarRec(menusArbol);
+        renderMenusTree();
+    });
+
+    $('btnMenuLimpiar')?.addEventListener('click', () => {
+        menusSeleccionados = new Set();
+        renderMenusTree();
+    });
+
+    $('btnMenuExpandir')?.addEventListener('click', () => {
+        const btn = $('btnMenuExpandir');
+        const span = btn.querySelector('span');
+        const expandido = span.textContent === 'Colapsar';
+        document.querySelectorAll('.menus-tree-item').forEach(li => {
+            li.classList.toggle('collapsed', expandido);
+            const toggle = li.querySelector('[data-toggle-sub]');
+            if (toggle) toggle.style.transform = expandido ? 'rotate(0deg)' : 'rotate(90deg)';
+        });
+        span.textContent = expandido ? 'Expandir' : 'Colapsar';
+    });
 });

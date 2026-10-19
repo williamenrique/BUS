@@ -17,17 +17,21 @@ return [
     ['path' => '/personal/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerPersonal@actualizar'],
     ['path' => '/personal/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerPersonal@eliminar'],
     ['path' => '/personal/cambiar-status/{id}', 'method' => 'POST', 'handler' => 'ControllerPersonal@cambiarStatus'],
-    // ---------- Usuarios ----------
+    // ============================================================
+    // Usuarios
+    // ============================================================
     ['path' => '/usuarios',                       'method' => 'GET',  'handler' => 'ControllerUsuario@index'],
     ['path' => '/usuarios/listar',                'method' => 'GET',  'handler' => 'ControllerUsuario@listar'],
     ['path' => '/usuarios/combos',                'method' => 'GET',  'handler' => 'ControllerUsuario@combos'],
+    ['path' => '/usuarios/siguiente-nick',        'method' => 'GET',  'handler' => 'ControllerUsuario@siguienteNick'],
     ['path' => '/usuarios/obtener/{id}',          'method' => 'GET',  'handler' => 'ControllerUsuario@obtener'],
+    ['path' => '/usuarios/menus/{id}',            'method' => 'GET',  'handler' => 'ControllerUsuario@menusAsignados'],
+    ['path' => '/usuarios/menus/guardar/{id}',    'method' => 'POST', 'handler' => 'ControllerUsuario@guardarMenus'],
     ['path' => '/usuarios/guardar',               'method' => 'POST', 'handler' => 'ControllerUsuario@guardar'],
     ['path' => '/usuarios/actualizar/{id}',       'method' => 'POST', 'handler' => 'ControllerUsuario@actualizar'],
     ['path' => '/usuarios/eliminar/{id}',         'method' => 'POST', 'handler' => 'ControllerUsuario@eliminar'],
     ['path' => '/usuarios/cambiar-status/{id}',   'method' => 'POST', 'handler' => 'ControllerUsuario@cambiarStatus'],
     ['path' => '/usuarios/reset-password/{id}',   'method' => 'POST', 'handler' => 'ControllerUsuario@resetPassword'],
-    ['path' => '/usuarios/siguiente-nick', 'method' => 'GET', 'handler' => 'ControllerUsuario@siguienteNick'],
     ['path' => '/usuarios/eliminar-imagen/{id}',  'method' => 'POST', 'handler' => 'ControllerUsuario@eliminarImagen'],
     // ---------- Recuperar ----------
     ['path' => '/recuperar',                    'method' => 'GET',  'handler' => 'ControllerRecuperar@index'],

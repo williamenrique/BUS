@@ -3339,3 +3339,182 @@ body {
     .ip-grid { grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); }
     .ip-item-name { display: none; }
 }
+
+/* ============================================
+   Menús asignados en formulario de usuario
+   ============================================ */
+.menus-asign-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: .5rem;
+    flex-wrap: wrap;
+}
+
+.menus-asign-header label {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.menus-asign-actions {
+    display: flex;
+    gap: .35rem;
+}
+
+.menus-asign-help {
+    font-size: .72rem;
+    color: #94a3b8;
+    margin-bottom: .65rem;
+    font-style: italic;
+}
+
+.menus-asign-tree {
+    border: 1px solid #e2e8f0;
+    border-radius: .55rem;
+    background: #f8fafc;
+    padding: .75rem;
+    max-height: 380px;
+    overflow-y: auto;
+}
+
+.menus-asign-loading {
+    text-align: center;
+    padding: 1.5rem;
+    color: #94a3b8;
+    font-size: .82rem;
+}
+
+/* Árbol */
+.menus-tree-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.menus-tree-item {
+    margin: .15rem 0;
+}
+
+.menus-tree-item.collapsed > .menus-tree-children {
+    display: none;
+}
+
+.menus-tree-children {
+    list-style: none;
+    padding-left: 1.75rem;
+    margin: 0;
+    position: relative;
+}
+
+.menus-tree-children::before {
+    content: '';
+    position: absolute;
+    left: .85rem;
+    top: .3rem;
+    bottom: .3rem;
+    width: 1px;
+    background: #e2e8f0;
+}
+
+.menus-tree-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    padding: .4rem .6rem;
+    border-radius: .4rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    transition: background-color .12s;
+    min-height: 2.2rem;
+}
+
+.menus-tree-row:hover {
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+.menus-tree-left {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.menus-tree-toggle {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #64748b;
+    cursor: pointer;
+    transition: transform .2s;
+    transform: rotate(90deg);
+    display: flex;
+    width: 1rem;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.menus-tree-item.collapsed > .menus-tree-row .menus-tree-toggle {
+    transform: rotate(0deg);
+}
+
+.menus-tree-spacer {
+    width: 1rem;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.menus-tree-check {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+    user-select: none;
+}
+
+.menus-tree-check input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: #2563eb;
+    flex-shrink: 0;
+}
+
+.menus-tree-icon {
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.menus-tree-name {
+    font-size: .82rem;
+    color: #0f172a;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.menus-tree-ruta {
+    font-family: 'Courier New', monospace;
+    font-size: .68rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: .05rem .4rem;
+    border-radius: .25rem;
+    flex-shrink: 0;
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
