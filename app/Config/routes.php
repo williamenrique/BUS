@@ -98,4 +98,14 @@ return [
     ['path' => '/menu/departamentos/{id}',         'method' => 'GET',  'handler' => 'ControllerMenu@departamentosAsignados'],
     ['path' => '/menu/departamentos/asignar/{id}', 'method' => 'POST', 'handler' => 'ControllerMenu@asignarDepartamento'],
     ['path' => '/menu/departamentos/quitar/{id}',  'method' => 'POST', 'handler' => 'ControllerMenu@quitarDepartamento'],
+    // ============================================================
+    // Bienes (multi-institución)
+    // ============================================================
+    ['path' => '/bienes/i/{inst}',                    'method' => 'GET',  'handler' => 'ControllerBienes@index'],
+    ['path' => '/bienes/i/{inst}/listar',             'method' => 'GET',  'handler' => 'ControllerBienes@listar'],
+    ['path' => '/bienes/i/{inst}/combos',             'method' => 'GET',  'handler' => 'ControllerBienes@combos'],
+    ['path' => '/bienes/i/{inst}/obtener/{id}',       'method' => 'GET',  'handler' => 'ControllerBienes@obtener'],
+    ['path' => '/bienes/i/{inst}/guardar',            'method' => 'POST', 'handler' => 'ControllerBienes@guardar'],
+    ['path' => '/bienes/i/{inst}/actualizar/{id}',    'method' => 'POST', 'handler' => 'ControllerBienes@actualizar'],
+    ['path' => '/bienes/i/{inst}/eliminar/{id}',      'method' => 'POST', 'handler' => 'ControllerBienes@eliminar'],
 ];
