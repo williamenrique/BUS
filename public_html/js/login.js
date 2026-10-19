@@ -14,82 +14,188 @@ document.addEventListener('DOMContentLoaded', () => {
     const msgF       = document.getElementById('forgotMsg');
     const btnFSub    = document.getElementById('btnForgotSubmit');
 
-    // Toggle ver contraseña
+    /* ============================================================
+       HELPERS
+       ============================================================ */
+    function setLoading(boton, activo){
+        if (!boton) return;
+        boton.disabled = !!activo;
+        boton.classList.toggle('is-loading', !!activo);
+    }
+
+    function mostrarError(msg){
+        if (!errBox) return;
+        errBox.textContent = msg || 'Error al ingresar.';
+        errBox.style.display = '';
+        errBox.classList.remove('hidden');
+    }
+
+    function ocultarError(){
+        if (!errBox) return;
+        errBox.textContent = '';
+        errBox.style.display = 'none';
+        errBox.classList.add('hidden');
+    }
+
+    function abrirModal(){
+        if (!modal) return;
+        modal.style.display = 'flex';
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModal(){
+        if (!modal) return;
+        modal.style.display = 'none';
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+        if (msgF){
+            msgF.textContent = '';
+            msgF.style.display = 'none';
+            msgF.className = 'login-alert';
+        }
+    }
+
+    /* ============================================================
+       TOGGLE VER CONTRASEÑA
+       ============================================================ */
     togglePass?.addEventListener('click', () => {
-        passInput.type = passInput.type === 'password' ? 'text' : 'password';
-        togglePass.textContent = passInput.type === 'password' ? 'Ver' : 'Ocultar';
+        if (!passInput) return;
+        const esPassword = passInput.type === 'password';
+        passInput.type = esPassword ? 'text' : 'password';
+        togglePass.textContent = esPassword ? 'Ocultar' : 'Ver';
     });
 
-    // Login
+    /* ============================================================
+       LOGIN
+       ============================================================ */
     form?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        errBox.classList.add('hidden');
-        btn.disabled = true;
-        btn.textContent = 'Ingresando...';
+        ocultarError();
 
-        try {
+        const nick = document.getElementById('nick')?.value.trim();
+        const pass = passInput?.value || '';
+
+        if (!nick || !pass){
+            mostrarError('Ingresa tu usuario y contraseña.');
+            return;
+        }
+
+        setLoading(btn, true);
+
+        try{
             const fd = new FormData(form);
-            const r  = await fetch(window.SITGO_BASE + 'login', {
+
+            const r = await fetch((window.SITGO_BASE || '/') + 'login', {
                 method: 'POST',
                 body: fd,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
+
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')){
+                mostrarError(`Respuesta inválida del servidor (HTTP ${r.status}).`);
+                return;
+            }
+
             const data = await r.json();
 
-            if (data.ok) {
+            if (data.ok){
                 window.location.href = data.redirect;
-            } else {
-                errBox.textContent = data.message
-                    || Object.values(data.errors || {})[0]
-                    || 'Error al ingresar.';
-                errBox.classList.remove('hidden');
+                return;
             }
-        } catch (err) {
-            errBox.textContent = 'Error de conexión con el servidor.';
-            errBox.classList.remove('hidden');
+
+            // Errores de validación o credenciales
+            const primerError =
+                data.message ||
+                (data.errors && Object.values(data.errors)[0]) ||
+                'Error al ingresar.';
+
+            mostrarError(primerError);
+
+        } catch (err){
+            console.error('Login error:', err);
+            mostrarError('Error de conexión con el servidor. Intenta de nuevo.');
         } finally {
-            btn.disabled = false;
-            btn.textContent = 'Iniciar sesión';
+            setLoading(btn, false);
         }
     });
 
-    // Modal
-    const openModal  = () => modal.classList.remove('hidden');
-    const closeModal = () => { modal.classList.add('hidden'); msgF.classList.add('hidden'); };
+    /* ============================================================
+       MODAL
+       ============================================================ */
+    btnForgot?.addEventListener('click', (e) => {
+        e.preventDefault();
+        abrirModal();
+    });
 
-    btnForgot?.addEventListener('click', openModal);
-    closeF?.addEventListener('click', closeModal);
-    cancelF?.addEventListener('click', closeModal);
-    modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    closeF?.addEventListener('click', cerrarModal);
+    cancelF?.addEventListener('click', cerrarModal);
 
-        // Recuperar
+    modal?.addEventListener('click', (e) => {
+        if (e.target === modal) cerrarModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal && modal.style.display === 'flex'){
+            cerrarModal();
+        }
+    });
+
+    /* ============================================================
+       RECUPERAR CONTRASEÑA
+       ============================================================ */
     formF?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        msgF.classList.add('hidden');
-        btnFSub.disabled = true;
-        btnFSub.textContent = 'Enviando...';
+        if (!msgF) return;
+
+        msgF.textContent = '';
+        msgF.style.display = 'none';
+
+        const ident = document.getElementById('identificador')?.value.trim();
+        if (!ident){
+            msgF.textContent = 'Ingresa tu cédula o correo.';
+            msgF.className = 'login-alert login-alert-error';
+            msgF.style.display = '';
+            return;
+        }
+
+        setLoading(btnFSub, true);
 
         try{
             const fd = new FormData(formF);
-            const r = await fetch(window.SITGO_BASE + 'recuperar/solicitar', {
+
+            const r = await fetch((window.SITGO_BASE || '/') + 'recuperar/solicitar', {
                 method: 'POST',
                 body: fd,
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
+
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')){
+                msgF.textContent = `Respuesta inválida del servidor (HTTP ${r.status}).`;
+                msgF.className = 'login-alert login-alert-error';
+                msgF.style.display = '';
+                return;
+            }
+
             const data = await r.json();
 
             msgF.textContent = data.message || (data.ok ? 'Solicitud enviada.' : 'No se pudo procesar.');
-            msgF.className = 'text-sm rounded-lg p-2 mb-3 ' +
-                (data.ok ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                         : 'bg-red-50 text-red-700 border border-red-200');
+            msgF.className = 'login-alert ' + (data.ok ? 'login-alert-success' : 'login-alert-error');
+            msgF.style.display = '';
 
-            if (data.ok) formF.reset();
-        } catch {
+            if (data.ok){
+                formF.reset();
+            }
+
+        } catch (err){
+            console.error('Recuperar error:', err);
             msgF.textContent = 'Error de conexión.';
-            msgF.className = 'text-sm rounded-lg p-2 mb-3 bg-red-50 text-red-700 border border-red-200';
-        } finally{
-            btnFSub.disabled = false;
-            btnFSub.textContent = 'Enviar solicitud';
+            msgF.className = 'login-alert login-alert-error';
+            msgF.style.display = '';
+        } finally {
+            setLoading(btnFSub, false);
         }
     });
 });
