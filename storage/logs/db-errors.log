@@ -1,0 +1,30 @@
+[2026-10-19 08:24:10] [QUERY] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  SQLSTATE: 42S22
+  Mensaje: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:21
+------------------------------------------------------------
+[2026-10-19 08:24:21] [QUERY] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  SQLSTATE: 42S22
+  Mensaje: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:21
+------------------------------------------------------------
+[2026-10-19 08:24:36] [QUERY] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  SQLSTATE: 42S22
+  Mensaje: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:21
+------------------------------------------------------------
+[2026-10-19 08:24:39] [QUERY] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  SQLSTATE: 42S22
+  Mensaje: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:21
+------------------------------------------------------------
+[2026-10-19 08:24:50] [QUERY] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  SQLSTATE: 42S22
+  Mensaje: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:21
+------------------------------------------------------------
+[2026-10-19 08:26:51] [QUERY] SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  SQLSTATE: 42S22
+  Mensaje: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'f.id_instituciond' in 'where clause'
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:21
+------------------------------------------------------------

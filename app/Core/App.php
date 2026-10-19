@@ -33,9 +33,18 @@ class App{
 
                 try{
                     call_user_func_array([$instance, $action], $matches);
+                } catch (DatabaseException $e){
+                    Database::logError('APP', $e);
+                    $this->respondError($e->getMessage(), 500);
                 } catch (AppException $e){
-                    http_response_code(500);
-                    echo '<pre>Error: ' . htmlspecialchars($e->getMessage()) . '</pre>';
+                    Database::logError('APP', $e);
+                    $this->respondError($e->getMessage(), 500);
+                } catch (\Throwable $e){
+                    Database::logError('APP', $e);
+                    $msg = ENVIRONMENT === 'development'
+                        ? $e->getMessage()
+                        : 'Error inesperado en el servidor.';
+                    $this->respondError($msg, 500);
                 }
                 return;
             }
@@ -44,11 +53,60 @@ class App{
     }
 
     /**
-     * Devuelve la URI limpia de la petición.
+     * Responde de forma unificada (JSON si es AJAX, HTML si es navegación).
      */
+    private function respondError(string $message, int $code = 500): void{
+        http_response_code($code);
+
+        if ($this->esAjax()){
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok'      => false,
+                'message' => $message,
+                'type'    => 'database',
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // Vista HTML de error
+        $msg = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
+        echo <<<HTML
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Error del sistema</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #f1f5f9; margin: 0; padding: 3rem 1rem; }
+        .box { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 12px;
+               box-shadow: 0 10px 25px rgba(15,23,42,.1); padding: 2rem; text-align: center; }
+        h1 { color: #dc2626; font-size: 1.4rem; margin: 0 0 .5rem; }
+        p { color: #475569; margin: 0 0 1.5rem; line-height: 1.5; }
+        a { display: inline-block; padding: .65rem 1.25rem; background: #2563eb; color: #fff;
+            text-decoration: none; border-radius: 8px; font-weight: 500; }
+        a:hover { background: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h1>⚠ Ocurrió un error</h1>
+        <p>{$msg}</p>
+        <a href="javascript:history.back()">Volver</a>
+    </div>
+</body>
+</html>
+HTML;
+    }
+
+    private function esAjax(): bool{
+        return (!empty($_SERVER['HTTP_X_REQUESTED_WITH'])
+                && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest')
+            || str_contains($_SERVER['CONTENT_TYPE'] ?? '', 'application/json')
+            || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json');
+    }
+
     private function getUri(): string{
         $uri = $_GET['url'] ?? '';
-
         if ($uri === ''){
             $uri  = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
             $base = parse_url(URLROOT, PHP_URL_PATH);
@@ -56,25 +114,13 @@ class App{
                 $uri = substr($uri, strlen($base));
             }
         }
-
         $uri = '/' . trim($uri, '/');
         return $uri === '/' ? '/' : rtrim($uri, '/');
     }
 
-    /**
-     * Convierte una ruta con placeholders a un regex.
-     * Soporta {id}, {slug} e {inst} → todos mapean a ([^/]+)
-     */
     private function buildPattern(string $path): string{
         $path = preg_quote($path, '#');
-
-        // Placeholders soportados → captura sin "/"
-        $path = str_replace(
-            ['\{id\}', '\{slug\}', '\{inst\}'],
-            '([^/]+)',
-            $path
-        );
-
+        $path = str_replace(['\{id\}', '\{slug\}', '\{inst\}'], '([^/]+)', $path);
         return '#^' . $path . '$#';
     }
 
