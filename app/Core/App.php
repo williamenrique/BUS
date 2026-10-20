@@ -68,7 +68,6 @@ class App{
             return;
         }
 
-        // Vista HTML de error
         $msg = htmlspecialchars($message, ENT_QUOTES, 'UTF-8');
         echo <<<HTML
 <!DOCTYPE html>
@@ -118,9 +117,21 @@ HTML;
         return $uri === '/' ? '/' : rtrim($uri, '/');
     }
 
+    /**
+     * Convierte '/flota/i/{inst}/historial/{id}' en una regex:
+     *   - {id} y {inst} → solo dígitos
+     *   - cualquier otro {param} → cualquier cosa sin '/'
+     */
     private function buildPattern(string $path): string{
+        // Escapamos todo primero
         $path = preg_quote($path, '#');
-        $path = str_replace(['\{id\}', '\{slug\}', '\{inst\}'], '([^/]+)', $path);
+
+        // Reemplazamos {id} y {inst} por solo dígitos
+        $path = str_replace(['\{id\}', '\{inst\}'], '(\d+)', $path);
+
+        // Cualquier otro {param} dinámico → cualquier cosa sin '/'
+        $path = preg_replace('/\\\\\{[a-zA-Z_][a-zA-Z0-9_]*\\\\\}/', '([^/]+)', $path);
+
         return '#^' . $path . '$#';
     }
 

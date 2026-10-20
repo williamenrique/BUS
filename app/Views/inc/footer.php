@@ -16,6 +16,7 @@
 <script src="<?= asset('js/components/DataTable.js') ?>"></script>
 <script src="<?= asset('js/components/SearchSelect.js') ?>"></script>
 <script src="<?= asset('js/utils.js') ?>"></script>       <!-- 👈 IMPORTANTE -->
+<script src="<?= asset('js/pdf.js') ?>"></script>
 <script src="<?= asset('js/app.js') ?>"></script>
 <script src="<?= asset('js/dashboard.js') ?>"></script>
 <script src="<?= asset('js/function.imprimirQZ.js') ?>"></script>

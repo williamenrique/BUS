@@ -28,9 +28,6 @@ document.addEventListener('DOMContentLoaded', () => {
         5: 'Crítica',
     };
 
-    /* ============================================================
-       INIT
-       ============================================================ */
     cargar();
 
     $('formFiltrosHistorial')?.addEventListener('submit', (e) => {
@@ -44,9 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
         cargar();
     });
 
-    /* ============================================================
-       CARGAR
-       ============================================================ */
+    // Generar PDF
+    $('btnGenerarPdfHistorial')?.addEventListener('click', generarPdf);
+
     async function cargar(){
         const cont = $('timelineContainer');
         cont.innerHTML = `
@@ -84,9 +81,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================================
-       RENDER
-       ============================================================ */
+    async function generarPdf(){
+        const btn = $('btnGenerarPdfHistorial');
+        btn.disabled = true;
+
+        try {
+            // Cargar TODOS los eventos (sin paginación) con los filtros actuales
+            const payload = {
+                desde:  $('hf_desde')?.value || '',
+                hasta:  $('hf_hasta')?.value || '',
+                tipo:   $('hf_tipo')?.value  || '',
+                q:      $('hf_q')?.value     || '',
+                limit:  9999,
+                offset: 0,
+            };
+
+            const r = await fetch(`${API}/historial/${ID}/data`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(payload)
+            });
+            const d = await r.json();
+
+            if (!d.ok) {
+                toast(d.message || 'Error al cargar los eventos.', 'error');
+                return;
+            }
+
+            const items  = d.data || [];
+            const counts = d.counts || {};
+
+            if (!items.length) {
+                toast('No hay eventos para generar el PDF.', 'error');
+                return;
+            }
+
+            await SITGO_PDF.generar(
+                'flota_hoja_vida',
+                {
+                    items:      items,
+                    counts:     counts,
+                    unidadData: window.SITGO_UNIDAD_DATA || {},
+                },
+                `hoja_vida_${window.SITGO_UNIDAD_DATA?.id_unidad || 'unidad'}.pdf`,
+                {
+                    titulo_documento: 'HOJA DE VIDA DE UNIDAD',
+                    doc_numero:       `#${window.SITGO_UNIDAD_DATA?.id_unidad || ''}`,
+                    doc_color:        '#1e40af',
+                }
+            );
+        } catch (e) {
+            console.error(e);
+            toast('Error de conexión al generar el PDF.', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     function render(d){
         const items = d.data || [];
         const total = d.total || 0;
@@ -128,9 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (window.lucide) lucide.createIcons();
     }
 
-    /* ============================================================
-       RENDER EVENTO
-       ============================================================ */
     function renderEvento(ev){
         const meta = TIPO_MAP[ev.tipo] || { icon: 'circle', color: 'slate', label: 'Evento' };
         const fecha = formatFecha(ev.fecha);
@@ -219,9 +270,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================================
-       PAGINACIÓN
-       ============================================================ */
     function renderPaginacion(current, total){
         const cont = $('paginationHistorial');
         let html = '';
@@ -269,9 +317,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return [1, '...', current - 1, current, current + 1, '...', total];
     }
 
-    /* ============================================================
-       HELPERS
-       ============================================================ */
     function formatFecha(f){
         if (!f) return '—';
         try{
@@ -288,5 +333,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return String(s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function toast(msg, type = 'success'){
+        let c = document.querySelector('.toast-container');
+        if (!c){
+            c = document.createElement('div');
+            c.className = 'toast-container';
+            document.body.appendChild(c);
+        }
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        t.textContent = msg;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 3500);
     }
 });

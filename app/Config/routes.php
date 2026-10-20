@@ -1,14 +1,21 @@
 <?php
 return [
-    // ---------- Auth ----------
+    // ============================================================
+    // Auth
+    // ============================================================
     ['path' => '/',          'method' => 'GET',  'handler' => 'ControllerAuth@showLogin'],
     ['path' => '/login',     'method' => 'GET',  'handler' => 'ControllerAuth@showLogin'],
     ['path' => '/login',     'method' => 'POST', 'handler' => 'ControllerAuth@login'],
     ['path' => '/logout',    'method' => 'GET',  'handler' => 'ControllerAuth@logout'],
 
-    // ---------- Dashboard ----------
+    // ============================================================
+    // Dashboard
+    // ============================================================
     ['path' => '/dashboard', 'method' => 'GET',  'handler' => 'ControllerDashboard@index'],
-    // ---------- Personal ----------
+
+    // ============================================================
+    // Personal
+    // ============================================================
     ['path' => '/personal',                     'method' => 'GET',  'handler' => 'ControllerPersonal@index'],
     ['path' => '/personal/listar',              'method' => 'GET',  'handler' => 'ControllerPersonal@listar'],
     ['path' => '/personal/combos',              'method' => 'GET',  'handler' => 'ControllerPersonal@combos'],
@@ -17,6 +24,7 @@ return [
     ['path' => '/personal/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerPersonal@actualizar'],
     ['path' => '/personal/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerPersonal@eliminar'],
     ['path' => '/personal/cambiar-status/{id}', 'method' => 'POST', 'handler' => 'ControllerPersonal@cambiarStatus'],
+
     // ============================================================
     // Usuarios
     // ============================================================
@@ -33,14 +41,18 @@ return [
     ['path' => '/usuarios/cambiar-status/{id}',   'method' => 'POST', 'handler' => 'ControllerUsuario@cambiarStatus'],
     ['path' => '/usuarios/reset-password/{id}',   'method' => 'POST', 'handler' => 'ControllerUsuario@resetPassword'],
     ['path' => '/usuarios/eliminar-imagen/{id}',  'method' => 'POST', 'handler' => 'ControllerUsuario@eliminarImagen'],
-    // ---------- Recuperar ----------
+
+    // ============================================================
+    // Recuperar
+    // ============================================================
     ['path' => '/recuperar',                    'method' => 'GET',  'handler' => 'ControllerRecuperar@index'],
     ['path' => '/recuperar/solicitar',          'method' => 'POST', 'handler' => 'ControllerRecuperar@solicitar'],
     ['path' => '/recuperar/contador',           'method' => 'GET',  'handler' => 'ControllerRecuperar@contador'],
     ['path' => '/recuperar/listar',             'method' => 'GET',  'handler' => 'ControllerRecuperar@listar'],
     ['path' => '/recuperar/resetear/{id}',      'method' => 'POST', 'handler' => 'ControllerRecuperar@resetear'],
     ['path' => '/recuperar/resolver/{id}',      'method' => 'POST', 'handler' => 'ControllerRecuperar@resolver'],
-    ['path' => '/recuperar/debug', 'method' => 'GET', 'handler' => 'ControllerRecuperar@debug'],
+    ['path' => '/recuperar/debug',              'method' => 'GET',  'handler' => 'ControllerRecuperar@debug'],
+
     // ============================================================
     // Flota (multi-institución)
     // ============================================================
@@ -56,14 +68,17 @@ return [
     ['path' => '/flota/i/{inst}/historial/{id}/data',   'method' => 'POST', 'handler' => 'ControllerFlota@historialData'],
 
     // ============================================================
-    // Cambio de Aceite (multi-institución)
+    // Cambio de Aceite (multi-institución) — ESPECÍFICAS PRIMERO
     // ============================================================
-    ['path' => '/flota/aceite/i/{inst}',                'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
     ['path' => '/flota/aceite/i/{inst}/status',         'method' => 'GET',  'handler' => 'ControllerFlota@aceiteStatus'],
     ['path' => '/flota/aceite/i/{inst}/km',             'method' => 'POST', 'handler' => 'ControllerFlota@setKilometraje'],
     ['path' => '/flota/aceite/i/{inst}/cambio',         'method' => 'POST', 'handler' => 'ControllerFlota@setCambioAceite'],
     ['path' => '/flota/aceite/i/{inst}/eliminar',       'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
-    // ---------- Flota ----------
+    ['path' => '/flota/aceite/i/{inst}',                'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
+
+    // ============================================================
+    // Flota (compat sin institución)
+    // ============================================================
     ['path' => '/flota',                     'method' => 'GET',  'handler' => 'ControllerFlota@index'],
     ['path' => '/flota/listar',              'method' => 'GET',  'handler' => 'ControllerFlota@listar'],
     ['path' => '/flota/todas',               'method' => 'GET',  'handler' => 'ControllerFlota@todas'],
@@ -73,14 +88,18 @@ return [
     ['path' => '/flota/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerFlota@actualizar'],
     ['path' => '/flota/cambiar-status/{id}', 'method' => 'POST', 'handler' => 'ControllerFlota@cambiarStatus'],
     ['path' => '/flota/historial/{id}',      'method' => 'GET',  'handler' => 'ControllerFlota@historial'],
-    ['path' => '/flota/historial/{id}/data','method' => 'POST', 'handler' => 'ControllerFlota@historialData'],
-        // ---------- Cambio de Aceite ----------
-    ['path' => '/flota/aceite',              'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
+    ['path' => '/flota/historial/{id}/data', 'method' => 'POST', 'handler' => 'ControllerFlota@historialData'],
+
+    // ---------- Cambio de Aceite (compat sin institución) ----------
     ['path' => '/flota/aceite/status',       'method' => 'GET',  'handler' => 'ControllerFlota@aceiteStatus'],
     ['path' => '/flota/aceite/km',           'method' => 'POST', 'handler' => 'ControllerFlota@setKilometraje'],
     ['path' => '/flota/aceite/cambio',       'method' => 'POST', 'handler' => 'ControllerFlota@setCambioAceite'],
     ['path' => '/flota/aceite/eliminar',     'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
-        // ---------- Menú (admin) ----------
+    ['path' => '/flota/aceite',              'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
+
+    // ============================================================
+    // Menú (admin)
+    // ============================================================
     ['path' => '/menu',                            'method' => 'GET',  'handler' => 'ControllerMenu@index'],
     ['path' => '/menu/arbol',                      'method' => 'GET',  'handler' => 'ControllerMenu@arbol'],
     ['path' => '/menu/obtener/{id}',               'method' => 'GET',  'handler' => 'ControllerMenu@obtener'],
@@ -98,6 +117,7 @@ return [
     ['path' => '/menu/departamentos/{id}',         'method' => 'GET',  'handler' => 'ControllerMenu@departamentosAsignados'],
     ['path' => '/menu/departamentos/asignar/{id}', 'method' => 'POST', 'handler' => 'ControllerMenu@asignarDepartamento'],
     ['path' => '/menu/departamentos/quitar/{id}',  'method' => 'POST', 'handler' => 'ControllerMenu@quitarDepartamento'],
+
     // ============================================================
     // Bienes (multi-institución)
     // ============================================================
@@ -108,7 +128,8 @@ return [
     ['path' => '/bienes/i/{inst}/guardar',            'method' => 'POST', 'handler' => 'ControllerBienes@guardar'],
     ['path' => '/bienes/i/{inst}/actualizar/{id}',    'method' => 'POST', 'handler' => 'ControllerBienes@actualizar'],
     ['path' => '/bienes/i/{inst}/eliminar/{id}',      'method' => 'POST', 'handler' => 'ControllerBienes@eliminar'],
-        // ============================================================
+
+    // ============================================================
     // Almacén · Productos (multi-institución)
     // ============================================================
     ['path' => '/productos/i/{inst}',                     'method' => 'GET',  'handler' => 'ControllerProductos@index'],
@@ -119,6 +140,7 @@ return [
     ['path' => '/productos/i/{inst}/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerProductos@actualizar'],
     ['path' => '/productos/i/{inst}/agregar-stock/{id}',  'method' => 'POST', 'handler' => 'ControllerProductos@agregarStock'],
     ['path' => '/productos/i/{inst}/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerProductos@eliminar'],
+
     // ============================================================
     // Almacén · Despachos (multi-institución)
     // ============================================================
@@ -131,11 +153,11 @@ return [
     ['path' => '/despachos/i/{inst}/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerDespachos@eliminar'],
     ['path' => '/despachos/i/{inst}/articulos/{id}',      'method' => 'GET',  'handler' => 'ControllerDespachos@articulos'],
     ['path' => '/despachos/i/{inst}/stats',               'method' => 'GET',  'handler' => 'ControllerDespachos@stats'],
-        // Historial de productos
-    ['path' => '/despachos/i/{inst}/historial',              'method' => 'GET',  'handler' => 'ControllerDespachos@historialProductos'],
-    ['path' => '/despachos/i/{inst}/historial/listar',       'method' => 'GET',  'handler' => 'ControllerDespachos@historialListar'],
+    ['path' => '/despachos/i/{inst}/historial',           'method' => 'GET',  'handler' => 'ControllerDespachos@historialProductos'],
+    ['path' => '/despachos/i/{inst}/historial/listar',    'method' => 'GET',  'handler' => 'ControllerDespachos@historialListar'],
     ['path' => '/despachos/i/{inst}/historial/detalle/{id}', 'method' => 'POST', 'handler' => 'ControllerDespachos@historialDetalle'],
-        // ============================================================
+
+    // ============================================================
     // Almacén · Compras (multi-institución)
     // ============================================================
     ['path' => '/compras/i/{inst}',                       'method' => 'GET',  'handler' => 'ControllerCompras@index'],
@@ -147,6 +169,7 @@ return [
     ['path' => '/compras/i/{inst}/anular/{id}',           'method' => 'POST', 'handler' => 'ControllerCompras@anularCosto'],
     ['path' => '/compras/i/{inst}/flota',                 'method' => 'GET',  'handler' => 'ControllerCompras@flota'],
     ['path' => '/compras/i/{inst}/conteo-ordenes',        'method' => 'POST', 'handler' => 'ControllerCompras@conteoOrdenes'],
+
     // ============================================================
     // Estación de Servicio
     // ============================================================
@@ -185,8 +208,11 @@ return [
     // DataTable paginado (admin)
     ['path' => '/estacion/cierres/listar',        'method' => 'GET',  'handler' => 'ControllerEstacion@listarCierres'],
     ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
-        // DataTable paginado (admin)
-    ['path' => '/estacion/cierres/listar',        'method' => 'GET',  'handler' => 'ControllerEstacion@listarCierres'],
-    ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
     ['path' => '/estacion/ventas-cierre/listar',  'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasCierre'],
+
+    // ============================================================
+    // PDF (centralizado)
+    // ============================================================
+    ['path' => '/pdf/generar', 'method' => 'POST', 'handler' => 'ControllerPdf@generar'],
+    ['path' => '/pdf/ver',     'method' => 'GET',  'handler' => 'ControllerPdf@ver'],
 ];

@@ -10,9 +10,6 @@ try {
 $instNombreCorto = inst_nombre_corto($instNombreFull);
 ?>
 
-<!-- ============================================ -->
-<!-- PAGE HEADER                                   -->
-<!-- ============================================ -->
 <div class="page-header">
     <div>
         <h2 class="page-title">
@@ -24,23 +21,26 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </h2>
         <p class="page-subtitle">Estado de aceite de todas las unidades activas</p>
     </div>
-    <a href="<?= base_url('flota/i/' . (int)$instId) ?>" class="btn btn-ghost">
-        <?= icon_tag('arrow-left', 'arrow-left', 'w-4 h-4') ?>
-        <span>Volver a Flota</span>
-    </a>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button id="btnGenerarPdfAceite" class="btn btn-primary">
+            <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+            <span>Generar PDF</span>
+        </button>
+        <a href="<?= base_url('flota/i/' . (int)$instId) ?>" class="btn btn-ghost">
+            <?= icon_tag('arrow-left', 'arrow-left', 'w-4 h-4') ?>
+            <span>Volver a Flota</span>
+        </a>
+    </div>
 </div>
 
-<!-- ============================================ -->
-<!-- CARDS RESUMEN (clickeables)                   -->
-<!-- ============================================ -->
 <div class="aceite-cards" id="aceiteCards">
-    <button type="button" class="aceite-card red" data-status="Requerido">
+    <button type="button" class="aceite-card green" data-status="Bien">
         <div class="aceite-card-icon">
-            <?= icon_tag('alert-triangle', 'alert-triangle', 'w-6 h-6') ?>
+            <?= icon_tag('check-circle', 'check-circle', 'w-6 h-6') ?>
         </div>
         <div>
-            <strong id="cntRequerido">0</strong>
-            <span>Cambio Requerido</span>
+            <strong id="cntBien">0</strong>
+            <span>Estado Óptimo</span>
         </div>
     </button>
 
@@ -54,13 +54,13 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </div>
     </button>
 
-    <button type="button" class="aceite-card green" data-status="Bien">
+    <button type="button" class="aceite-card red" data-status="Requerido">
         <div class="aceite-card-icon">
-            <?= icon_tag('check-circle', 'check-circle', 'w-6 h-6') ?>
+            <?= icon_tag('alert-triangle', 'alert-triangle', 'w-6 h-6') ?>
         </div>
         <div>
-            <strong id="cntBien">0</strong>
-            <span>Estado Óptimo</span>
+            <strong id="cntRequerido">0</strong>
+            <span>Cambio Requerido</span>
         </div>
     </button>
 
@@ -75,9 +75,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </button>
 </div>
 
-<!-- ============================================ -->
-<!-- TABLA                                        -->
-<!-- ============================================ -->
 <div class="card">
     <div class="dt-toolbar">
         <div class="dt-toolbar-left">
@@ -136,9 +133,7 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- MODAL · Actualizar kilometraje                -->
-<!-- ============================================ -->
+<!-- MODALES (idénticos a los que ya tienes) -->
 <div id="modalKm" class="modal-backdrop">
     <div class="modal" style="max-width:440px;">
         <div class="modal-header">
@@ -162,9 +157,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- MODAL · Registrar cambio de aceite            -->
-<!-- ============================================ -->
 <div id="modalCambio" class="modal-backdrop">
     <div class="modal" style="max-width:480px;">
         <div class="modal-header">
@@ -197,9 +189,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- MODAL · Eliminar registro                    -->
-<!-- ============================================ -->
 <div id="modalEliminar" class="modal-backdrop">
     <div class="modal" style="max-width:460px;">
         <div class="modal-header">

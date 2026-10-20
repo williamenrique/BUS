@@ -2,3 +2,4 @@ public_html/uploads/
 .wwebjs_cache
 .wwebjs_auth
 tailwind-build/node_modules/
+vendor/

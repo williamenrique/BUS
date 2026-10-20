@@ -27,6 +27,7 @@ $iniciales = strtoupper(
     <link rel="stylesheet" href="<?= asset('css/tailwind.min.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/styles.css') ?>">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+
 </head>
 <body>
 

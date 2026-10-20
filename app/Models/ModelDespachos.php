@@ -83,7 +83,7 @@ class ModelDespachos extends Model{
     }
 
     /* ============================================================
-       FIND
+       FIND  (AGREGADO: usuario_registro / creado_por)
        ============================================================ */
     public function find(int $id): ?array{
         $sql = "SELECT d.*,
@@ -91,7 +91,8 @@ class ModelDespachos extends Model{
                        m.marca_unidad, mo.modelo_unidad,
                        CONCAT(p1.personal_nombre, ' ', p1.personal_apellido) AS operador_nombre,
                        CONCAT(p2.personal_nombre, ' ', p2.personal_apellido) AS mecanico_nombre,
-                       CONCAT(p3.personal_nombre, ' ', p3.personal_apellido) AS despachador_nombre
+                       CONCAT(p3.personal_nombre, ' ', p3.personal_apellido) AS despachador_nombre,
+                       CONCAT(pu.personal_nombre, ' ', pu.personal_apellido) AS usuario_registro
                 FROM table_alm_despacho d
                 LEFT JOIN table_flota f ON f.id_flota = d.id_flota
                 LEFT JOIN table_flota_marca m  ON m.id_marca = f.id_marca
@@ -99,6 +100,8 @@ class ModelDespachos extends Model{
                 LEFT JOIN table_personal p1 ON p1.id_personal = d.operador_id
                 LEFT JOIN table_personal p2 ON p2.id_personal = d.mecanico_id
                 LEFT JOIN table_personal p3 ON p3.id_personal = d.despachador_id
+                LEFT JOIN table_usuarios u  ON u.usuario_id = d.user_id
+                LEFT JOIN table_personal pu ON pu.id_personal = u.usuario_id_personal
                 WHERE d.id_despacho = :id
                 LIMIT 1";
         return $this->fetchOne($sql, ['id' => $id]);
@@ -161,7 +164,6 @@ class ModelDespachos extends Model{
                     $idProd = (int)$art['id_producto'];
                     $cant   = (float)$art['cantidad'];
 
-                    // Insertar relación despacho
                     $this->query(
                         "INSERT INTO table_alm_relacion_despacho
                             (id_despacho, id_producto, cant_despacho, id_institucion)
@@ -169,7 +171,6 @@ class ModelDespachos extends Model{
                         ['desp' => $idDespacho, 'prod' => $idProd, 'cant' => $cant, 'inst' => $inst]
                     );
 
-                    // Descontar stock
                     $this->query(
                         "UPDATE table_alm_relacion_producto
                          SET cant_producto = cant_producto - :cant
@@ -177,7 +178,6 @@ class ModelDespachos extends Model{
                         ['cant' => $cant, 'prod' => $idProd]
                     );
 
-                    // Insertar en compras pendientes
                     $this->query(
                         "INSERT INTO table_compras_pendientes
                             (id_despacho, id_producto, id_flota, cant_despacho, fecha_despacho, status_costeo, id_institucion)
@@ -211,7 +211,6 @@ class ModelDespachos extends Model{
 
         $this->db->beginTransaction();
         try{
-            // 1. Revertir stock de artículos actuales
             $artsActuales = $this->articulos($id);
             foreach ($artsActuales as $art){
                 $this->query(
@@ -222,11 +221,9 @@ class ModelDespachos extends Model{
                 );
             }
 
-            // 2. Borrar relaciones
             $this->query("DELETE FROM table_alm_relacion_despacho WHERE id_despacho = :id", ['id' => $id]);
             $this->query("DELETE FROM table_compras_pendientes WHERE id_despacho = :id", ['id' => $id]);
 
-            // 3. Actualizar cabecera
             $sql = "UPDATE table_alm_despacho SET
                         id_flota        = :flota,
                         operador_id     = :op,
@@ -245,7 +242,6 @@ class ModelDespachos extends Model{
                 'id'     => $id,
             ]);
 
-            // 4. Re-insertar artículos
             if (!empty($d['articulos'])){
                 foreach ($d['articulos'] as $art){
                     $idProd = (int)$art['id_producto'];
@@ -303,7 +299,6 @@ class ModelDespachos extends Model{
 
         $this->db->beginTransaction();
         try{
-            // 1. Revertir stock
             $arts = $this->articulos($id);
             foreach ($arts as $art){
                 $this->query(
@@ -314,13 +309,11 @@ class ModelDespachos extends Model{
                 );
             }
 
-            // 2. Marcar despacho como eliminado
             $this->query(
                 "UPDATE table_alm_despacho SET status_despacho = 0 WHERE id_despacho = :id",
                 ['id' => $id]
             );
 
-            // 3. Registrar en historial
             $this->query(
                 "INSERT INTO table_alm_historial_cambio (obs, info, id_user)
                  VALUES (:obs, :info, :uid)",
@@ -357,8 +350,8 @@ class ModelDespachos extends Model{
         )['t'] ?? 0);
 
         return [
-            'actual'   => $total,
-            'meta'     => 120,
+            'actual'     => $total,
+            'meta'       => 120,
             'porcentaje' => min(100, round(($total / 120) * 100)),
         ];
     }
@@ -426,7 +419,8 @@ class ModelDespachos extends Model{
         $sql .= " ORDER BY p.producto ASC";
         return $this->fetchAll($sql, $params);
     }
-        /* ============================================================
+
+    /* ============================================================
        HISTORIAL DE PRODUCTOS (resumen)
        ============================================================ */
     public function historialProductos(string $q = '', int $limit = 10, int $offset = 0, int $inst = 0): array{
@@ -508,7 +502,6 @@ class ModelDespachos extends Model{
        HISTORIAL DETALLE de un producto (timeline paginado)
        ============================================================ */
     public function historialDetalle(int $idProducto, int $limit = 10, int $offset = 0): array{
-        // Info del producto
         $producto = $this->fetchOne(
             "SELECT p.id_producto, p.producto, p.present_producto,
                     COALESCE(rp.cant_producto, 0) AS stock_actual,
@@ -524,7 +517,6 @@ class ModelDespachos extends Model{
 
         if (!$producto) return ['producto' => null, 'data' => [], 'total' => 0];
 
-        // Total de eventos
         $total = (int)($this->fetchOne(
             "SELECT COUNT(*) AS t
              FROM table_alm_relacion_despacho rd
@@ -533,7 +525,6 @@ class ModelDespachos extends Model{
             ['id' => $idProducto]
         )['t'] ?? 0);
 
-        // Eventos paginados
         $sql = "SELECT d.id_despacho, d.numero_orden, d.fecha_despacho,
                        d.observacion,
                        rd.cant_despacho,
