@@ -1,5 +1,3 @@
-console.log('✅ despachos.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'despachos/i/' + INST;
@@ -518,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.body.appendChild(wrap);
             document.body.style.overflow = 'hidden';
-            console.log('✅ Modal dinámico insertado:', document.getElementById('__modalDetalleDinamico') ? 'SÍ' : 'NO');
+            
 
         } catch (e){
             console.error('verDespacho excepción:', e);

@@ -100,29 +100,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
 <!-- TAB: COSTEADAS                                -->
 <!-- ============================================ -->
 <div id="tabCosteadas" class="compras-panel" style="display:none;">
-    <div class="card mb-4">
-        <div class="card-body" style="padding:1rem;">
-            <div class="compras-filtros">
-                <div class="form-group" style="margin:0;">
-                    <label style="font-size:.72rem; color:#475569; font-weight:500; margin-bottom:.25rem; display:block;">Desde</label>
-                    <input type="date" id="filtroCostoDesde" class="filter-select" style="padding:.5rem .65rem;">
-                </div>
-                <div class="form-group" style="margin:0;">
-                    <label style="font-size:.72rem; color:#475569; font-weight:500; margin-bottom:.25rem; display:block;">Hasta</label>
-                    <input type="date" id="filtroCostoHasta" class="filter-select" style="padding:.5rem .65rem;">
-                </div>
-                <button type="button" id="btnFiltrarCosteadas" class="btn btn-primary">
-                    <?= icon_tag('filter', 'filter', 'w-4 h-4') ?>
-                    <span>Filtrar</span>
-                </button>
-                <button type="button" id="btnLimpiarCosteadas" class="btn btn-ghost">
-                    <?= icon_tag('x', 'x', 'w-4 h-4') ?>
-                    <span>Limpiar</span>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <div class="card">
         <div class="dt-toolbar">
             <div class="dt-toolbar-left">
@@ -136,11 +113,39 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 </select>
                 <span class="dt-toolbar-label">registros</span>
             </div>
-            <div class="dt-toolbar-right">
-                <div class="filter-search" style="min-width:280px;">
+
+            <div class="dt-toolbar-right" style="gap:.4rem;">
+                <input type="date" id="filtroCostoDesde"
+                       class="filter-select"
+                       title="Desde"
+                       style="padding:.4rem .6rem; font-size:.8rem; height:34px; min-width:140px;">
+
+                <input type="date" id="filtroCostoHasta"
+                       class="filter-select"
+                       title="Hasta"
+                       style="padding:.4rem .6rem; font-size:.8rem; height:34px; min-width:140px;">
+
+                <button type="button" id="btnFiltrarCosteadas"
+                        class="btn btn-primary btn-sm" title="Aplicar filtros">
+                    <?= icon_tag('filter', 'filter', 'w-4 h-4') ?>
+                    <span>Aplicar</span>
+                </button>
+
+                <button type="button" id="btnLimpiarCosteadas"
+                        class="action-btn" title="Limpiar filtros">
+                    <?= icon_tag('rotate-ccw', 'rotate-ccw', 'w-4 h-4') ?>
+                </button>
+
+                <div class="filter-search" style="min-width:200px;">
                     <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
-                    <input type="text" id="filtroBuscarCost" placeholder="Buscar despacho, unidad...">
+                    <input type="text" id="filtroBuscarCost" placeholder="Buscar...">
                 </div>
+
+                <button type="button" id="btnPdfCosteadas"
+                        class="btn btn-primary btn-sm" title="PDF de las costeadas filtradas">
+                    <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+                    <span>PDF</span>
+                </button>
             </div>
         </div>
 

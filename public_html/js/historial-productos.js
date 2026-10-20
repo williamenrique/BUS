@@ -1,6 +1,4 @@
 // v3.0 - sin DOMContentLoaded, a prueba de scripts rotos
-console.log('✅ historial-productos.js cargado v3.0');
-
 (function () {
     'use strict';
 
@@ -22,7 +20,6 @@ console.log('✅ historial-productos.js cargado v3.0');
     }
 
     cuandoListo(function init() {
-        console.log('🚀 Inicializando historial-productos (botón encontrado)');
 
         const INST = window.SITGO_INST || 1;
         const API  = (window.SITGO_BASE || '/') + 'despachos/i/' + INST + '/historial';

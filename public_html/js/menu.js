@@ -1,5 +1,3 @@
-console.log('✅ menu.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'menu';
     const $ = id => document.getElementById(id);
@@ -9,9 +7,178 @@ document.addEventListener('DOMContentLoaded', () => {
     let menuActual = null;
 
     /* ============================================================
+       MAPA FontAwesome → Lucide
+       Traduce iconos viejos guardados en BD (fas fa-*, fa-*, etc.)
+       ============================================================ */
+    const ICON_MAP = {
+        // Genéricos / navegación
+        'fa-list': 'list', 'fa-list-alt': 'list', 'fa-list-ul': 'list',
+        'fa-bars': 'menu', 'fa-navicon': 'menu',
+        'fa-th': 'layout-grid', 'fa-th-large': 'layout-grid', 'fa-th-list': 'list',
+        'fa-grip': 'grip', 'fa-grip-horizontal': 'grip-horizontal',
+        'fa-grip-vertical': 'grip-vertical',
+        'fa-home': 'home', 'fa-house': 'home',
+        'fa-dashboard': 'layout-dashboard', 'fa-tachometer': 'gauge',
+        'fa-tachometer-alt': 'gauge',
+        'fa-folder': 'folder', 'fa-folder-open': 'folder-open',
+        'fa-folder-tree': 'folder-tree',
+        'fa-sitemap': 'network', 'fa-network-wired': 'network',
+        'fa-link': 'link', 'fa-chain': 'link', 'fa-external-link': 'external-link',
+        'fa-external-link-alt': 'external-link',
+
+        // Personas
+        'fa-user': 'user', 'fa-user-circle': 'user-circle', 'fa-user-circle-o': 'circle-user',
+        'fa-users': 'users', 'fa-user-friends': 'users', 'fa-users-cog': 'users',
+        'fa-user-tie': 'user-round', 'fa-user-plus': 'user-plus',
+        'fa-user-cog': 'user-cog', 'fa-user-shield': 'shield-user',
+        'fa-address-book': 'contact', 'fa-id-card': 'id-card',
+
+        // Edificios / ubicación
+        'fa-building': 'building', 'fa-building-o': 'building-2',
+        'fa-city': 'building-2', 'fa-industry': 'factory',
+        'fa-store': 'store', 'fa-warehouse': 'warehouse',
+        'fa-map': 'map', 'fa-map-marker': 'map-pin', 'fa-map-marker-alt': 'map-pin',
+        'fa-location-dot': 'map-pin', 'fa-globe': 'globe',
+
+        // Transporte
+        'fa-truck': 'truck', 'fa-truck-moving': 'truck',
+        'fa-car': 'car', 'fa-car-side': 'car', 'fa-taxi': 'car-taxi-front',
+        'fa-bus': 'bus', 'fa-motorcycle': 'bike', 'fa-bicycle': 'bike',
+        'fa-gas-pump': 'fuel', 'fa-oil-can': 'droplet', 'fa-oil-can-drip': 'droplet',
+        'fa-wrench': 'wrench', 'fa-tools': 'wrench', 'fa-toolbox': 'wrench',
+        'fa-cogs': 'settings', 'fa-cog': 'settings', 'fa-gear': 'settings',
+        'fa-gears': 'settings',
+
+        // Documentos / reportes
+        'fa-file': 'file', 'fa-file-alt': 'file-text', 'fa-file-text': 'file-text',
+        'fa-file-text-o': 'file-text', 'fa-file-invoice': 'file-text',
+        'fa-file-pdf': 'file-text', 'fa-file-excel': 'file-spreadsheet',
+        'fa-file-csv': 'file-spreadsheet',
+        'fa-clipboard': 'clipboard', 'fa-clipboard-list': 'clipboard-list',
+        'fa-clipboard-check': 'clipboard-check',
+        'fa-book': 'book', 'fa-book-open': 'book-open',
+        'fa-newspaper': 'newspaper',
+        'fa-chart-bar': 'bar-chart-3', 'fa-chart-line': 'line-chart',
+        'fa-chart-pie': 'pie-chart', 'fa-chart-area': 'area-chart',
+        'fa-poll': 'bar-chart-3', 'fa-analytics': 'chart-bar',
+
+        // Compras / dinero
+        'fa-shopping-cart': 'shopping-cart', 'fa-cart-plus': 'shopping-cart',
+        'fa-shopping-bag': 'shopping-bag', 'fa-shopping-basket': 'shopping-basket',
+        'fa-dollar-sign': 'dollar-sign', 'fa-money': 'banknote',
+        'fa-money-bill': 'banknote', 'fa-money-bill-wave': 'banknote',
+        'fa-credit-card': 'credit-card', 'fa-receipt': 'receipt',
+        'fa-coins': 'coins', 'fa-wallet': 'wallet',
+
+        // Productos / almacén
+        'fa-box': 'package', 'fa-boxes': 'boxes', 'fa-package': 'package',
+        'fa-cube': 'box', 'fa-cubes': 'boxes',
+        'fa-archive': 'archive', 'fa-inventory': 'package',
+        'fa-tags': 'tags', 'fa-tag': 'tag',
+        'fa-barcode': 'barcode', 'fa-qrcode': 'qr-code',
+
+        // Sistema / configuración
+        'fa-sliders': 'sliders-horizontal', 'fa-sliders-h': 'sliders-horizontal',
+        'fa-shield': 'shield', 'fa-shield-alt': 'shield-check',
+        'fa-lock': 'lock', 'fa-unlock': 'unlock', 'fa-key': 'key',
+        'fa-fingerprint': 'fingerprint',
+        'fa-database': 'database',
+        'fa-server': 'server',
+        'fa-cloud': 'cloud',
+
+        // Acciones / estados
+        'fa-plus': 'plus', 'fa-plus-circle': 'plus-circle',
+        'fa-minus': 'minus', 'fa-minus-circle': 'minus-circle',
+        'fa-check': 'check', 'fa-check-circle': 'check-circle',
+        'fa-times': 'x', 'fa-times-circle': 'x-circle',
+        'fa-close': 'x',
+        'fa-edit': 'pencil', 'fa-pencil': 'pencil', 'fa-pen': 'pen',
+        'fa-trash': 'trash-2', 'fa-trash-alt': 'trash-2',
+        'fa-save': 'save', 'fa-download': 'download', 'fa-upload': 'upload',
+        'fa-print': 'printer', 'fa-print-printer': 'printer',
+        'fa-search': 'search', 'fa-magnifying-glass': 'search',
+        'fa-filter': 'filter', 'fa-sort': 'arrow-up-down',
+        'fa-eye': 'eye', 'fa-eye-slash': 'eye-off',
+        'fa-sync': 'refresh-cw', 'fa-redo': 'rotate-cw',
+        'fa-undo': 'rotate-ccw', 'fa-reload': 'refresh-cw',
+        'fa-power-off': 'power',
+        'fa-sign-out': 'log-out', 'fa-sign-in': 'log-in',
+        'fa-sign-out-alt': 'log-out', 'fa-sign-in-alt': 'log-in',
+
+        // Info / alertas
+        'fa-info': 'info', 'fa-info-circle': 'info',
+        'fa-question': 'help-circle', 'fa-question-circle': 'help-circle',
+        'fa-exclamation': 'alert-circle', 'fa-exclamation-triangle': 'alert-triangle',
+        'fa-warning': 'alert-triangle',
+        'fa-bell': 'bell', 'fa-bell-o': 'bell', 'fa-bell-slash': 'bell-off',
+
+        // Comunicación
+        'fa-envelope': 'mail', 'fa-envelope-o': 'mail',
+        'fa-phone': 'phone', 'fa-phone-alt': 'phone',
+        'fa-comment': 'message-circle', 'fa-comments': 'messages-square',
+        'fa-comment-alt': 'message-square',
+
+        // Tiempo / fechas
+        'fa-calendar': 'calendar', 'fa-calendar-alt': 'calendar',
+        'fa-calendar-check': 'calendar-check', 'fa-calendar-days': 'calendar-days',
+        'fa-clock': 'clock', 'fa-clock-o': 'clock', 'fa-history': 'history',
+        'fa-hourglass': 'hourglass',
+
+        // UI
+        'fa-star': 'star', 'fa-star-o': 'star',
+        'fa-heart': 'heart', 'fa-thumbs-up': 'thumbs-up',
+        'fa-thumbs-down': 'thumbs-down',
+        'fa-bookmark': 'bookmark', 'fa-flag': 'flag',
+        'fa-lightbulb': 'lightbulb', 'fa-lightbulb-o': 'lightbulb',
+        'fa-fire': 'flame', 'fa-bolt': 'zap', 'fa-flash': 'zap',
+        'fa-circle': 'circle', 'fa-dot-circle': 'circle-dot',
+        'fa-square': 'square', 'fa-check-square': 'square-check',
+
+        // Archivos
+        'fa-folder-plus': 'folder-plus', 'fa-folder-minus': 'folder-minus',
+        'fa-folder-open-o': 'folder-open',
+        'fa-paperclip': 'paperclip', 'fa-paper-plane': 'send',
+
+        // Otros comunes
+        'fa-male': 'user', 'fa-female': 'user',
+        'fa-graduation-cap': 'graduation-cap',
+        'fa-briefcase': 'briefcase', 'fa-suitcase': 'briefcase',
+        'fa-chart-simple': 'chart-bar',
+        'fa-helmet-safety': 'hard-hat',
+        'fa-hand-holding-dollar': 'hand-coins',
+    };
+
+    /**
+     * Normaliza cualquier nombre de icono a un nombre Lucide válido.
+     * - "fas fa-list"       → "list"
+     * - "fa-list"           → "list"
+     * - "fa-solid fa-user"  → "user"
+     * - "list"              → "list" (Lucide nativo)
+     * - ""                  → "circle"
+     */
+    function normalizarIcono(raw){
+        if (!raw) return 'circle';
+        let s = String(raw).trim().toLowerCase();
+
+        // Quitar prefijos de FontAwesome
+        s = s.replace(/^(fa-solid|fa-regular|fa-brands|fas|far|fab)\s+/g, '');
+        s = s.replace(/^fa-/, '').replace(/^fa\s+/, '');
+        s = s.trim();
+
+        if (!s) return 'circle';
+
+        const mapped = ICON_MAP[s] || ICON_MAP['fa-' + s];
+        if (mapped) return mapped;
+
+        if (/^[a-z0-9-]+$/.test(s)) return s;
+
+        return 'circle';
+    }
+
+    /* ============================================================
        INIT
        ============================================================ */
-        let iconPickerMenu = null;
+    let iconPickerMenu = null;
     let iconPickerSubmenu = null;
 
     (async () => {
@@ -34,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
             inputId: 'menu_icono',
             previewId: 'iconPreview',
             onSelect: (name) => {
-                // El onSelect ya hace el sync del preview, pero por si acaso
                 console.log('Icono menú:', name);
             }
         });
@@ -90,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = await fetchJSON(API + '/arbol');
         if (!d.ok) throw new Error(d.message);
 
-        // Aplanar el árbol en lista con padre_id y nivel
         menusFlat = [];
         const recorrer = (nodos, nivel = 0, padreNombre = null) => {
             nodos.forEach(n => {
@@ -114,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const est = $('filtroEstadoMenu')?.value || '';
         const tipo = $('filtroTipoMenu')?.value || '';
 
-        // Solo mostramos menús PADRE en el grid (los hijos van dentro del modal)
         let lista = menusFlat.filter(m => m._nivel === 0);
 
         if (q) lista = lista.filter(m => (m.menu_nombre || '').toLowerCase().includes(q) || (m.menu_ruta || '').toLowerCase().includes(q));
@@ -167,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${hijos.map(h => `
                         <li>
                             <span class="menu-card-sub-icon">
-                                ${iconSvg(h.menu_icono || 'circle')}
+                                ${iconSvg(normalizarIcono(h.menu_icono))}
                             </span>
                             <span class="menu-card-sub-name">${esc(h.menu_nombre)}</span>
                             <code class="menu-card-sub-ruta">/${esc(h.menu_ruta || '—')}</code>
@@ -182,7 +346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="menu-card ${activo ? '' : 'menu-card-off'}" data-id="${m.menu_id}">
                 <div class="menu-card-header">
                     <span class="menu-card-icon">
-                        ${iconSvg(m.menu_icono || 'circle')}
+                        ${iconSvg(normalizarIcono(m.menu_icono))}
                     </span>
                     <div class="menu-card-title">
                         <strong>${esc(m.menu_nombre)}</strong>
@@ -270,7 +434,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $('formMenu')?.addEventListener('submit', guardar);
 
-        // Tipo: link vs grupo (oculta/muestra ruta)
         document.querySelectorAll('input[name="menu_tipo"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 document.querySelectorAll('.menu-tipo-opt').forEach(o => o.classList.remove('active'));
@@ -279,17 +442,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Botones asignar
         $('btnAddUsuario')?.addEventListener('click', agregarUsuario);
         $('btnAddDepto')?.addEventListener('click', agregarDepto);
 
-        // Filtros
         $('filtroMenu')?.addEventListener('input', renderGrid);
         $('filtroEstadoMenu')?.addEventListener('change', renderGrid);
         $('filtroTipoMenu')?.addEventListener('change', renderGrid);
         $('btnExpandirTodo')?.addEventListener('click', toggleExpandirTodo);
 
-        // Modal submenú
         $('formSubmenu')?.addEventListener('submit', guardarSubmenu);
         $('btnSmCancelar')?.addEventListener('click', limpiarFormSubmenu);
 
@@ -342,7 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('blockUsuarios').style.display = 'none';
         $('blockDeptos').style.display = 'none';
 
-        // Modo link por defecto
         document.querySelector('input[name="menu_tipo"][value="link"]').checked = true;
         document.querySelectorAll('.menu-tipo-opt').forEach(o => o.classList.remove('active'));
         document.querySelector('.menu-tipo-opt[data-tipo="link"]').classList.add('active');
@@ -382,12 +541,10 @@ document.addEventListener('DOMContentLoaded', () => {
             $('menu_scope').value = m.menu_scope || 'general';
             $('menu_estado').value = m.menu_estado ?? 1;
 
-            $('iconPreview').innerHTML = m.menu_icono
-                ? `<i data-lucide="${esc(m.menu_icono)}" class="w-4 h-4"></i>`
-                : `<i data-lucide="circle" class="w-4 h-4"></i>`;
+            // Preview con nombre Lucide normalizado
+            $('iconPreview').innerHTML = `<i data-lucide="${esc(normalizarIcono(m.menu_icono))}" class="w-4 h-4"></i>`;
             if (window.lucide) lucide.createIcons();
 
-            // Detectar tipo: si tiene hijos → grupo, si no → link
             const hijos = getHijos(m.menu_id);
             const tipo = hijos.length > 0 ? 'grupo' : 'link';
             document.querySelector(`input[name="menu_tipo"][value="${tipo}"]`).checked = true;
@@ -395,7 +552,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector(`.menu-tipo-opt[data-tipo="${tipo}"]`).classList.add('active');
             actualizarTipoForm(tipo);
 
-            // Cargar combos y excluir el propio menú
             const combosData = await fetchJSON(API + '/combos');
             const padres = combosData.padres.filter(p => Number(p.menu_id) !== Number(id));
             fillSelect($('menu_padre_id'), padres, 'menu_id', 'menu_nombre', '— Ninguno (raíz) —');
@@ -409,7 +565,6 @@ document.addEventListener('DOMContentLoaded', () => {
             $('btnNuevoMenuText').textContent = 'Cancelar edición';
             $('btnGuardar').querySelector('.btn-text').textContent = 'Actualizar';
 
-            // Mostrar bloques de asignación
             $('blockUsuarios').style.display = '';
             $('blockDeptos').style.display = '';
             await cargarUsuarios(id);
@@ -436,12 +591,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tipo = payload.menu_tipo;
         delete payload.menu_tipo;
 
-        // Si es grupo, ruta vacía
         if (tipo === 'grupo'){
             payload.menu_ruta = '';
         }
 
-        // Validaciones cliente
         if (!payload.menu_nombre?.trim()){
             form.querySelector('[data-error="menu_nombre"]').textContent = 'El nombre es obligatorio.';
             return;
@@ -544,7 +697,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('sm_menu_id').value = parentId;
         $('submenuMenuNombre').textContent = parent.menu_nombre;
 
-        // Si el padre tenía ruta (era link), sugerir quitarla (pasa a ser grupo)
         if (parent.menu_ruta){
             console.log('Padre tenía ruta:', parent.menu_ruta, '→ al añadir submenú puedes dejarla o quitarla editando el padre.');
         }
@@ -574,7 +726,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lista.innerHTML = hijos.map(h => `
             <li class="submenu-list-item">
                 <div class="submenu-list-info">
-                    <span class="submenu-list-icon">${iconSvg(h.menu_icono || 'circle')}</span>
+                    <span class="submenu-list-icon">${iconSvg(normalizarIcono(h.menu_icono))}</span>
                     <div>
                         <strong>${esc(h.menu_nombre)}</strong>
                         <code>/${esc(h.menu_ruta || '—')}</code>
@@ -616,7 +768,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('submenuFormTitle').textContent = 'Editar Submenú';
         $('btnSmGuardarText').textContent = 'Actualizar';
 
-        // Scroll al form
         $('formSubmenu').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
@@ -679,7 +830,6 @@ document.addEventListener('DOMContentLoaded', () => {
             await cargarArbol();
             await cargarSubmenus(parentId);
 
-            // Si era el último submenú, cerrar modal
             const hijos = getHijos(parentId);
             if (!hijos.length){
                 window.cerrarModalSubmenu();
@@ -800,7 +950,6 @@ document.addEventListener('DOMContentLoaded', () => {
        EXPANDIR TODO
        ============================================================ */
     function toggleExpandirTodo(){
-        // No aplica porque cada card muestra sus submenús siempre. Solo cambia el texto.
         const btn = $('btnExpandirTodo');
         const span = btn.querySelector('span');
         const actual = span.textContent;

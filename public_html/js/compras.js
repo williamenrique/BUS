@@ -1,5 +1,3 @@
-console.log('✅ compras.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'compras/i/' + INST;
@@ -8,6 +6,27 @@ document.addEventListener('DOMContentLoaded', () => {
     let dtPendientes = null;
     let dtCosteadas = null;
     let flotaCache = [];
+
+    /* ============================================================
+       HELPER · Refrescar iconos Lucide de forma robusta
+       ============================================================ */
+    function refreshIcons(){
+        if (window.lucide && typeof window.lucide.createIcons === 'function'){
+            try { window.lucide.createIcons(); } catch(e){ console.error('lucide:', e); }
+            return;
+        }
+        let tries = 0;
+        const t = setInterval(() => {
+            tries++;
+            if (window.lucide && typeof window.lucide.createIcons === 'function'){
+                clearInterval(t);
+                try { window.lucide.createIcons(); } catch(e){ console.error('lucide:', e); }
+            } else if (tries > 50){
+                clearInterval(t);
+                console.warn('Lucide no se cargó en 5s');
+            }
+        }, 100);
+    }
 
     /* ============================================================
        INIT
@@ -24,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
             bindEventosCosteadas();
             bindEventosReportes();
             bindModales();
+            bindPdfDetalle();
+            bindPdfCosteadas();
         } catch (e){
             console.error(e);
             toast('Error al inicializar: ' + e.message, 'error');
@@ -67,7 +88,10 @@ document.addEventListener('DOMContentLoaded', () => {
             startId: 'startPendientes',
             endId: 'endPendientes',
             noDataMessage: 'No hay despachos pendientes de costeo',
-            onDataLoaded: () => bindTableActions()
+            onDataLoaded: () => {
+                refreshIcons();
+                bindTableActions();
+            }
         });
     }
 
@@ -85,8 +109,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 </td>
                 <td class="text-center">${Number(d.total_unidades || 0).toLocaleString('es-VE')}</td>
                 <td class="text-right">
-                    <button class="action-btn edit" data-action="asignar" data-id="${d.id_despacho}" title="Asignar costo">
-                        <i data-lucide="dollar-sign" class="w-4 h-4"></i>
+                    <button class="btn-costear" data-action="asignar" data-id="${d.id_despacho}" title="Costear esta orden">
+                        <i data-lucide="dollar-sign"></i>
+                        <span>Costear</span>
                     </button>
                 </td>
             </tr>`;
@@ -112,7 +137,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 fecha_desde: $('filtroCostoDesde')?.value || '',
                 fecha_hasta: $('filtroCostoHasta')?.value || ''
             }),
-            onDataLoaded: () => bindTableActionsCosteadas()
+            onDataLoaded: () => {
+                refreshIcons();
+                bindTableActionsCosteadas();
+            }
         });
     }
 
@@ -220,11 +248,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function bindModales(){
-        // Costo
         $('formCosto')?.addEventListener('submit', guardarCosto);
         $('costo_tasa')?.addEventListener('input', recalcularMontosCosto);
 
-        // Anular
         $('btnAnularDetalle')?.addEventListener('click', anularCosto);
     }
 
@@ -307,16 +333,16 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.querySelectorAll('.monto-unit').forEach(inp => {
             inp.addEventListener('input', recalcularMontosCosto);
         });
+
+        refreshIcons();
     }
 
     function recalcularMontosCosto(){
         const tasa = parseFloat($('costo_tasa').value) || 0;
 
         document.querySelectorAll('#tbodyArticulosCosto tr[data-idx]').forEach(row => {
-            const idx = parseInt(row.dataset.idx);
             const cant = parseFloat(row.dataset.cantidad) || 0;
-            const unitInput = row.querySelector('.monto-unit');
-            const unitVal = parseFloat(unitInput.value) || 0;
+            const unitVal = parseFloat(row.querySelector('.monto-unit').value) || 0;
             const totalUsd = cant * unitVal;
             const totalBs = totalUsd * tasa;
 
@@ -420,6 +446,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             $('modalDetalle').classList.add('open');
             document.body.style.overflow = 'hidden';
+
+            refreshIcons();
         } catch (e){
             toast('Error: ' + e.message, 'error');
         }
@@ -447,6 +475,116 @@ document.addEventListener('DOMContentLoaded', () => {
         $('modalDetalle').classList.remove('open');
         document.body.style.overflow = '';
     };
+
+    /* ============================================================
+       PDF · ORDEN COSTEADA (individual)
+       ============================================================ */
+    function bindPdfDetalle(){
+        $('btnPdfDetalle')?.addEventListener('click', async () => {
+            if (!detalleActual) return;
+
+            const btn = $('btnPdfDetalle');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = 'Generando...';
+
+            try{
+                const o = detalleActual;
+                const numero = o.info?.numero_orden || o.id;
+
+                await SITGO_PDF.generar(
+                    'compras_orden_costeada',
+                    { orden: o },
+                    `orden_costeada_${numero}.pdf`,
+                    {
+                        titulo_documento: 'ORDEN COSTEADA',
+                        doc_numero:       '#' + String(numero).padStart(6, '0'),
+                        doc_color:        '#1e40af',
+                    }
+                );
+            } catch(e){
+                console.error(e);
+                toast('Error al generar el PDF: ' + e.message, 'error');
+            } finally{
+                btn.disabled = false;
+                btn.innerHTML = original;
+                refreshIcons();
+            }
+        });
+    }
+
+    /* ============================================================
+       PDF · COSTEADAS FILTRADAS (lote)
+       ============================================================ */
+    function bindPdfCosteadas(){
+        $('btnPdfCosteadas')?.addEventListener('click', generarPdfCosteadas);
+    }
+
+    async function generarPdfCosteadas(){
+        const btn = $('btnPdfCosteadas');
+        if (!btn) return;
+
+        const desde = $('filtroCostoDesde')?.value || '';
+        const hasta = $('filtroCostoHasta')?.value || '';
+
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = 'Generando...';
+
+        try{
+            const q = $('filtroBuscarCost')?.value || '';
+            const params = new URLSearchParams({
+                q,
+                limit: 5000,
+                offset: 0,
+                fecha_desde: desde,
+                fecha_hasta: hasta,
+            });
+
+            const r = await fetch(`${API}/costeadas?${params}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')){
+                throw new Error('El servidor no devolvió JSON.');
+            }
+
+            const d = await r.json();
+            if (!d.ok) throw new Error(d.message || 'Error al cargar las costeadas.');
+
+            let ordenes = d.data || [];
+            if (!Array.isArray(ordenes)) ordenes = [];
+
+            if (!ordenes.length){
+                toast('No hay costeadas en el rango seleccionado.', 'error');
+                return;
+            }
+
+            await SITGO_PDF.generar(
+                'compras_costeadas_filtrado',
+                {
+                    fecha_desde: desde,
+                    fecha_hasta: hasta,
+                    ordenes,
+                },
+                `compras_costeadas_${desde || 'inicio'}_${hasta || 'hoy'}.pdf`,
+                {
+                    titulo_documento: 'COMPRAS COSTEADAS',
+                    doc_color:        '#1e40af',
+                }
+            );
+
+            toast('PDF generado correctamente.', 'success');
+        } catch(e){
+            console.error(e);
+            toast('Error al generar el PDF: ' + e.message, 'error');
+        } finally{
+            btn.disabled = false;
+            btn.innerHTML = original;
+            refreshIcons();
+        }
+    }
 
     /* ============================================================
        FLOTA

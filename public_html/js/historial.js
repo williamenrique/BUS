@@ -1,5 +1,3 @@
-console.log('✅ historial.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const ID   = window.SITGO_ID_FLOTA;
     const INST = window.SITGO_INST || 1;

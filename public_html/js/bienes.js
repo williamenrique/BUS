@@ -1,12 +1,12 @@
-console.log('✅ bienes.js cargado. SITGO_BASE =', window.SITGO_BASE);
-console.log('📌 INST:', window.SITGO_INST);
+// console.log('✅ bienes.js cargado. SITGO_BASE =', window.SITGO_BASE);
+// console.log('📌 INST:', window.SITGO_INST);
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔄 DOMContentLoaded en bienes.js');
+    // console.log('🔄 DOMContentLoaded en bienes.js');
 
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'bienes/i/' + INST;
-    console.log('📡 API =', API);
+    // console.log('📡 API =', API);
 
     const $ = id => document.getElementById(id);
 
@@ -54,9 +54,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
         try{
-            console.log('⏳ Cargando combos...');
+            // console.log('⏳ Cargando combos...');
             await cargarCombos();
-            console.log('✅ Combos cargados');
+            // console.log('✅ Combos cargados');
 
             if (typeof DataTable === 'undefined'){
                 throw new Error('DataTable no está cargado. Revisa footer.php');
@@ -80,14 +80,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     status:       $('filtroStatus')?.value       || ''
                 }),
                 onDataLoaded: () => {
-                    console.log('📊 Tabla cargada');
+                    // console.log('📊 Tabla cargada');
                     bindTableActions();
                 }
             });
 
             bindEvents();
             bindForm();
-            console.log('✅ Módulo Bienes inicializado');
+            // console.log('✅ Módulo Bienes inicializado');
         } catch (e){
             console.error('❌ Error al inicializar bienes:', e);
             toast('Error al inicializar: ' + e.message, 'error');
@@ -141,6 +141,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function bindEvents(){
+        // dentro de bindEvents()
+        $('btnPdfBienes')?.addEventListener('click', () => generarPdfBienes(false));
+        $('btnPdfBienesDepto')?.addEventListener('click', () => generarPdfBienes(true));
         $('btnNuevo')?.addEventListener('click', abrirCrear);
         $('btnCancelar')?.addEventListener('click', cerrarFormulario);
         $('toggleForm')?.addEventListener('click', toggleSeccion);
@@ -152,7 +155,86 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarFormulario(); });
     }
+    /**
+     * Genera el PDF de bienes.
+     * @param {boolean} soloDepartamento — si true, exige que haya un departamento filtrado
+     */
+    async function generarPdfBienes(soloDepartamento) {
+        const deptoId = $('filtroDepartamento')?.value || '';
 
+        if (soloDepartamento && !deptoId) {
+            toast('Selecciona un departamento en el filtro para generar este PDF.', 'error');
+            return;
+        }
+
+        const btn = soloDepartamento ? $('btnPdfBienesDepto') : $('btnPdfBienes');
+        const original = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = 'Generando...';
+
+        try {
+            // 1) Traer TODOS los bienes que cumplen los filtros actuales (sin paginar)
+            const params = new URLSearchParams({
+                q: $('filtroBuscar')?.value || '',
+                limit: 9999,
+                offset: 0,
+                departamento: deptoId,
+                grupo: $('filtroGrupo')?.value || '',
+                status: $('filtroStatus')?.value || '',
+            });
+
+            const r = await fetch(`${API}/listar?${params}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) {
+                throw new Error('El servidor no devolvió JSON.');
+            }
+            const d = await r.json();
+            if (!d.ok) throw new Error(d.message || 'Error al cargar los bienes.');
+
+            let items = d.data || [];
+            if (!Array.isArray(items)) items = [];
+
+            if (!items.length) {
+                toast('No hay bienes para generar el PDF.', 'error');
+                return;
+            }
+
+            // 2) Título del subtítulo según modo
+            let subtitulo = 'Inventario general';
+            if (soloDepartamento) {
+                const opt = $('filtroDepartamento').selectedOptions[0];
+                subtitulo = 'Departamento: ' + (opt?.textContent || '—');
+            } else if (deptoId) {
+                const opt = $('filtroDepartamento').selectedOptions[0];
+                subtitulo = 'Filtrado por: ' + (opt?.textContent || '—');
+            }
+
+            // 3) Llamar al servicio de PDF
+            await SITGO_PDF.generar(
+                'bienes_reporte',
+                { items },                            // $items en el template
+                `bienes_${soloDepartamento ? 'depto' : 'general'}_${new Date().toISOString().slice(0,10)}.pdf`,
+                {
+                    titulo_documento: 'REPORTE DE BIENES',
+                    doc_color: '#1e40af',
+                    subtitulo,
+                    agrupar_por_departamento: !soloDepartamento, // general = agrupado; depto = plano
+                    // institucion_id lo resuelve PdfService a partir de la sesión
+                }
+            );
+
+            toast('PDF generado correctamente.', 'success');
+        } catch (e) {
+            console.error(e);
+            toast('Error al generar el PDF: ' + e.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = original;
+            if (window.lucide) lucide.createIcons();
+        }
+    }
     function bindTableActions(){
         const tbody = $('tbodyBienes');
         if (!tbody || tbody._bound) return;

@@ -141,7 +141,7 @@ $STATUS_TEXTO = [
                         ?>
                         <tr>
                             <td style="font-size:8px;"><?= $fecha ?></td>
-                            <td><span class="badge badge-info"><?= $esc($tipoLabel) ?></span></td>
+                            <td class="text-bold"><?= $esc($tipoLabel) ?></td>
                             <td style="font-size:8.5px;"><?= $detalle ?></td>
                             <td style="font-size:8px;"><?= $esc($usuario) ?></td>
                         </tr>

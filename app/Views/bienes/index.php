@@ -22,10 +22,20 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </h2>
         <p class="page-subtitle">Inventario de bienes de la institución</p>
     </div>
-    <button id="btnNuevo" class="btn btn-primary">
-        <?= icon_tag('plus', 'plus', 'w-4 h-4') ?>
-        <span id="btnNuevoText">Nuevo Bien</span>
-    </button>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button id="btnPdfBienes" class="btn btn-secondary" title="Generar PDF con los filtros actuales">
+            <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+            <span>PDF General</span>
+        </button>
+        <button id="btnPdfBienesDepto" class="btn btn-secondary" title="Generar PDF solo del departamento seleccionado">
+            <?= icon_tag('building-2', 'building-2', 'w-4 h-4') ?>
+            <span>PDF Departamento</span>
+        </button>
+        <button id="btnNuevo" class="btn btn-primary">
+            <?= icon_tag('plus', 'plus', 'w-4 h-4') ?>
+            <span id="btnNuevoText">Nuevo Bien</span>
+        </button>
+    </div>
 </div>
 
 <!-- ============================================ -->
