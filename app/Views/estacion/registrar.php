@@ -23,9 +23,7 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- CARD · TASA DEL DÍA                           -->
-<!-- ============================================ -->
+<!-- CARD · TASA DEL DÍA -->
 <div class="card mb-4">
     <div class="card-body" style="padding:1rem 1.25rem;">
         <div class="estacion-tasa-row">
@@ -48,12 +46,8 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- LAYOUT 2 COLUMNAS                             -->
-<!-- ============================================ -->
+<!-- LAYOUT 2 COLUMNAS -->
 <div class="estacion-layout">
-
-    <!-- COLUMNA IZQUIERDA -->
     <div class="estacion-main">
 
         <!-- FORM VENTA -->
@@ -63,7 +57,6 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                     <?= icon_tag('plus-circle', 'plus-circle', 'w-5 h-5') ?>
                     Registrar venta
                 </h3>
-
                 <form id="formVenta" novalidate>
                     <div class="form-grid">
                         <div class="form-group">
@@ -90,7 +83,6 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                             <input type="text" id="monto" name="monto" readonly>
                         </div>
                     </div>
-
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary">
                             <?= icon_tag('save', 'save', 'w-4 h-4') ?>
@@ -108,7 +100,6 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                     <?= icon_tag('bar-chart-3', 'bar-chart-3', 'w-5 h-5') ?>
                     Resumen de ventas del día
                 </h3>
-
                 <div class="estacion-stats">
                     <div class="estacion-stat stat-blue">
                         <div class="estacion-stat-icon"><?= icon_tag('fuel', 'fuel', 'w-6 h-6') ?></div>
@@ -132,7 +123,6 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                         </div>
                     </div>
                 </div>
-
                 <div class="estacion-desgloses">
                     <div id="tiposPagosContainer" class="estacion-desglose" style="display:none;">
                         <h4 class="estacion-desglose-title"><?= icon_tag('wallet', 'wallet', 'w-4 h-4') ?> Por tipo de pago</h4>
@@ -147,7 +137,6 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                         <ul id="tiposCombustibleList"></ul>
                     </div>
                 </div>
-
                 <div class="estacion-actions">
                     <button id="btnCerrarDia" class="btn btn-danger" style="display:none;">
                         <?= icon_tag('door-closed', 'door-closed', 'w-4 h-4') ?>
@@ -171,10 +160,8 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                 <div id="cierrePendienteList"></div>
             </div>
         </div>
-
     </div>
 
-    <!-- COLUMNA DERECHA -->
     <div class="estacion-side">
 
         <!-- VISTA PREVIA TICKET -->
@@ -195,7 +182,6 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                     <?= icon_tag('list', 'list', 'w-5 h-5') ?>
                     Tickets del día
                 </h3>
-
                 <div class="table-wrap">
                     <table class="data-table">
                         <thead>
@@ -214,7 +200,55 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                 </div>
             </div>
         </div>
-
     </div>
+</div>
 
+<!-- ============================================ -->
+<!-- MODAL · Selector de reporte PDF               -->
+<!-- ============================================ -->
+<div id="modalPdfSelector" class="pdf-modal-backdrop">
+    <div class="pdf-modal">
+        <div class="pdf-modal-header">
+            <h3>¿Qué reporte desea generar?</h3>
+            <button type="button" class="pdf-modal-close" data-close="1">&times;</button>
+        </div>
+        <div class="pdf-modal-body">
+            <button type="button" class="pdf-opt" data-seccion="resumen">
+                <div class="pdf-opt-icon" style="background:#dbeafe; color:#1e40af;">
+                    <?= icon_tag('bar-chart-3', 'bar-chart-3', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Resumen General</strong>
+                    <small>Totales y desgloses por combustible, vehículo y pago</small>
+                </div>
+            </button>
+            <button type="button" class="pdf-opt" data-seccion="ventas">
+                <div class="pdf-opt-icon" style="background:#dcfce7; color:#166534;">
+                    <?= icon_tag('list', 'list', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Todas las Ventas</strong>
+                    <small>Listado completo del día (gasolina y diésel)</small>
+                </div>
+            </button>
+            <button type="button" class="pdf-opt" data-seccion="gasolina">
+                <div class="pdf-opt-icon" style="background:#fef3c7; color:#b45309;">
+                    <?= icon_tag('fuel', 'fuel', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Solo Gasolina</strong>
+                    <small>Ventas de gasolina únicamente</small>
+                </div>
+            </button>
+            <button type="button" class="pdf-opt" data-seccion="diesel">
+                <div class="pdf-opt-icon" style="background:#ede9fe; color:#6d28d9;">
+                    <?= icon_tag('droplet', 'droplet', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Solo Diésel</strong>
+                    <small>Ventas de diésel únicamente</small>
+                </div>
+            </button>
+        </div>
+    </div>
 </div>

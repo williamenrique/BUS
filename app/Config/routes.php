@@ -170,6 +170,7 @@ return [
     ['path' => '/compras/i/{inst}/flota',                 'method' => 'GET',  'handler' => 'ControllerCompras@flota'],
     ['path' => '/compras/i/{inst}/conteo-ordenes',        'method' => 'POST', 'handler' => 'ControllerCompras@conteoOrdenes'],
 
+    
     // ============================================================
     // Estación de Servicio
     // ============================================================
@@ -188,6 +189,7 @@ return [
     ['path' => '/estacion/ticket/{id}',           'method' => 'POST', 'handler' => 'ControllerEstacion@getTicket'],
     ['path' => '/estacion/reporte-pdf',           'method' => 'POST', 'handler' => 'ControllerEstacion@generarReportePdf'],
     ['path' => '/estacion/tasa-actual',           'method' => 'GET',  'handler' => 'ControllerEstacion@getTasaCurrent'],
+    ['path' => '/estacion/litros-reporte',        'method' => 'POST', 'handler' => 'ControllerEstacion@getLitrosReporte'],
 
     // DataVenta (departamento Sistema)
     ['path' => '/estacion/dataventa',             'method' => 'GET',  'handler' => 'ControllerEstacion@dataventa'],

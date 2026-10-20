@@ -9,9 +9,9 @@
  */
 
 /* ============================================================
-   HELPER DE NOTIFICACIÓN (reemplaza a "notifi" del sistema viejo)
+   HELPER DE NOTIFICACIÓN
    - Escribe en consola siempre.
-   - Si existe un toast global, también lo muestra.
+   - Si existe toast global, también lo muestra.
    - Si no, no rompe nada.
    ============================================================ */
 function _qzNotify(msg, type = 'info') {
@@ -19,7 +19,6 @@ function _qzNotify(msg, type = 'info') {
     const fn = map[type] || 'log';
     (console[fn] || console.log)('[QZ Tray]', msg);
 
-    // Intentar usar toast global si existe (estacion.js / dataventa.js lo definen)
     try {
         if (typeof window.toast === 'function') {
             window.toast(msg, type === 'error' ? 'error' : (type === 'warning' ? 'error' : 'success'));
@@ -27,7 +26,6 @@ function _qzNotify(msg, type = 'info') {
         }
     } catch (_) { /* ignorar */ }
 
-    // Fallback: toast simple si hay contenedor
     try {
         let c = document.querySelector('.toast-container');
         if (!c) {
@@ -44,15 +42,52 @@ function _qzNotify(msg, type = 'info') {
 }
 
 /* ============================================================
+   PREGUNTAR MODO DEL DETALLADO
+   - Por compatibilidad con estacion.js / dataventa.js.
+   - Devuelve 'unificado' o 'divisa'.
+   - Si el usuario cancela, devuelve null.
+   - Usa Swal si está disponible; si no, cae a prompt().
+   ============================================================ */
+async function fntPreguntarModoDetallado() {
+    // Swal si está disponible
+    if (typeof Swal !== 'undefined' && Swal.fire) {
+        try {
+            const res = await Swal.fire({
+                title: '¿Cómo desea el detallado?',
+                input: 'radio',
+                inputOptions: {
+                    'unificado': 'Unificado (todo en Bs)',
+                    'divisa':    'Detallado (con columna $)'
+                },
+                inputValidator: (v) => v ? null : 'Selecciona una opción',
+                confirmButtonText: 'Aceptar',
+                cancelButtonText: 'Cancelar',
+                showCancelButton: true
+            });
+            if (!res.isConfirmed || !res.value) return null;
+            return res.value;
+        } catch (e) {
+            console.warn('Swal falló, usando prompt:', e);
+        }
+    }
+
+    // Fallback: prompt
+    const v = window.prompt('Tipo de detallado: 1 = unificado, 2 = divisa', '1');
+    if (!v) return null;
+    return v === '2' ? 'divisa' : 'unificado';
+}
+
+/* ============================================================
    IMPRESIÓN · REPORTE DETALLADO
    ============================================================ */
-async function fntImprimirDetallado(dataVentas) {
+async function fntImprimirDetallado(dataVentas, modo = 'unificado') {
     if (!dataVentas || dataVentas.length === 0) {
         _qzNotify('No hay datos para imprimir el detallado.', 'error');
         return;
     }
 
     const primerVenta = dataVentas[0];
+    const esDivisa = (modo === 'divisa');
 
     const data = [
         '\x1B' + '\x40',
@@ -213,7 +248,7 @@ async function fntImprimirTicket(datTicket) {
 /* ============================================================
    INICIALIZACIÓN QZ TRAY
    - No lanza si QZ no está. Solo avisa por consola.
-   - No bloquea otras vistas (llamada blindada desde dataventa.js)
+   - No bloquea otras vistas.
    ============================================================ */
 async function initQZTrayConnection() {
     if (typeof qz === 'undefined') {
@@ -272,7 +307,14 @@ async function _printToQZ(data, printerName = 'XP-80C') {
         }
 
         const config = qz.configs.create(printerName);
-        await qz.print(config, data);
+
+        // Ejecutar qz.print con timeout de 15s
+        await Promise.race([
+            qz.print(config, data),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Tiempo de espera agotado (impresora no responde)')), 15000)
+            )
+        ]);
 
         _qzNotify('Impresión enviada correctamente.', 'success');
         return true;
@@ -284,53 +326,20 @@ async function _printToQZ(data, printerName = 'XP-80C') {
 }
 
 /* ============================================================
-   GENERAR PDF · adaptado a SITGO
-   - Usa Swal si está disponible. Si no, usa prompt() como fallback.
-   - Envía a /estacion/reporte-pdf (ruta actual del sistema).
-   - Abre el PDF en nueva pestaña con un Blob (no depende de
-     "data/estacion/reporte.php" del sistema viejo).
+   GENERAR PDF (migrado a SITGO_PDF)
+   - Ya no abre window.print()
+   - Usa SITGO_PDF.generar() con el template del sistema
    ============================================================ */
 async function fntGenerarPDF(datosIniciales) {
-    if (!datosIniciales || !datosIniciales.fecha || !datosIniciales.idUser) {
+    if (!datosIniciales || !datosIniciales.fecha) {
         _qzNotify('No hay datos suficientes para generar el reporte.', 'error');
         return;
     }
 
-    let reportType = 'unificado';
-
-    // Selector de tipo de reporte (Swal si existe, prompt si no)
-    if (typeof Swal !== 'undefined' && Swal.fire) {
-        try {
-            const res = await Swal.fire({
-                title: 'Seleccione el tipo de reporte',
-                input: 'radio',
-                inputOptions: {
-                    'unificado': 'Unificado (Efectivo Bs + Divisas en Bs)',
-                    'divisa': 'Detallado (con columna para Divisas $)'
-                },
-                inputValidator: (value) => value ? null : '¡Necesitas elegir una opción!',
-                confirmButtonText: 'Generar PDF',
-                showCancelButton: true,
-                cancelButtonText: 'Cancelar'
-            });
-            if (!res.isConfirmed || !res.value) return;
-            reportType = res.value;
-        } catch (e) {
-            console.warn('Swal falló, usando prompt:', e);
-            const v = window.prompt('Tipo de reporte: 1 = unificado, 2 = divisa', '1');
-            if (!v) return;
-            reportType = (v === '2') ? 'divisa' : 'unificado';
-        }
-    } else {
-        const v = window.prompt('Tipo de reporte: 1 = unificado, 2 = divisa', '1');
-        if (!v) return;
-        reportType = (v === '2') ? 'divisa' : 'unificado';
-    }
+    const base = (window.SITGO_BASE || '/');
+    const url = base.replace(/\/?$/, '/') + 'estacion/data-cierre';
 
     try {
-        const base = (window.SITGO_BASE || '/');
-        const url = base.replace(/\/?$/, '/') + 'estacion/reporte-pdf';
-
         const response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -338,109 +347,27 @@ async function fntGenerarPDF(datosIniciales) {
                 'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
+                id_cierre: datosIniciales.id_cierre ?? 0,
                 fecha: datosIniciales.fecha,
-                id_user: datosIniciales.idUser,
-                reportType: reportType
+                id_user: datosIniciales.idUser
             })
         });
 
-        const ct = response.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-            throw new Error(`Respuesta no JSON (HTTP ${response.status})`);
-        }
-
         const res = await response.json();
-
-        // En SITGO los endpoints devuelven { ok: true, data: {...} }
-        const ok = res.ok === true || res.success === true;
-
-        if (ok && res.data) {
-            _qzNotify('Datos listos. Abriendo ventana de impresión...', 'success');
-            _abrirReporteEnNuevaVentana(res.data);
-        } else {
-            _qzNotify(res.message || 'Error al obtener los datos del reporte.', 'error');
-        }
-    } catch (error) {
-        console.error('Error en fntGenerarPDF:', error);
-        _qzNotify('Ocurrió un error al generar el PDF.', 'error');
-    }
-}
-
-/**
- * Abre una nueva ventana con el JSON del reporte y la librería jsPDF
- * (o con window.print) para generar el PDF sin depender de rutas
- * del sistema anterior.
- */
-function _abrirReporteEnNuevaVentana(data) {
-    try {
-        const w = window.open('', '_blank');
-        if (!w) {
-            _qzNotify('El navegador bloqueó la ventana emergente.', 'error');
+        if (!res.ok || !res.cierreData) {
+            _qzNotify(res.message || 'No se pudo obtener el cierre. Genera el PDF desde el botón del sistema.', 'error');
             return;
         }
-        w.document.open();
-        w.document.write(`
-            <!DOCTYPE html>
-            <html lang="es">
-            <head>
-                <meta charset="UTF-8">
-                <title>Reporte</title>
-                <style>
-                    body { font-family: Arial, sans-serif; font-size: 11px; padding: 15px; }
-                    h2 { text-align: center; margin: 0 0 10px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-                    th, td { border: 1px solid #ccc; padding: 4px 6px; }
-                    th { background: #eee; }
-                    .right { text-align: right; }
-                </style>
-            </head>
-            <body>
-                <h2>Reporte</h2>
-                <pre id="json" style="display:none">${JSON.stringify(data).replace(/</g, '\\u003c')}</pre>
-                <div id="render"></div>
-            </body>
-            </html>
-        `);
-        w.document.close();
 
-        // Render mínimo: si data.detallado existe, pinta tabla
-        try {
-            const d = data.detallado || [];
-            const r = data.resumen || {};
-            let html = '';
-            if (d.length) {
-                html += '<table><thead><tr>' +
-                    '<th>#</th><th>Hora</th><th>Vehículo</th><th>Combustible</th>' +
-                    '<th class="right">Litros</th><th>Pago</th><th class="right">Monto</th>' +
-                    '</tr></thead><tbody>';
-                d.forEach(v => {
-                    html += `<tr>
-                        <td>${v.numero_venta ?? ''}</td>
-                        <td>${v.hora_venta ?? ''}</td>
-                        <td>${v.tipo_vehiculo ?? ''}</td>
-                        <td>${v.tipo_combustible ?? ''}</td>
-                        <td class="right">${parseFloat(v.cantidad_litros || 0).toFixed(2)}</td>
-                        <td>${v.tipo_pago ?? ''}</td>
-                        <td class="right">${parseFloat(v.monto || 0).toFixed(2)}</td>
-                    </tr>`;
-                });
-                html += '</tbody></table>';
-            }
-            if (r.total_litros) {
-                html += `<p style="margin-top:10px"><strong>Total litros:</strong> ${parseFloat(r.total_litros).toFixed(2)} L</p>`;
-            }
-            if (r.total_bs) {
-                html += `<p><strong>Total Bs:</strong> ${parseFloat(r.total_bs).toFixed(2)}</p>`;
-            }
-            w.document.getElementById('render').innerHTML = html || '<p>Sin datos.</p>';
-        } catch (e) {
-            console.warn('Render reporte:', e);
-        }
-
-        // Disparar print
-        setTimeout(() => { try { w.print(); } catch (_) {} }, 400);
+        await SITGO_PDF.generar(
+            'estacion_reporte_dia',
+            { cierre: res.cierreData, ventas: res.ventas, seccion: 'resumen' },
+            `cierre_resumen_${datosIniciales.fecha}.pdf`,
+            { titulo_documento: 'CIERRE DEL DÍA', doc_color: '#1e40af' }
+        );
+        _qzNotify('PDF generado correctamente.', 'success');
     } catch (e) {
-        console.error('_abrirReporteEnNuevaVentana:', e);
-        _qzNotify('No se pudo abrir el reporte.', 'error');
+        console.error('fntGenerarPDF:', e);
+        _qzNotify('Error al generar el PDF.', 'error');
     }
 }
