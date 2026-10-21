@@ -10,10 +10,10 @@ require __DIR__ . '/inc/header.php';
     <!-- ============================================================ -->
     <section class="pub-sec" id="sec-flota">
         <div class="pub-sec-head">
-            <h3><i data-lucide="bus" class="w-5 h-5 text-primary"></i> Estado de Flota</h3>
+            <h3><i data-lucide="fuel" class="w-5 h-5 text-primary"></i> Ventas de Estación</h3>
             <div style="display:flex; gap:.5rem; align-items:center;">
                 <label style="font-size:.72rem; color:#64748b; font-weight:600;">Institución:</label>
-                <select id="instFlota" class="filter-select" style="min-width:180px;"></select>
+                <select id="instEstacion" class="filter-select" style="min-width:180px;"></select>
             </div>
         </div>
         <div class="pub-sec-body">
@@ -296,7 +296,7 @@ require __DIR__ . '/inc/header.php';
             <div style="display:flex; gap:.5rem;">
                 <button class="btn btn-primary btn-sm" id="btnPdfEstacion">
                     <i data-lucide="file-text" class="w-4 h-4"></i>
-                    <span>PDF Ventas</span>
+                    <span>Generar PDF</span>
                 </button>
             </div>
         </div>
@@ -320,7 +320,7 @@ require __DIR__ . '/inc/header.php';
                     <label>&nbsp;</label>
                     <button class="btn btn-primary btn-sm" id="btnEstFiltrar">
                         <i data-lucide="filter" class="w-4 h-4"></i>
-                        <span>Filtrar</span>
+                        <span>Filtrar por fechas</span>
                     </button>
                 </div>
             </div>
@@ -395,7 +395,55 @@ require __DIR__ . '/inc/header.php';
             </div>
         </div>
     </section>
-
+    <!-- ============================================ -->
+    <!-- MODAL · Selector de reporte PDF de Estación   -->
+    <!-- ============================================ -->
+    <div id="modalPdfEstacion" class="pdf-modal-backdrop">
+        <div class="pdf-modal">
+            <div class="pdf-modal-header">
+                <h3>¿Qué reporte desea generar?</h3>
+                <button type="button" class="pdf-modal-close" data-close="1">&times;</button>
+            </div>
+            <div class="pdf-modal-body">
+                <button type="button" class="pdf-opt" data-seccion="resumen">
+                    <div class="pdf-opt-icon" style="background:#dbeafe; color:#1e40af;">
+                        <i data-lucide="bar-chart-3" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div class="pdf-opt-text">
+                        <strong>Resumen General</strong>
+                        <small>Totales y desgloses por combustible, vehículo y pago</small>
+                    </div>
+                </button>
+                <button type="button" class="pdf-opt" data-seccion="ventas">
+                    <div class="pdf-opt-icon" style="background:#dcfce7; color:#166534;">
+                        <i data-lucide="list" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div class="pdf-opt-text">
+                        <strong>Todas las Ventas</strong>
+                        <small>Listado completo del día (gasolina y diésel)</small>
+                    </div>
+                </button>
+                <button type="button" class="pdf-opt" data-seccion="gasolina">
+                    <div class="pdf-opt-icon" style="background:#fef3c7; color:#b45309;">
+                        <i data-lucide="fuel" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div class="pdf-opt-text">
+                        <strong>Solo Gasolina</strong>
+                        <small>Ventas de gasolina únicamente</small>
+                    </div>
+                </button>
+                <button type="button" class="pdf-opt" data-seccion="diesel">
+                    <div class="pdf-opt-icon" style="background:#ede9fe; color:#6d28d9;">
+                        <i data-lucide="droplet" style="width:20px; height:20px;"></i>
+                    </div>
+                    <div class="pdf-opt-text">
+                        <strong>Solo Diésel</strong>
+                        <small>Ventas de diésel únicamente</small>
+                    </div>
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Modal detalle de ventas de estación -->

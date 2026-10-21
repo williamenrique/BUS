@@ -3,7 +3,7 @@
        SITGO · CSS común para todos los PDFs
        ============================================ */
 
-    @page { margin: 25mm 15mm 20mm 15mm; }
+    @page { margin: <?= $meta['page_margin_top'] ?? '25mm' ?> 15mm <?= $meta['page_margin_bottom'] ?? '20mm' ?> 15mm; }
 
     * { box-sizing: border-box; }
 

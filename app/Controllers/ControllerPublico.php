@@ -431,9 +431,9 @@ class ControllerPublico extends Controller{
     private function getEstadoMantenimiento($s): string{
         return ['P'=>'Pendiente','E'=>'En Proceso','T'=>'Terminado','C'=>'Cancelado','A'=>'Aprobado'][$s] ?? ($s ?? 'Sin estado');
     }
-        /* ============================================================
+    /* ============================================================
        PDF PÚBLICO · Genera PDF sin sesión
-       Solo permite templates publico_*
+       Whitelist: templates publico_* + los que se reutilizan del sistema
        ============================================================ */
     public function pdfGenerar(): void{
         $raw = file_get_contents('php://input');
@@ -453,7 +453,8 @@ class ControllerPublico extends Controller{
             'publico_movimientos',
             'publico_ventas_estacion',
             'publico_aceite',
-            'flota_operatividad',   // ← para el resumen público
+            'flota_operatividad',
+            'estacion_reporte_dia',
         ];
 
         if (!in_array($view, $permitidos, true)){
@@ -477,13 +478,12 @@ class ControllerPublico extends Controller{
                 'meta'     => $meta,
                 'filename' => $filename,
                 'expira'   => time() + 1800,
-                'publico'  => true,  // ← flag para que /pdf/ver no pida user_id
+                'publico'  => true,
             ];
 
             $tokenFile = $dir . $token . '.json';
             file_put_contents($tokenFile, json_encode($tokenData, JSON_UNESCAPED_UNICODE));
 
-            // Limpieza de expirados
             foreach (glob($dir . '*.json') ?: [] as $f){
                 $t = @json_decode(@file_get_contents($f), true);
                 if (!is_array($t) || ($t['expira'] ?? 0) < time()) @unlink($f);

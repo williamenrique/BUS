@@ -23,6 +23,39 @@ $iniciales = strtoupper(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= e($pageTitle) ?> · <?= e(SITGO_APP_NAME) ?></title>
+    <meta name="application-name" content="Sistema de Inventario y Gestión Operativa">
+    <meta name="theme-color" content="#0d6efd">
+
+    <!-- Autoría y propiedad -->
+    <meta name="author" content="William Infante, Ing. de Sistemas">
+    <meta name="creator" content="William Infante">
+    <meta name="owner" content="William Infante">
+    <meta name="copyright" content="© William Infante. Todos los derechos reservados.">
+    <meta name="publisher" content="William Infante">
+
+    <!-- Derechos y licencia (ajustar según corresponda) -->
+    <meta name="rights" content="Uso interno. Prohibida la reproducción sin autorización.">
+    <meta name="license" content="Propietario">
+
+    <!-- Descripción breve y palabras clave -->
+    <meta name="description" content="Sistema de inventario de almacén, creación de órdenes de despacho, venta y registro de combustible, relación de personal y carga de registro de aceite de unidades.">
+    <meta name="keywords" content="inventario, almacén, órdenes de despacho, ventas, combustible, relación de personal, aceite, unidades, gestión operativa">
+
+    <!-- SEO y control de indexación -->
+    <meta name="robots" content="noindex, nofollow">
+
+    <!-- Open Graph (para compartir) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Sistema de Inventario y Gestión Operativa">
+    <meta property="og:description" content="Inventario de almacén, órdenes de despacho, ventas, registro de combustible, relación de personal y registro de aceite de unidades.">
+    <meta property="og:site_name" content="Sistema de Inventario y Gestión Operativa">
+    <meta property="og:locale" content="es_VE">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Sistema de Inventario y Gestión Operativa">
+    <meta name="twitter:description" content="Inventario de almacén, órdenes de despacho, ventas, combustible, personal y aceite de unidades.">
+
     <link rel="icon" href="<?= asset('img/logo.png') ?>">
     <link rel="stylesheet" href="<?= asset('css/tailwind.min.css') ?>">
     <link rel="stylesheet" href="<?= asset('css/styles.css') ?>">

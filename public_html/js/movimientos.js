@@ -221,11 +221,35 @@ document.addEventListener('DOMContentLoaded', () => {
         $('movLimit')?.addEventListener('change', e => { movPerPage = parseInt(e.target.value); movCurrentPage = 1; renderMovimientos(); });
 
         /* Estación */
-        $('btnEstFiltrar')?.addEventListener('click', cargarEstacion);
+        // Select estación → cambia DINÁMICAMENTE (mantiene fechas)
+        $('estEstacion')?.addEventListener('change', () => {
+            estCurrentPage = 1;
+            cargarEstacion();
+        });
+
+        // Botón Filtrar → aplica FECHAS
+        $('btnEstFiltrar')?.addEventListener('click', () => {
+            estCurrentPage = 1;
+            cargarEstacion();
+        });
+
+        // Fechas: NO recargan solas, marcan el botón como pendiente
+        $('estFechaInicio')?.addEventListener('change', () => {
+            $('btnEstFiltrar')?.classList.add('has-changes');
+        });
+        $('estFechaFin')?.addEventListener('change', () => {
+            $('btnEstFiltrar')?.classList.add('has-changes');
+        });
+
         $('estSearch')?.addEventListener('input', () => { estCurrentPage = 1; renderEstacion(); });
         $('estLimit')?.addEventListener('change', e => { estPerPage = parseInt(e.target.value); estCurrentPage = 1; renderEstacion(); });
         $('estChartType')?.addEventListener('change', renderEstacionChart);
-        $('btnPdfEstacion')?.addEventListener('click', generarPdfEstacion);
+
+        // Botón PDF → abre modal selector
+        $('btnPdfEstacion')?.addEventListener('click', () => abrirModalPdfEstacion());
+
+        // Modal: click en cada tarjeta
+        bindModalPdfEstacion();
     }
 
     /* ============================================================
@@ -1153,6 +1177,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 estacionId: $('estEstacion')?.value || 'todas'
             })
         });
+
+        $('btnEstFiltrar')?.classList.remove('has-changes');
+
         if (!d.success){
             bodyEl.innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>';
             return;
@@ -1163,7 +1190,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderEstacion();
         renderEstacionChart();
     }
-
     function renderEstacion(){
         if (!$('estBody')) return;
 
@@ -1182,25 +1208,45 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!page.length){
             $('estBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Sin datos</td></tr>';
         } else {
-            $('estBody').innerHTML = page.map(e => `
-                <tr>
-                    <td>${formatFecha(e.fecha)}</td>
-                    <td>${esc(e.estacion)}</td>
-                    <td class="text-right"><strong>${fmtNum(e.total_litros, 2)} L</strong></td>
-                    <td class="text-right">${e.total_ventas}</td>
-                    <td class="text-right"><strong>${fmtNum(e.total_bs, 2)} Bs</strong></td>
-                    <td class="text-right">
-                        <button class="action-btn" data-est='${esc(JSON.stringify(e)).replace(/'/g, "&#39;")}' title="Ver detalle">
-                            <i data-lucide="eye" class="w-4 h-4"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
+            $('estBody').innerHTML = page.map((e, idx) => {
+                const realIdx = start + idx;
+                return `
+                    <tr>
+                        <td>${formatFecha(e.fecha)}</td>
+                        <td>${esc(e.estacion)}</td>
+                        <td class="text-right"><strong>${fmtNum(e.total_litros, 2)} L</strong></td>
+                        <td class="text-right">${e.total_ventas}</td>
+                        <td class="text-right"><strong>${fmtNum(e.total_bs, 2)} Bs</strong></td>
+                        <td class="text-right">
+                            <div class="actions" style="display:flex; gap:.25rem; justify-content:flex-end;">
+                                <button class="action-btn" data-est-ver="${realIdx}" title="Ver tickets">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button class="action-btn edit" data-est-pdf="${realIdx}" title="Generar PDF de este cierre">
+                                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
 
-            document.querySelectorAll('#estBody [data-est]').forEach(btn => {
+            // Ver detalle (modal)
+            document.querySelectorAll('#estBody [data-est-ver]').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const e = JSON.parse(btn.dataset.est.replace(/&#39;/g, "'"));
-                    abrirModalDetalleEstacion(e);
+                    const idx = parseInt(btn.dataset.estVer);
+                    const e = estFiltered[idx];
+                    if (e) abrirModalDetalleEstacion(e);
+                });
+            });
+
+            // PDF del cierre seleccionado
+            document.querySelectorAll('#estBody [data-est-pdf]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const idx = parseInt(btn.dataset.estPdf);
+                    const e = estFiltered[idx];
+                    if (!e) return;
+                    abrirModalPdfCierre(e);
                 });
             });
         }
@@ -1491,28 +1537,130 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ============================================================
        PDF · VENTAS ESTACIÓN
        ============================================================ */
-    async function generarPdfEstacion(){
-        if (!estAll.length){
-            alert('No hay datos para exportar');
+    /* ============================================================
+    /* ============================================================
+    MODAL · Selector PDF de un CIERRE
+    ============================================================ */
+    let cierreSeleccionado = null;
+
+    function bindModalPdfEstacion(){
+        const modal = $('modalPdfEstacion');
+        if (!modal) return;
+
+        modal.addEventListener('click', e => {
+            if (e.target === modal || e.target.closest('[data-close]')){
+                modal.classList.remove('open');
+                document.body.style.overflow = '';
+                return;
+            }
+            const opt = e.target.closest('.pdf-opt');
+            if (opt){
+                const seccion = opt.dataset.seccion;
+                modal.classList.remove('open');
+                document.body.style.overflow = '';
+                generarPdfCierreSeccion(seccion);
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape'){
+                modal.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+        });
+    }
+
+    function abrirModalPdfCierre(item){
+        if (!item){
+            alert('Selecciona un cierre primero');
+            return;
+        }
+        cierreSeleccionado = item;
+
+        const modal = $('modalPdfEstacion');
+        if (!modal) return;
+
+        // Actualizar el título del modal con la info del cierre
+        const title = modal.querySelector('.pdf-modal-header h3');
+        if (title){
+            title.innerHTML = `¿Qué reporte desea generar?<br>
+                <small style="font-size:.78rem; color:#64748b; font-weight:400;">
+                    Cierre del ${formatFecha(item.fecha)} · ${esc(item.estacion)} · ${item.total_ventas} ventas
+                </small>`;
+        }
+
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        refreshIcons();
+    }
+
+    /* ============================================================
+    PDF · Genera el PDF de UN cierre en una sección
+    ============================================================ */
+    async function generarPdfCierreSeccion(seccion){
+        if (!cierreSeleccionado){
+            alert('No hay cierre seleccionado');
             return;
         }
 
-        const sel = $('estEstacion');
-        const nombreEst = (sel?.value === 'todas' || !sel) ? 'Todas las estaciones' : (sel.options[sel.selectedIndex].text || 'N/D');
+        const item = cierreSeleccionado;
+        const ventasOriginales = item.ventas || [];
+
+        if (!ventasOriginales.length){
+            alert('Este cierre no tiene ventas registradas');
+            return;
+        }
+
+        // Normalizar al formato que espera el template estacion_reporte_dia
+        const ventas = ventasOriginales.map(v => {
+            const pago = (v.tipo_pago || '').toLowerCase();
+            const esDivisa   = pago.includes('divisa');
+            const esEfectivo = pago.includes('efectivo');
+            const esDebito   = pago.includes('débito') || pago.includes('debito') || pago.includes('punto');
+            const tasa = parseFloat(v.tasa_dia || 0);
+
+            return {
+                numero_venta:      v.id_venta,
+                hora_venta:        v.hora_venta,
+                tipo_vehiculo:     v.tipo_vehiculo,
+                tipo_combustible:  v.tipo_combustible,
+                cantidad_litros:   v.litros,
+                monto:             v.monto,
+                tasa_dia:          tasa,
+                tipo_pago:         v.tipo_pago,
+                monto_divisa:      esDivisa ? v.monto : 0,
+                efectivob:         esEfectivo ? v.monto : (esDivisa ? v.monto * tasa : 0),
+                tarjeta_debito:    esDebito ? v.monto : 0,
+            };
+        });
+
+        // Nombre del vendedor: puede venir del primer ticket o del campo vendedores
+        let nombreVendedor = '';
+        if (ventasOriginales.length && ventasOriginales[0].vendedor){
+            nombreVendedor = ventasOriginales[0].vendedor;
+        } else if ((item.vendedores || []).length){
+            nombreVendedor = item.vendedores[0].nombre || '';
+        }
+
+        const cierreData = {
+            id_cierre:        null,
+            fecha_cierre:     item.fecha,
+            estacion:         item.estacion || '',
+            usuario_nombres:  nombreVendedor,
+            usuario_apellidos:'',
+            tasa_dia:         ventasOriginales[0]?.tasa_dia || 0,
+        };
 
         await SITGO_PDF.generar(
-            'publico_ventas_estacion',
+            'estacion_reporte_dia',
+            { cierre: cierreData, ventas, seccion },
+            `cierre_${item.estacion?.replace(/\s+/g,'_') || 'estacion'}_${seccion}_${item.fecha}.pdf`,
             {
-                data: estAll,
-                fechaInicio: $('estFechaInicio')?.value || '',
-                fechaFin: $('estFechaFin')?.value || '',
-                estacionNombre: nombreEst,
-            },
-            `ventas_estacion_${$('estFechaInicio')?.value || ''}_${$('estFechaFin')?.value || ''}.pdf`,
-            {
-                titulo_documento: 'VENTAS DE ESTACIÓN',
-                doc_color: '#1e40af',
-                mostrar_header: false,
+                titulo_documento:   'CIERRE DEL DÍA',
+                doc_color:          '#1e40af',
+                mostrar_header:     false,
+                page_margin_top:    '8mm',    // ← solo 8mm arriba (antes 25mm)
+                page_margin_bottom: '15mm',
             }
         );
     }
