@@ -1,5 +1,3 @@
-console.log('✅ despachos.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'despachos/i/' + INST;
@@ -8,10 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let dt = null;
     let combos = { flota: [], operadores: [], mecanicos: [], despachadores: [], articulos: [] };
     let articulosAgregados = [];
+    let despachoActual = null; // Para el botón PDF
 
-    /* ============================================================
-       RENDER ROW
-       ============================================================ */
     function renderRow(d){
         return `
             <tr>
@@ -43,15 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
     }
 
-    /* ============================================================
-       INIT
-       ============================================================ */
     (async () => {
         try{
             await cargarCombos();
             await cargarStats();
 
-            // Fecha por defecto
             $('fecha_despacho').valueAsDate = new Date();
 
             dt = new DataTable({
@@ -82,9 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
-    /* ============================================================
-       API
-       ============================================================ */
     async function fetchJSON(url, opts = {}){
         try{
             const r = await fetch(url, {
@@ -106,7 +95,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.ok) throw new Error('combos');
         combos = d;
 
-        // Flota
         $('id_flota').innerHTML = '<option value="">Seleccione...</option>';
         d.flota.forEach(f => {
             const o = document.createElement('option');
@@ -116,12 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
             $('id_flota').appendChild(o);
         });
 
-        // Personal
         fillPersonal($('operador_id'),    d.operadores);
         fillPersonal($('mecanico_id'),    d.mecanicos);
         fillPersonal($('despachador_id'), d.despachadores);
 
-        // Artículos
         $('sel_articulo').innerHTML = '<option value="">Seleccione...</option>';
         d.articulos.forEach(a => {
             const o = document.createElement('option');
@@ -154,16 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch {}
     }
 
-    /* ============================================================
-       EVENTOS
-       ============================================================ */
     function bindEvents(){
         $('btnNuevo')?.addEventListener('click', abrirCrear);
         $('btnCancelar')?.addEventListener('click', cerrarFormulario);
         $('toggleForm')?.addEventListener('click', toggleSeccion);
         $('btnToggleForm')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion(); });
 
-        // Info unidad
         $('id_flota')?.addEventListener('change', (e) => {
             const opt = e.target.selectedOptions[0];
             if (!opt || !opt.dataset.info){
@@ -179,6 +161,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         $('filtroFecha')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
+
+        // Botón PDF dentro del modal de detalle
+        $('btnImprimirPdfDetalle')?.addEventListener('click', generarPdfDetalle);
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape'){ cerrarFormulario(); cerrarModalDespacho('modalDetalle'); cerrarModalDespacho('modalEliminar'); }
@@ -200,9 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ============================================================
-       SECCIÓN COLAPSABLE
-       ============================================================ */
     function toggleSeccion(){
         const s = $('seccionForm');
         s.classList.toggle('collapsed');
@@ -220,9 +202,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (t) t.style.transform = 'rotate(0deg)';
     }
 
-    /* ============================================================
-       FORM ARTÍCULOS
-       ============================================================ */
     function bindArticuloForm(){
         $('sel_articulo')?.addEventListener('change', (e) => {
             const opt = e.target.selectedOptions[0];
@@ -302,9 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ============================================================
-       CREAR
-       ============================================================ */
     function abrirCrear(){
         const f = $('formDespacho');
         f.reset();
@@ -327,9 +303,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('seccionForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    /* ============================================================
-       EDITAR
-       ============================================================ */
     async function abrirEditar(id){
         try{
             const d = await fetchJSON(API + '/obtener/' + id);
@@ -344,10 +317,8 @@ document.addEventListener('DOMContentLoaded', () => {
             $('despachador_id').value = o.despachador_id || '';
             $('observacion').value = o.observacion || '';
 
-            // Info unidad
             $('id_flota').dispatchEvent(new Event('change'));
 
-            // Artículos
             articulosAgregados = (o.articulos || []).map(a => ({
                 id_producto: parseInt(a.id_producto),
                 producto: a.producto,
@@ -371,9 +342,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================================
-       GUARDAR
-       ============================================================ */
     function bindForm(){
         $('formDespacho')?.addEventListener('submit', guardar);
     }
@@ -434,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
             articulosAgregados = [];
             cerrarFormulario();
             dt?.refresh();
-            cargarCombos(); // recargar por si cambió stock
+            cargarCombos();
             cargarStats();
         } catch (err){
             console.error(err);
@@ -445,84 +413,138 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================================
-       VER DETALLE
-       ============================================================ */
     async function verDespacho(id){
         try{
             const d = await fetchJSON(API + '/obtener/' + id);
-            if (!d.ok) throw new Error(d.message);
-            const o = d.data;
 
-            const html = `
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1.25rem;">
-                    <div>
-                        <p style="font-size:.7rem; text-transform:uppercase; color:#94a3b8; margin:0;">Fecha</p>
-                        <strong>${formatFecha(o.fecha_despacho)}</strong>
+            if (!d || !d.ok){
+                toast(d?.message || 'No se pudo cargar el despacho.', 'error');
+                return;
+            }
+
+            const o = d.data;
+            if (!o){
+                toast('El despacho no tiene datos.', 'error');
+                return;
+            }
+
+            despachoActual = o;
+            const arts = Array.isArray(o.articulos) ? o.articulos : [];
+
+            // Remover modal previo
+            document.getElementById('__modalDetalleDinamico')?.remove();
+
+            // Crear modal desde cero (todo inline, no depende del CSS)
+            const wrap = document.createElement('div');
+            wrap.id = '__modalDetalleDinamico';
+            wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;';
+
+            const artsHtml = arts.length
+                ? arts.map(a => `
+                    <tr>
+                        <td style="padding:.6rem .8rem; border-bottom:1px solid #f1f5f9;">${esc(a.producto || '—')}</td>
+                        <td style="padding:.6rem .8rem; border-bottom:1px solid #f1f5f9; text-align:right;">${a.cant_despacho ?? '—'} ${esc(a.present_producto || '')}</td>
+                        <td style="padding:.6rem .8rem; border-bottom:1px solid #f1f5f9;">${esc(a.ubicacion || '—')}</td>
+                    </tr>`).join('')
+                : '<tr><td colspan="3" style="padding:1rem; text-align:center; color:#94a3b8;">Sin artículos</td></tr>';
+
+            wrap.innerHTML = `
+                <div style="background:#fff;border-radius:14px;width:100%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 25px 50px rgba(0,0,0,.3);overflow:hidden;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:1rem 1.5rem;border-bottom:1px solid #e2e8f0;flex-shrink:0;">
+                        <h3 style="margin:0;font-size:1.125rem;font-weight:700;color:#0f172a;">
+                            Despacho #${o.numero_orden || o.id_despacho || id}
+                        </h3>
+                        <button type="button" data-close="1" style="background:transparent;border:none;font-size:1.5rem;line-height:1;color:#94a3b8;cursor:pointer;padding:0 .25rem;">&times;</button>
                     </div>
-                    <div>
-                        <p style="font-size:.7rem; text-transform:uppercase; color:#94a3b8; margin:0;">Unidad</p>
-                        <strong>${esc(o.id_unidad || '—')}</strong>
+
+                    <div style="padding:1.5rem;overflow-y:auto;flex:1;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.25rem;">
+                            <div><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Fecha</p><strong>${formatFecha(o.fecha_despacho)}</strong></div>
+                            <div><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Unidad</p><strong>${esc(o.id_unidad || '—')}</strong></div>
+                            <div><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Operador</p><strong>${esc(o.operador_nombre || '—')}</strong></div>
+                            <div><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Mecánico</p><strong>${esc(o.mecanico_nombre || '—')}</strong></div>
+                            <div><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Despachador</p><strong>${esc(o.despachador_nombre || '—')}</strong></div>
+                            <div><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Artículos</p><strong>${arts.length}</strong></div>
+                            <div style="grid-column:1 / -1;"><p style="font-size:.7rem;text-transform:uppercase;color:#94a3b8;margin:0;">Creado por</p><strong>${esc(o.usuario_registro || ('Usuario #' + (o.user_id || '—')))}</strong></div>
+                        </div>
+
+                        ${o.observacion ? `<div style="background:#f8fafc;border-left:3px solid #cbd5e1;padding:.65rem .85rem;border-radius:.35rem;margin-bottom:1rem;font-size:.85rem;color:#475569;font-style:italic;">${esc(o.observacion)}</div>` : ''}
+
+                        <h4 style="font-size:.9rem;font-weight:600;color:#334155;margin:1rem 0 .5rem;">Artículos despachados</h4>
+                        <table style="width:100%;border-collapse:collapse;font-size:.875rem;">
+                            <thead>
+                                <tr>
+                                    <th style="background:#f8fafc;text-align:left;padding:.6rem .8rem;font-size:.7rem;text-transform:uppercase;color:#475569;border-bottom:1px solid #e2e8f0;">Artículo</th>
+                                    <th style="background:#f8fafc;text-align:right;padding:.6rem .8rem;font-size:.7rem;text-transform:uppercase;color:#475569;border-bottom:1px solid #e2e8f0;">Cantidad</th>
+                                    <th style="background:#f8fafc;text-align:left;padding:.6rem .8rem;font-size:.7rem;text-transform:uppercase;color:#475569;border-bottom:1px solid #e2e8f0;">Ubicación</th>
+                                </tr>
+                            </thead>
+                            <tbody>${artsHtml}</tbody>
+                        </table>
                     </div>
-                    <div>
-                        <p style="font-size:.7rem; text-transform:uppercase; color:#94a3b8; margin:0;">Operador</p>
-                        <strong>${esc(o.operador_nombre || '—')}</strong>
-                    </div>
-                    <div>
-                        <p style="font-size:.7rem; text-transform:uppercase; color:#94a3b8; margin:0;">Mecánico</p>
-                        <strong>${esc(o.mecanico_nombre || '—')}</strong>
-                    </div>
-                    <div>
-                        <p style="font-size:.7rem; text-transform:uppercase; color:#94a3b8; margin:0;">Despachador</p>
-                        <strong>${esc(o.despachador_nombre || '—')}</strong>
-                    </div>
-                    <div>
-                        <p style="font-size:.7rem; text-transform:uppercase; color:#94a3b8; margin:0;">Artículos</p>
-                        <strong>${o.articulos?.length || 0}</strong>
+
+                    <div style="display:flex;justify-content:flex-end;gap:.75rem;padding:1rem 1.5rem;border-top:1px solid #e2e8f0;flex-shrink:0;">
+                        <button type="button" data-close="1" class="btn btn-ghost">Cerrar</button>
+                        <button type="button" id="__btnPdfDetalle" class="btn btn-primary">Imprimir PDF</button>
                     </div>
                 </div>
-
-                ${o.observacion ? `
-                    <div style="background:#f8fafc; border-left:3px solid #cbd5e1; padding:.65rem .85rem; border-radius:.35rem; margin-bottom:1rem; font-size:.85rem; color:#475569; font-style:italic;">
-                        ${esc(o.observacion)}
-                    </div>
-                ` : ''}
-
-                <h4 style="font-size:.9rem; font-weight:600; color:#334155; margin:1rem 0 .5rem;">
-                    Artículos despachados
-                </h4>
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Artículo</th>
-                            <th class="text-right">Cantidad</th>
-                            <th>Ubicación</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${(o.articulos || []).map(a => `
-                            <tr>
-                                <td>${esc(a.producto)}</td>
-                                <td class="text-right">${a.cant_despacho} ${esc(a.present_producto || '')}</td>
-                                <td>${esc(a.ubicacion || '—')}</td>
-                            </tr>
-                        `).join('') || '<tr><td colspan="3" class="dt-empty">Sin artículos</td></tr>'}
-                    </tbody>
-                </table>
             `;
 
-            $('modalDetalleTitle').textContent = `Despacho #${o.numero_orden || o.id_despacho}`;
-            $('modalDetalleBody').innerHTML = html;
-            $('modalDetalle').classList.add('open');
+            wrap.addEventListener('click', (e) => { if (e.target === wrap) wrap.remove(); });
+            wrap.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => wrap.remove()));
+            wrap.querySelector('#__btnPdfDetalle').addEventListener('click', async (e) => {
+                const b = e.currentTarget;
+                b.disabled = true;
+                try {
+                    await SITGO_PDF.generar(
+                        'despachos_orden',
+                        { despacho: despachoActual },
+                        `orden_despacho_${despachoActual.numero_orden || despachoActual.id_despacho}.pdf`,
+                        {
+                            titulo_documento: 'ORDEN DE DESPACHO',
+                            doc_numero: `#${String(despachoActual.numero_orden || despachoActual.id_despacho).padStart(6, '0')}`,
+                            doc_color: '#1e40af',
+                        }
+                    );
+                } finally {
+                    b.disabled = false;
+                }
+            });
+
+            const onEsc = (e) => { if (e.key === 'Escape'){ wrap.remove(); document.removeEventListener('keydown', onEsc); } };
+            document.addEventListener('keydown', onEsc);
+
+            document.body.appendChild(wrap);
             document.body.style.overflow = 'hidden';
+            
+
         } catch (e){
+            console.error('verDespacho excepción:', e);
             toast('Error: ' + e.message, 'error');
         }
     }
+    async function generarPdfDetalle(){
+        if (!despachoActual) return;
 
-    /* ============================================================
-       ELIMINAR
-       ============================================================ */
+        const btn = $('btnImprimirPdfDetalle');
+        btn.disabled = true;
+
+        try {
+            await SITGO_PDF.generar(
+                'despachos_orden',
+                { despacho: despachoActual },
+                `orden_despacho_${despachoActual.numero_orden || despachoActual.id_despacho}.pdf`,
+                {
+                    titulo_documento: 'ORDEN DE DESPACHO',
+                    doc_numero:       `#${String(despachoActual.numero_orden || despachoActual.id_despacho).padStart(6, '0')}`,
+                    doc_color:        '#1e40af',
+                }
+            );
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     function abrirEliminar(id){
         const d = dt?.getData().find(x => Number(x.id_despacho) === Number(id));
         $('del_id_despacho').value = id;
@@ -561,13 +583,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.cerrarModalDespacho = function(idModal){
-        $(idModal).classList.remove('open');
+        const m = $(idModal);
+        if (!m) return;
+        m.classList.remove('open');
+        m.style.display = 'none';
         document.body.style.overflow = '';
     };
 
-    /* ============================================================
-       HELPERS
-       ============================================================ */
     function limpiarErrores(){
         const form = $('formDespacho');
         form.querySelectorAll('.error').forEach(el => el.textContent = '');

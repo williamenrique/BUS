@@ -471,10 +471,6 @@ class ModelEstacion extends Model{
         ];
     }
 
-    /**
-     * NUEVO · Ventas de un cierre paginadas (para DataTable del detalle).
-     * Filtra por id_cierre obligatorio. Si $q viene, busca en id_venta, tipo pago, etc.
-     */
     public function listarVentasCierrePaginado(int $idCierre, string $q = '', int $limit = 10, int $offset = 0): array{
         $where  = "v.id_cierre_diario = :c";
         $params = ['c' => $idCierre];
@@ -666,5 +662,188 @@ class ModelEstacion extends Model{
              WHERE session_id = :sid",
             ['sid' => $sessionId]
         );
+    }
+
+    /* ============================================================
+       PDF · CIERRE DEL DÍA
+       ============================================================ */
+    public function ventasDetalleCierre(int $idCierre): array{
+        $sql = "SELECT v.id_venta AS numero_venta,
+                       v.hora_venta,
+                       tv.nombre AS tipo_vehiculo,
+                       tc.nombre AS tipo_combustible,
+                       v.litros AS cantidad_litros,
+                       v.monto,
+                       v.tasa_dia,
+                       tp.nombre AS tipo_pago,
+                       CASE WHEN tp.id_tipo_pago = 1 THEN v.monto ELSE 0 END AS monto_divisa,
+                       CASE WHEN tp.id_tipo_pago = 1 THEN v.monto * v.tasa_dia
+                            WHEN tp.id_tipo_pago = 2 THEN v.monto ELSE 0 END AS efectivob,
+                       CASE WHEN tp.id_tipo_pago = 3 THEN v.monto ELSE 0 END AS tarjeta_debito
+                FROM table_es_venta v
+                INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
+                INNER JOIN table_es_tipos_combustible tc ON tc.id_tipo_combustible = v.id_tipo_combustible
+                INNER JOIN table_es_tipos_pago tp ON tp.id_tipo_pago = v.id_tipo_pago
+                WHERE v.id_cierre_diario = :id
+                ORDER BY v.id_venta ASC";
+        return $this->fetchAll($sql, ['id' => $idCierre]);
+    }
+
+    /* ============================================================
+       PDF · REPORTE DE LITROS (filtrado por estación)
+       ============================================================ */
+    public function litrosReporte(string $fecha, string $type = 'day', ?string $fechaFin = null, ?int $idEstacion = null): array{
+        $where  = [];
+        $params = [];
+
+        if ($type === 'month'){
+            if (!empty($fechaFin) && $fechaFin !== $fecha){
+                $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') BETWEEN :f AND :ff";
+                $params['f']  = $fecha;
+                $params['ff'] = $fechaFin;
+                $agruparPor  = "DATE_FORMAT(v.fecha_venta, '%Y-%m')";
+                $selectAlias = "DATE_FORMAT(v.fecha_venta, '%Y-%m') AS mes";
+            } else {
+                $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') = :f";
+                $params['f'] = $fecha;
+                $agruparPor  = "v.fecha_venta";
+                $selectAlias = "v.fecha_venta";
+            }
+        } else {
+            if (!empty($fechaFin) && $fechaFin !== $fecha){
+                $where[] = "v.fecha_venta BETWEEN :f AND :ff";
+                $params['f']  = $fecha;
+                $params['ff'] = $fechaFin;
+            } else {
+                $where[] = "v.fecha_venta = :f";
+                $params['f'] = $fecha;
+            }
+            $agruparPor  = "tv.nombre";
+            $selectAlias = "tv.nombre AS tipo_vehiculo";
+        }
+
+        if ($idEstacion !== null && $idEstacion > 0){
+            $where[] = "u.usuario_estacion_id = :est";
+            $params['est'] = $idEstacion;
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        if ($type === 'month'){
+            $sql = "SELECT {$selectAlias},
+                           COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
+                    FROM table_es_venta v
+                    INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
+                    WHERE {$whereSql}
+                    GROUP BY {$agruparPor}
+                    ORDER BY {$agruparPor} ASC";
+            return $this->fetchAll($sql, $params);
+        }
+
+        $sql = "SELECT {$selectAlias},
+                       COUNT(*) AS cantidad_ventas,
+                       COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
+                FROM table_es_venta v
+                INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
+                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
+                WHERE {$whereSql}
+                GROUP BY {$agruparPor}
+                ORDER BY {$agruparPor} ASC";
+        return $this->fetchAll($sql, $params);
+    }
+
+    public function litrosReporteTotal(string $fecha, string $type = 'day', ?string $fechaFin = null, ?int $idEstacion = null): float{
+        $where  = [];
+        $params = [];
+
+        if ($type === 'month'){
+            if (!empty($fechaFin) && $fechaFin !== $fecha){
+                $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') BETWEEN :f AND :ff";
+                $params['f']  = $fecha;
+                $params['ff'] = $fechaFin;
+            } else {
+                $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') = :f";
+                $params['f'] = $fecha;
+            }
+        } else {
+            if (!empty($fechaFin) && $fechaFin !== $fecha){
+                $where[] = "v.fecha_venta BETWEEN :f AND :ff";
+                $params['f']  = $fecha;
+                $params['ff'] = $fechaFin;
+            } else {
+                $where[] = "v.fecha_venta = :f";
+                $params['f'] = $fecha;
+            }
+        }
+
+        if ($idEstacion !== null && $idEstacion > 0){
+            $where[] = "u.usuario_estacion_id = :est";
+            $params['est'] = $idEstacion;
+        }
+
+        $whereSql = implode(' AND ', $where);
+        $sql = "SELECT COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS t
+                FROM table_es_venta v
+                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
+                WHERE {$whereSql}";
+        return (float)($this->fetchOne($sql, $params)['t'] ?? 0);
+    }
+
+    public function litrosPorCombustible(string $fecha, string $type, ?string $fechaFin, ?int $idEstacion, int $idComb): float{
+        $where  = [];
+        $params = [];
+
+        if ($type === 'month'){
+            if (!empty($fechaFin) && $fechaFin !== $fecha){
+                $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') BETWEEN :f AND :ff";
+                $params['f']  = $fecha;
+                $params['ff'] = $fechaFin;
+            } else {
+                $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') = :f";
+                $params['f'] = $fecha;
+            }
+        } else {
+            if (!empty($fechaFin) && $fechaFin !== $fecha){
+                $where[] = "v.fecha_venta BETWEEN :f AND :ff";
+                $params['f']  = $fecha;
+                $params['ff'] = $fechaFin;
+            } else {
+                $where[] = "v.fecha_venta = :f";
+                $params['f'] = $fecha;
+            }
+        }
+
+        if ($idEstacion !== null && $idEstacion > 0){
+            $where[] = "u.usuario_estacion_id = :est";
+            $params['est'] = $idEstacion;
+        }
+
+        $where[] = "v.id_tipo_combustible = :comb";
+        $params['comb'] = $idComb;
+
+        $whereSql = implode(' AND ', $where);
+        $sql = "SELECT COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS t
+                FROM table_es_venta v
+                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
+                WHERE {$whereSql}";
+        return (float)($this->fetchOne($sql, $params)['t'] ?? 0);
+    }
+
+        /**
+     * Devuelve nombre y apellido del vendedor (usando table_personal).
+     */
+    public function nombreVendedor(int $idUser): array{
+        $row = $this->fetchOne(
+            "SELECT p.personal_nombre, p.personal_apellido
+             FROM table_usuarios u
+             INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+             WHERE u.usuario_id = :id LIMIT 1",
+            ['id' => $idUser]
+        );
+
+        return [
+            'nombre'   => $row['personal_nombre']   ?? '',
+            'apellido' => $row['personal_apellido'] ?? '',
+        ];
     }
 }

@@ -218,5 +218,3 @@ window.apiFetch = async function(url, opts = {}){
         return r;
     };
 })();
-
-console.log('✅ SITGO · Manejo global de errores de BD activado');

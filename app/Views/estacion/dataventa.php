@@ -5,10 +5,14 @@ $user = auth_user();
 <!-- Page header -->
 <div class="page-header">
     <div>
-        <h2 class="page-title">
-            Data Venta · Administrador
-        </h2>
+        <h2 class="page-title">Data Venta · Administrador</h2>
         <p class="page-subtitle">Litros, ventas abiertas y cierres</p>
+    </div>
+    <div style="display:flex; gap:.5rem;">
+        <button id="btnPdfLitros" class="btn btn-ghost">
+            <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+            <span>PDF Litros</span>
+        </button>
     </div>
 </div>
 
@@ -46,7 +50,6 @@ $user = auth_user();
             </select>
             <span class="dt-toolbar-label">registros</span>
         </div>
-
         <div class="dt-toolbar-right">
             <div class="filter-search" style="min-width:240px;">
                 <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
@@ -54,7 +57,6 @@ $user = auth_user();
             </div>
         </div>
     </div>
-
     <div class="table-wrap">
         <table class="data-table">
             <thead>
@@ -70,7 +72,6 @@ $user = auth_user();
             </tbody>
         </table>
     </div>
-
     <div class="dt-footer">
         <div class="dt-info">
             Mostrando <strong id="startOpenSales">0</strong>–<strong id="endOpenSales">0</strong>
@@ -96,7 +97,6 @@ $user = auth_user();
             </select>
             <span class="dt-toolbar-label">registros</span>
         </div>
-
         <div class="dt-toolbar-right">
             <select id="searchType" class="filter-select" style="min-width:120px;">
                 <option value="day">Por día</option>
@@ -110,7 +110,6 @@ $user = auth_user();
             </div>
         </div>
     </div>
-
     <div class="table-wrap">
         <table class="data-table">
             <thead>
@@ -131,7 +130,6 @@ $user = auth_user();
             </tbody>
         </table>
     </div>
-
     <div class="dt-footer">
         <div class="dt-info">
             Mostrando <strong id="startCierres">0</strong>–<strong id="endCierres">0</strong>
@@ -163,7 +161,6 @@ $user = auth_user();
             </select>
         </div>
     </div>
-
     <div class="table-wrap">
         <table class="data-table">
             <thead>
@@ -183,7 +180,6 @@ $user = auth_user();
             </tbody>
         </table>
     </div>
-
     <div class="dt-footer">
         <div class="dt-info">
             Mostrando <strong id="startVentasCierre">0</strong>–<strong id="endVentasCierre">0</strong>
@@ -193,7 +189,6 @@ $user = auth_user();
             <div class="dt-pagination" id="paginationVentasCierre"></div>
         </div>
     </div>
-
     <div style="display:flex; gap:.5rem; justify-content:flex-end; padding:1rem 1.25rem; border-top:1px solid #e2e8f0;">
         <button id="btnImprimirCierre" class="btn btn-primary">
             <?= icon_tag('printer', 'printer', 'w-4 h-4') ?>
@@ -203,5 +198,55 @@ $user = auth_user();
             <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
             <span>Generar PDF</span>
         </button>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- MODAL · Selector de reporte PDF               -->
+<!-- ============================================ -->
+<div id="modalPdfSelector" class="pdf-modal-backdrop">
+    <div class="pdf-modal">
+        <div class="pdf-modal-header">
+            <h3>¿Qué reporte desea generar?</h3>
+            <button type="button" class="pdf-modal-close" data-close="1">&times;</button>
+        </div>
+        <div class="pdf-modal-body">
+            <button type="button" class="pdf-opt" data-seccion="resumen">
+                <div class="pdf-opt-icon" style="background:#dbeafe; color:#1e40af;">
+                    <?= icon_tag('bar-chart-3', 'bar-chart-3', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Resumen General</strong>
+                    <small>Totales y desgloses por combustible, vehículo y pago</small>
+                </div>
+            </button>
+            <button type="button" class="pdf-opt" data-seccion="ventas">
+                <div class="pdf-opt-icon" style="background:#dcfce7; color:#166534;">
+                    <?= icon_tag('list', 'list', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Todas las Ventas</strong>
+                    <small>Listado completo del día (gasolina y diésel)</small>
+                </div>
+            </button>
+            <button type="button" class="pdf-opt" data-seccion="gasolina">
+                <div class="pdf-opt-icon" style="background:#fef3c7; color:#b45309;">
+                    <?= icon_tag('fuel', 'fuel', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Solo Gasolina</strong>
+                    <small>Ventas de gasolina únicamente</small>
+                </div>
+            </button>
+            <button type="button" class="pdf-opt" data-seccion="diesel">
+                <div class="pdf-opt-icon" style="background:#ede9fe; color:#6d28d9;">
+                    <?= icon_tag('droplet', 'droplet', 'w-5 h-5') ?>
+                </div>
+                <div class="pdf-opt-text">
+                    <strong>Solo Diésel</strong>
+                    <small>Ventas de diésel únicamente</small>
+                </div>
+            </button>
+        </div>
     </div>
 </div>

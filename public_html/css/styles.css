@@ -908,7 +908,7 @@ body{
    MODAL DEL LOGIN
    ============================================ */
 
-.modal{
+.login-body-page .modal{
     display: none;
     position: fixed;
     top: 0;
@@ -922,11 +922,11 @@ body{
     padding: 20px;
 }
 
-.modal.open{
+.login-body-page .modal.open{
     display: flex;
 }
 
-.modal-content{
+.login-body-page .modal-content{
     background-color: #ffffff;
     border-radius: 12px;
     padding: 30px;
@@ -937,7 +937,7 @@ body{
     animation: fadeIn .2s ease-out;
 }
 
-.modal-close{
+.login-body-page .modal-close{
     position: absolute;
     top: 15px;
     right: 15px;
@@ -950,37 +950,37 @@ body{
     padding: 0;
 }
 
-.modal-close:hover{
+.login-body-page .modal-close:hover{
     color: #111827;
 }
 
-.modal-header{
+.login-body-page .modal-header{
     margin-bottom: 20px;
     text-align: center;
 }
 
-.modal-header h2{
+.login-body-page .modal-header h2{
     color: #6366f1;
     margin: 0 0 10px;
     font-size: 1.1rem;
     font-weight: 700;
 }
 
-.modal-header p{
+.login-body-page .modal-header p{
     margin: 0;
     font-size: .82rem;
     color: #64748b;
 }
 
-.modal-body{
+.login-body-page .modal-body{
     margin-bottom: 25px;
 }
 
-.modal-body .form-group{
+.login-body-page .modal-body .form-group{
     margin-bottom: 15px;
 }
 
-.modal-body .form-label{
+.login-body-page .modal-body .form-label{
     display: block;
     margin-bottom: 8px;
     font-weight: 500;
@@ -988,11 +988,11 @@ body{
     font-size: .875rem;
 }
 
-.modal-body .input-with-icon{
+.login-body-page .modal-body .input-with-icon{
     position: relative;
 }
 
-.modal-body .input-icon{
+.login-body-page .modal-body .input-icon{
     position: absolute;
     left: 15px;
     top: 50%;
@@ -1003,7 +1003,7 @@ body{
     pointer-events: none;
 }
 
-.modal-body .form-input{
+.login-body-page .modal-body .form-input{
     width: 100%;
     padding: 12px 15px 12px 45px;
     border: 1px solid #e5e7eb;
@@ -1017,43 +1017,43 @@ body{
     box-sizing: border-box;
 }
 
-.modal-body .form-input:focus{
+.login-body-page .modal-body .form-input:focus{
     border-color: #6366f1;
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
 }
 
-.modal-footer{
+.login-body-page .modal-footer{
     display: flex;
     justify-content: flex-end;
     gap: 10px;
 }
 
-.modal-footer .btn{
+.login-body-page .modal-footer .btn{
     width: auto;
     padding: 10px 18px;
     font-size: 14px;
     min-height: 40px;
 }
 
-.modal-footer .btn-secondary{
+.login-body-page .modal-footer .btn-secondary{
     background-color: #e5e7eb;
     color: #111827;
 }
 
-.modal-footer .btn-secondary:hover:not(:disabled){
+.login-body-page .modal-footer .btn-secondary:hover:not(:disabled){
     background-color: #d1d5db;
 }
 
-.modal-footer .btn-primary{
+.login-body-page .modal-footer .btn-primary{
     background-color: #6366f1;
     color: #ffffff;
 }
 
-.modal-footer .btn-primary:hover:not(:disabled){
+.login-body-page .modal-footer .btn-primary:hover:not(:disabled){
     background-color: #4f46e5;
 }
 
-.modal .login-alert{
+.login-body-page .modal .login-alert{
     padding: .65rem .85rem;
     border-radius: 8px;
     font-size: .82rem;
@@ -1062,13 +1062,13 @@ body{
     margin-bottom: 0;
 }
 
-.modal .login-alert-error{
+.login-body-page .modal .login-alert-error{
     background: #fee2e2;
     border-color: #fecaca;
     color: #991b1b;
 }
 
-.modal .login-alert-success{
+.login-body-page .modal .login-alert-success{
     background: #dcfce7;
     border-color: #bbf7d0;
     color: #166534;
@@ -1090,10 +1090,10 @@ body{
         align-items: flex-start;
         gap: 10px;
     }
-    .modal-footer{
+    .login-body-page .modal-footer{
         flex-direction: column-reverse;
     }
-    .modal-footer .btn{
+    .login-body-page .modal-footer .btn{
         width: 100%;
     }
 }
@@ -1375,7 +1375,7 @@ body{
     color: #b45309;
 }
 
-/* Modal */
+/* Modal (SISTEMA) */
 .modal-backdrop{
     display: none;
     position: fixed;
@@ -3507,7 +3507,131 @@ body{
     border-radius: .3rem;
     font-size: .75rem;
 }
+/* ============================================
+   20.1 · MÓDULO MENÚ · Modal de submenús
+   ============================================ */
 
+.modal-body{
+    padding: 1.5rem;
+}
+
+.submenu-form-wrap{
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .65rem;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.submenu-form-wrap h4{
+    margin: 0 0 .85rem;
+    font-size: .9rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.submenu-list-wrap h4{
+    margin: 0 0 .65rem;
+    font-size: .9rem;
+    font-weight: 700;
+    color: #334155;
+}
+
+.submenu-list-item{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .65rem;
+    padding: .55rem .75rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: .45rem;
+    margin-bottom: .35rem;
+    list-style: none;
+}
+
+.submenu-list-item:last-child{
+    margin-bottom: 0;
+}
+
+.submenu-list-info{
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.submenu-list-icon{
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: .35rem;
+    background: #dbeafe;
+    color: #1e40af;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.submenu-list-info > div{
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .1rem;
+}
+
+.submenu-list-info strong{
+    font-size: .82rem;
+    color: #0f172a;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.submenu-list-info code{
+    font-family: 'Courier New', monospace;
+    font-size: .68rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: .05rem .35rem;
+    border-radius: .2rem;
+    align-self: flex-start;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.submenu-list-actions{
+    display: flex;
+    gap: .25rem;
+    flex-shrink: 0;
+}
+
+/* La lista contenedora */
+#listaSubmenus{
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Ajuste del modal de submenús para que el header no se descentre */
+#modalSubmenu .modal-header{
+    padding: 1.15rem 1.5rem;
+}
+
+#modalSubmenu .modal-header h3{
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: 1rem;
+}
+
+#modalSubmenu .modal-body{
+    padding: 1.5rem;
+}
 /* ============================================
    21 · MÓDULO MENÚ · IconPicker
    ============================================ */
@@ -4278,7 +4402,53 @@ body{
     background: #f8fafc;
     border-top: 2px solid #e2e8f0;
 }
+/* ============================================
+   24.1 · BOTÓN COSTEAR (Compras · Pendientes)
+   ============================================ */
 
+.btn-costear{
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .4rem .75rem;
+    border: none;
+    border-radius: .4rem;
+    background: #059669;
+    color: #ffffff;
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color .15s, box-shadow .15s, transform .1s;
+    box-shadow: 0 1px 3px rgba(5,150,105,.3);
+    white-space: nowrap;
+}
+
+.btn-costear:hover:not(:disabled){
+    background: #047857;
+    box-shadow: 0 3px 8px rgba(5,150,105,.45);
+    transform: translateY(-1px);
+}
+
+.btn-costear:active:not(:disabled){
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(5,150,105,.3);
+}
+
+.btn-costear:disabled{
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-costear svg,
+.btn-costear i{
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0;
+    stroke-width: 2.4;
+}
 /* ============================================
    25 · MÓDULO ESTACIÓN DE SERVICIO
    ============================================ */
@@ -4649,5 +4819,332 @@ body{
     }
     .ip-item-name{
         display: none;
+    }
+}
+/* ============================================
+   27 · MODAL SELECTOR DE PDF (Estación)
+   ============================================ */
+
+.pdf-modal-backdrop{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15,23,42,.65);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    overflow-y: auto;
+}
+
+.pdf-modal-backdrop.open{
+    display: flex;
+}
+
+.pdf-modal{
+    background: #fff;
+    border-radius: 14px;
+    width: 100%;
+    max-width: 560px;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,.35);
+    animation: pdfModalIn .2s ease;
+}
+
+@keyframes pdfModalIn{
+    from{ opacity: 0; transform: translateY(12px) scale(.98); }
+    to  { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pdf-modal-header{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.pdf-modal-header h3{
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.pdf-modal-close{
+    background: transparent;
+    border: none;
+    font-size: 1.7rem;
+    line-height: 1;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0 .25rem;
+    border-radius: .35rem;
+    transition: background-color .15s, color .15s;
+}
+
+.pdf-modal-close:hover{
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.pdf-modal-body{
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+}
+
+.pdf-opt{
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: 1rem;
+    background: #fff;
+    border: 2px solid #e2e8f0;
+    border-radius: .75rem;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
+    transition: all .15s;
+    position: relative;
+}
+
+.pdf-opt:hover{
+    border-color: #2563eb;
+    background: #eff6ff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37,99,235,.15);
+}
+
+.pdf-opt:active{
+    transform: translateY(0);
+}
+
+.pdf-opt-icon{
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: .6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pdf-opt-icon svg,
+.pdf-opt-icon i{
+    width: 1.35rem !important;
+    height: 1.35rem !important;
+    stroke-width: 2.2;
+}
+
+.pdf-opt-text{
+    flex: 1;
+    min-width: 0;
+}
+
+.pdf-opt-text strong{
+    display: block;
+    font-size: .92rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-bottom: .2rem;
+    line-height: 1.2;
+}
+
+.pdf-opt-text small{
+    display: block;
+    font-size: .72rem;
+    color: #64748b;
+    line-height: 1.35;
+}
+
+@media (max-width: 520px){
+    .pdf-modal-body{
+        grid-template-columns: 1fr;
+    }
+    .pdf-opt-text strong{
+        font-size: .88rem;
+    }
+}
+/* ============================================
+   28 · MODAL DE RECUPERAR CONTRASEÑA (Login)
+   ============================================ */
+
+.login-modal-backdrop{
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.55);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.login-modal-backdrop.open{
+    display: flex;
+}
+
+.login-modal-content{
+    background-color: #ffffff;
+    border-radius: 12px;
+    padding: 30px;
+    width: 100%;
+    max-width: 450px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: fadeIn .2s ease-out;
+}
+
+.login-modal-content .modal-close{
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #6b7280;
+    line-height: 1;
+    padding: 0;
+}
+
+.login-modal-content .modal-close:hover{
+    color: #111827;
+}
+
+.login-modal-content .modal-header{
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.login-modal-content .modal-header h2{
+    color: #6366f1;
+    margin: 0 0 10px;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.login-modal-content .modal-header p{
+    margin: 0;
+    font-size: .82rem;
+    color: #64748b;
+}
+
+.login-modal-content .modal-body{
+    margin-bottom: 25px;
+}
+
+.login-modal-content .modal-body .form-group{
+    margin-bottom: 15px;
+}
+
+.login-modal-content .modal-body .form-label{
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: #111827;
+    font-size: .875rem;
+}
+
+.login-modal-content .modal-body .input-with-icon{
+    position: relative;
+}
+
+.login-modal-content .modal-body .input-icon{
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+}
+
+.login-modal-content .modal-body .form-input{
+    width: 100%;
+    padding: 12px 15px 12px 45px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #111827;
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+    box-sizing: border-box;
+}
+
+.login-modal-content .modal-body .form-input:focus{
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.login-modal-content .modal-footer{
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.login-modal-content .modal-footer .btn{
+    width: auto;
+    padding: 10px 18px;
+    font-size: 14px;
+    min-height: 40px;
+}
+
+.login-modal-content .modal-footer .btn-secondary{
+    background-color: #e5e7eb;
+    color: #111827;
+}
+
+.login-modal-content .modal-footer .btn-secondary:hover:not(:disabled){
+    background-color: #d1d5db;
+}
+
+.login-modal-content .modal-footer .btn-primary{
+    background-color: #6366f1;
+    color: #ffffff;
+}
+
+.login-modal-content .modal-footer .btn-primary:hover:not(:disabled){
+    background-color: #4f46e5;
+}
+
+.login-modal-content .login-alert{
+    padding: .65rem .85rem;
+    border-radius: 8px;
+    font-size: .82rem;
+    border: 1px solid transparent;
+    line-height: 1.4;
+    margin-bottom: 0;
+}
+
+.login-modal-content .login-alert-error{
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.login-modal-content .login-alert-success{
+    background: #dcfce7;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+@media (max-width: 576px){
+    .login-modal-content .modal-footer{
+        flex-direction: column-reverse;
+    }
+    .login-modal-content .modal-footer .btn{
+        width: 100%;
     }
 }

@@ -237,19 +237,23 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         <div class="dt-pagination" id="paginationDespachos"></div>
     </div>
 </div>
-
 <!-- ============================================ -->
 <!-- MODAL · VER DETALLE                           -->
 <!-- ============================================ -->
-<div id="modalDetalle" class="modal-backdrop">
-    <div class="modal" style="max-width:720px;">
-        <div class="modal-header">
-            <h3 id="modalDetalleTitle">Detalle de Despacho</h3>
-            <button type="button" class="modal-close" onclick="cerrarModalDespacho('modalDetalle')">&times;</button>
+<div id="modalDetalle" class="modal-backdrop" style="display:none;">
+    <div class="modal" style="max-width:720px; background:#fff; border-radius:14px; box-shadow:0 25px 50px rgba(0,0,0,.25);">
+        <div class="modal-header" style="display:flex; justify-content:space-between; align-items:center; padding:1.25rem 1.5rem; border-bottom:1px solid #e2e8f0;">
+            <h3 id="modalDetalleTitle" style="margin:0; font-size:1.125rem; font-weight:700; color:#0f172a;">Detalle de Despacho</h3>
+            <button type="button" class="modal-close" onclick="cerrarModalDespacho('modalDetalle')" style="background:none; border:none; font-size:1.5rem; line-height:1; color:#94a3b8; cursor:pointer;">&times;</button>
         </div>
-        <div id="modalDetalleBody" style="padding:1.5rem;"></div>
-        <div class="modal-footer" style="padding:1rem 1.5rem;">
+
+        <div id="modalDetalleBody" style="padding:1.5rem; max-height:60vh; overflow-y:auto;"></div>
+
+        <div class="modal-footer" style="display:flex; justify-content:flex-end; gap:.75rem; padding:1rem 1.5rem; border-top:1px solid #e2e8f0;">
             <button type="button" class="btn btn-ghost" onclick="cerrarModalDespacho('modalDetalle')">Cerrar</button>
+            <button type="button" class="btn btn-primary" id="btnImprimirPdfDetalle">
+                <span>Imprimir PDF</span>
+            </button>
         </div>
     </div>
 </div>

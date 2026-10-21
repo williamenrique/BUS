@@ -13,6 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
         tasa: 0,
         userId: 0,
         idEstacion: 0,
+        idCierreActual: 0,
+        usuarioNombre:   '',   // ← NUEVO
+        usuarioApellido: '',   // ← NUEVO
+        estacionNombre:  '',   // ← AÑADIR
     };
 
     /* ============================================================
@@ -21,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     (async () => {
         await cargar();
         bindEvents();
+        bindModalPdf();
         updatePreview();
     })();
 
@@ -49,12 +54,14 @@ document.addEventListener('DOMContentLoaded', () => {
         state.tiposCombustible = d.tiposCombustible || [];
         state.userId           = d.idUser;
         state.idEstacion       = d.idEstacion;
+        state.usuarioNombre   = d.usuarioNombre   || '';
+        state.usuarioApellido = d.usuarioApellido || '';
+        state.estacionNombre  = d.estacionNombre  || '';   // ← AÑADIR
 
-        // Selects
+
         llenar($('tipoVehiculo'), state.tiposVehiculo, 'Seleccione...');
         llenar($('tipoPago'),     state.tiposPago,     'Seleccione...');
 
-        // Combustibles
         const selComb = $('tipoCombustible');
         selComb.innerHTML = '';
         if (state.tiposCombustible.length){
@@ -67,13 +74,11 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Tasa
         if (d.tasa && d.tasa.tasa_dia){
             state.tasa = parseFloat(d.tasa.tasa_dia);
             aplicarTasa(d.tasa);
         }
 
-        // Render
         renderTickets(d.ultimosTickets || []);
         renderResumen(d.resumen);
         renderPendientes(d.ventasPendientes || []);
@@ -158,7 +163,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('totalLitros').textContent    = parseFloat(r.total_litros || 0).toFixed(2) + ' L';
         $('totalBolivares').textContent = parseFloat(r.total_bs || 0).toFixed(2) + ' Bs';
 
-        // Pagos
         const pagos = [];
         if (parseFloat(r.total_divisa) > 0)   pagos.push(`<li>${icon('dollar-sign')} Divisa: <strong>$${parseFloat(r.total_divisa).toFixed(2)}</strong></li>`);
         if (parseFloat(r.total_efectivo) > 0) pagos.push(`<li>${icon('banknote')} Efectivo: <strong>Bs ${parseFloat(r.total_efectivo).toFixed(2)}</strong></li>`);
@@ -166,14 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
         $('tiposPagosList').innerHTML = pagos.join('');
         $('tiposPagosContainer').style.display = pagos.length ? '' : 'none';
 
-        // Vehículos
         const veh = (r.tiposVehiculo || []).map(v =>
             `<li>${icon('car')} ${esc(v.tipo_vehiculo)}: <strong>${v.cantidad}</strong></li>`
         );
         $('tiposVehiculosList').innerHTML = veh.join('');
         $('tiposVehiculosContainer').style.display = veh.length ? '' : 'none';
 
-        // Combustibles
         const comb = (r.tiposCombustible || []).map(c =>
             `<li>${icon('droplet')} ${esc(c.tipo_combustible)}: <strong>${c.cantidad}</strong> venta(s) — <strong>${parseFloat(c.litros).toFixed(2)} L</strong></li>`
         );
@@ -205,7 +207,12 @@ document.addEventListener('DOMContentLoaded', () => {
             b.addEventListener('click', () => cerrarPendiente(b.dataset.fecha, b.dataset.user));
         });
         cont.querySelectorAll('[data-action="pdf-pend"]').forEach(b => {
-            b.addEventListener('click', () => generarPDF(b.dataset.fecha, b.dataset.user));
+            b.addEventListener('click', () => {
+                // Guardamos la fecha/idUser del pendiente para el modal
+                state._pdfFechaPendiente = b.dataset.fecha;
+                state._pdfUserPendiente  = b.dataset.user;
+                abrirModalPdf('pendiente');
+            });
         });
     }
 
@@ -222,7 +229,12 @@ document.addEventListener('DOMContentLoaded', () => {
         $('btnUpdateTasa')?.addEventListener('click', actualizarTasa);
         $('formVenta')?.addEventListener('submit', registrarVenta);
         $('btnCerrarDia')?.addEventListener('click', cerrarDia);
-        $('btnGenerarPDF')?.addEventListener('click', () => generarPDF(fechaHoy(), state.userId));
+
+        // Botón "Generar PDF" del resumen del día → abre modal
+        $('btnGenerarPDF')?.addEventListener('click', () => {
+            if (!state.idEstacion){ toast('Sin estación asignada.', 'error'); return; }
+            abrirModalPdf('hoy');
+        });
     }
 
     /* ============================================================
@@ -296,6 +308,7 @@ Precio Total: ${mt} ${simbolo}
             return;
         }
 
+        // 1) Grabar la venta (esto sí debe esperar)
         const d = await fetchJSON(API + '/registrar-venta', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -305,16 +318,20 @@ Precio Total: ${mt} ${simbolo}
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
         toast(d.message, 'success');
 
-        if (d.ticketData && typeof fntImprimirTicket === 'function'){
-            try{ await fntImprimirTicket({ ticketData: d.ticketData, copia: 0 }); }
-            catch(e){ console.warn('Impresión falló:', e); }
-        }
-
+        // 2) Limpiar el form YA (feedback inmediato al usuario)
         $('formVenta').reset();
         $('monto').value = '';
         $('tipoCombustible').value = '1';
         updatePreview();
-        await cargar();
+
+        // 3) Recargar el resumen EN PARALELO con la impresión
+        cargar().catch(err => console.warn('cargar:', err));
+
+        // 4) Imprimir EN PARALELO (no bloquea la UI)
+        if (d.ticketData && typeof fntImprimirTicket === 'function'){
+            fntImprimirTicket({ ticketData: d.ticketData, copia: 0 })
+                .catch(err => console.warn('Impresión falló:', err));
+        }
     }
 
     async function reimprimir(id, fecha, idUser){
@@ -335,7 +352,6 @@ Precio Total: ${mt} ${simbolo}
 
         const fecha = fechaHoy();
 
-        // Imprimir detallado (con modo)
         if (typeof fntPreguntarModoDetallado === 'function'){
             const modo = await fntPreguntarModoDetallado();
             if (modo){
@@ -356,6 +372,8 @@ Precio Total: ${mt} ${simbolo}
             body: JSON.stringify({ fecha })
         });
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+
+        if (d.idCierre) state.idCierreActual = d.idCierre;
 
         if (d.dataCierre && typeof fntImprimirCierre === 'function'){
             try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
@@ -396,18 +414,181 @@ Precio Total: ${mt} ${simbolo}
         await cargar();
     }
 
-    async function generarPDF(fecha, idUser){
-        const d = await fetchJSON(API + '/reporte-pdf', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, id_user: idUser })
+    /* ============================================================
+       MODAL PDF
+       ============================================================ */
+    function bindModalPdf(){
+        const modal = $('modalPdfSelector');
+        if (!modal) return;
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal || e.target.closest('[data-close]')){
+                cerrarModalPdf();
+                return;
+            }
+            const opt = e.target.closest('.pdf-opt');
+            if (opt){
+                const seccion = opt.dataset.seccion;
+                const tipo = modal.dataset.tipo || 'hoy';
+                cerrarModalPdf();
+                generarPdfCierre(seccion, tipo);
+            }
         });
-        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-        if (typeof fntGenerarPDF === 'function'){
-            fntGenerarPDF({ idUser, fecha });
-        } else {
-            toast('Datos preparados.', 'success');
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') cerrarModalPdf();
+        });
+    }
+
+    function abrirModalPdf(tipo){
+        const modal = $('modalPdfSelector');
+        if (!modal) return;
+        modal.dataset.tipo = tipo || 'hoy';
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function cerrarModalPdf(){
+        const modal = $('modalPdfSelector');
+        if (!modal) return;
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    /* ============================================================
+       GENERAR PDF · CIERRE (o día abierto)
+       ============================================================ */
+    async function generarPdfCierre(seccion, tipo = 'hoy'){
+        let fecha = fechaHoy();
+        let idUser = state.userId;
+
+        // Si es un día pendiente (PDF desde un pendiente), usamos sus datos
+        if (tipo === 'pendiente' && state._pdfFechaPendiente){
+            fecha = state._pdfFechaPendiente;
+            idUser = parseInt(state._pdfUserPendiente) || state.userId;
         }
+
+        let cierreData = null;
+        let ventas = null;
+
+        // 1) Si tenemos un idCierre (día ya cerrado) → buscar cierre real
+        if (state.idCierreActual && tipo !== 'pendiente'){
+            const d = await fetchJSON(API + '/data-cierre', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id_cierre: state.idCierreActual })
+            });
+            if (d.ok){
+                cierreData = d.cierreData;
+                ventas = d.ventas;
+            }
+        }
+
+        // 2) Si no hay cierre (día abierto o pendiente) → usar detalle de ventas
+        if (!cierreData){
+            const det = await fetchJSON(API + '/detalle-ventas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha, id_user: idUser })
+            });
+            if (!det.ok){
+                toast('No hay ventas para generar el PDF.', 'error');
+                return;
+            }
+
+            ventas = det.data || [];
+            if (!ventas.length){
+                toast('No hay ventas para generar el PDF.', 'error');
+                return;
+            }
+
+            const resumen = calcularResumenDesdeVentas(ventas);
+
+            const nombreVendedor = (idUser === state.userId)
+                ? (state.usuarioNombre + ' ' + state.usuarioApellido).trim()
+                : '';
+
+            cierreData = {
+                id_cierre:        null,
+                fecha_cierre:     fecha,
+                estacion:         state.estacionNombre,
+                usuario_nombres:  nombreVendedor,
+                usuario_apellidos:'',
+                tasa_dia:         state.tasa,
+                total_ventas:     resumen.totalVentas,
+                total_litros:     resumen.totalLitros,
+                total_divisa:     resumen.totalDivisa,
+                total_efectivo:   resumen.totalEfectivo,
+                total_debito:     resumen.totalDebito,
+                total_general_bs: resumen.totalGeneralBs,
+                cant_auto:        resumen.cantAuto,
+                cant_moto:        resumen.cantMoto,
+                cant_camion:      resumen.cantCamion,
+                cant_gasolina:    resumen.cantGasolina,
+                cant_diesel:      resumen.cantDiesel,
+                litros_gasolina:  resumen.litrosGasolina,
+                litros_diesel:    resumen.litrosDiesel,
+            };
+        }
+
+        try {
+            await SITGO_PDF.generar(
+                'estacion_reporte_dia',
+                { cierre: cierreData, ventas, seccion },
+                `cierre_${seccion}_${fecha}.pdf`,
+                {
+                    titulo_documento: 'CIERRE DEL DÍA',
+                    doc_color:        '#1e40af',
+                    mostrar_header:   false,
+                }
+            );
+        } catch (e) {
+            console.error(e);
+            toast('Error al generar PDF: ' + e.message, 'error');
+        }
+    }
+
+    /**
+     * Calcula el resumen (totales, conteos) a partir del array de ventas
+     * que devuelve /estacion/detalle-ventas.
+     */
+    function calcularResumenDesdeVentas(ventas){
+        let totalVentas = ventas.length;
+        let totalLitros = 0;
+        let totalDivisa = 0;
+        let totalEfectivo = 0;
+        let totalDebito = 0;
+        let totalGeneralBs = 0;
+        let cantAuto = 0, cantMoto = 0, cantCamion = 0;
+        let cantGasolina = 0, cantDiesel = 0;
+        let litrosGasolina = 0, litrosDiesel = 0;
+
+        ventas.forEach(v => {
+            const litros    = parseFloat(v.cantidad_litros || 0);
+            const efectivob = parseFloat(v.efectivob || 0);
+            const debito    = parseFloat(v.tarjeta_debito || 0);
+            const divisa    = parseFloat(v.monto_divisa || 0);
+
+            totalLitros += litros;
+            totalDivisa += divisa;
+            totalEfectivo += efectivob;
+            totalDebito += debito;
+            totalGeneralBs += efectivob + debito;
+
+            const tv = (v.tipo_vehiculo || '').toLowerCase();
+            if (tv.includes('moto')) { cantMoto++; }
+            else if (tv.includes('camion') || tv.includes('camión')) { cantCamion++; }
+            else if (tv.includes('auto') || tv.includes('carro')) { cantAuto++; }
+
+            const tc = (v.tipo_combustible || '').toLowerCase();
+            if (tc.includes('gasolina')) { cantGasolina++; litrosGasolina += litros; }
+            else if (tc.includes('diesel') || tc.includes('diésel')) { cantDiesel++; litrosDiesel += litros; }
+        });
+
+        return {
+            totalVentas, totalLitros, totalDivisa, totalEfectivo, totalDebito, totalGeneralBs,
+            cantAuto, cantMoto, cantCamion, cantGasolina, cantDiesel, litrosGasolina, litrosDiesel,
+        };
     }
 
     /* ============================================================

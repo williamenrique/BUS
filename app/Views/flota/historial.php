@@ -10,9 +10,6 @@ try {
 $instNombreCorto = inst_nombre_corto($instNombreFull);
 ?>
 
-<!-- ============================================ -->
-<!-- PAGE HEADER                                   -->
-<!-- ============================================ -->
 <div class="page-header">
     <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
         <a href="<?= base_url('flota/i/' . (int)$instId) ?>" class="btn btn-ghost">
@@ -32,11 +29,12 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             </p>
         </div>
     </div>
+    <button id="btnGenerarPdfHistorial" class="btn btn-primary">
+        <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+        <span>Generar PDF</span>
+    </button>
 </div>
 
-<!-- ============================================ -->
-<!-- CARD DE INFORMACIÓN                           -->
-<!-- ============================================ -->
 <div class="unidad-info">
     <div class="unidad-info-item">
         <span class="unidad-info-icon">
@@ -112,15 +110,10 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- FILTROS                                       -->
-<!-- ============================================ -->
 <div class="card mb-4">
     <div class="card-body">
         <form id="formFiltrosHistorial">
             <div class="historial-filtros">
-
-                <!-- Fila 1: Filtros -->
                 <div class="historial-filtros-row">
                     <div class="form-group">
                         <label>Desde</label>
@@ -149,7 +142,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                     </div>
                 </div>
 
-                <!-- Fila 2: Botones -->
                 <div class="historial-filtros-actions">
                     <button type="button" id="btnLimpiarFiltros" class="btn btn-ghost">
                         <?= icon_tag('x', 'x', 'w-4 h-4') ?>
@@ -160,15 +152,11 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                         <span>Buscar</span>
                     </button>
                 </div>
-
             </div>
         </form>
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- RESUMEN DE CONTADORES                         -->
-<!-- ============================================ -->
 <div class="historial-resumen" id="historialResumen" style="display:none;">
     <div class="historial-counter blue">
         <span class="historial-counter-label">Despachos</span>
@@ -192,9 +180,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 </div>
 
-<!-- ============================================ -->
-<!-- TIMELINE                                      -->
-<!-- ============================================ -->
 <div id="timelineWrap">
     <div id="timelineContainer">
         <div class="historial-loading">
@@ -204,7 +189,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 </div>
 
-<!-- Paginación -->
 <div class="dt-footer" id="paginationWrap" style="display:none;">
     <div class="dt-info">
         Mostrando <strong id="startHistorial">0</strong>–<strong id="endHistorial">0</strong>
@@ -217,4 +201,14 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     window.SITGO_BASE     = "<?= BASE_URL ?>";
     window.SITGO_INST     = <?= (int)($instId ?? 1) ?>;
     window.SITGO_ID_FLOTA = <?= (int)$idFlota ?>;
+    window.SITGO_UNIDAD_DATA = {
+        id_unidad:     "<?= e($unidad['id_unidad'] ?? '') ?>",
+        marca:         "<?= e($unidad['marca_unidad'] ?? '') ?>",
+        modelo:        "<?= e($unidad['modelo_unidad'] ?? '') ?>",
+        vin:           "<?= e($unidad['vim_unidad'] ?? '') ?>",
+        anio:          "<?= e($unidad['fecha_creacion'] ?? '') ?>",
+        capacidad:     "<?= e($unidad['cap_pasajero'] ?? '') ?>",
+        combustible:   "<?= e($unidad['tipo_combustible'] ?? '') ?>",
+        transmision:   "<?= e($unidad['transmision'] ?? '') ?>"
+    };
 </script>

@@ -8,3 +8,8 @@
   Mensaje: Call to undefined method App\Controllers\ControllerEstacion::get()
   Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerEstacion.php:404
 ------------------------------------------------------------
+[2026-10-20 15:48:48] [CONTROLLER] Call to protected method App\Core\Model::fetchOne() from scope App\Controllers\ControllerEstacion
+  SQLSTATE: 0
+  Mensaje: Call to protected method App\Core\Model::fetchOne() from scope App\Controllers\ControllerEstacion
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerEstacion.php:130
+------------------------------------------------------------

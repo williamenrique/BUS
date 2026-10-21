@@ -15,9 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
         'Sin Registro': 'badge-secondary',
     };
 
-    /* ============================================================
-       RENDER ROW
-       ============================================================ */
     function renderRow(u){
         const badge = STATUS_BADGE[u.estado] || 'badge-secondary';
         const km     = Number(u.kilometraje_actual  || 0);
@@ -67,9 +64,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
     }
 
-    /* ============================================================
-       INIT · DataTable server-side
-       ============================================================ */
     dt = new DataTable({
         tbodyId: 'tbodyAceite',
         endpoint: API + '/status',
@@ -92,17 +86,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    /* ============================================================
-       FILTRO POR ESTADO
-       ============================================================ */
     $('filtroEstado')?.addEventListener('change', () => {
         document.querySelectorAll('.aceite-card').forEach(c => c.classList.remove('active'));
         dt.changePage(1);
     });
 
-    /* ============================================================
-       CARDS CLICKEABLES
-       ============================================================ */
     document.querySelectorAll('.aceite-card').forEach(card => {
         card.addEventListener('click', () => {
             const status = card.dataset.status;
@@ -121,9 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    /* ============================================================
-       CONTADORES
-       ============================================================ */
     function pintarContadores(counts){
         $('cntRequerido').textContent   = counts['Requerido']    || 0;
         $('cntProximo').textContent     = counts['Próximo']      || 0;
@@ -131,9 +116,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('cntSinRegistro').textContent = counts['Sin Registro'] || 0;
     }
 
-    /* ============================================================
-       ACCIONES
-       ============================================================ */
     function bindTableActions(){
         const tbody = $('tbodyAceite');
         if (!tbody || tbody._bound) return;
@@ -149,9 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ============================================================
-       MODALES
-       ============================================================ */
     function abrirModalKm(id, unidad, km){
         $('km_id_flota').value = id;
         $('km_unidad_label').textContent = unidad;
@@ -182,9 +161,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.style.overflow = '';
     };
 
-    /* ============================================================
-       SUBMITS
-       ============================================================ */
     $('formKm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const payload = Object.fromEntries(new FormData(e.target).entries());
@@ -226,8 +202,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       HELPERS
+       GENERAR PDF DE ACEITE
        ============================================================ */
+    $('btnGenerarPdfAceite')?.addEventListener('click', generarPdfAceite);
+
+    async function generarPdfAceite(){
+        const btn = $('btnGenerarPdfAceite');
+        btn.disabled = true;
+
+        try {
+            const estado = $('filtroEstado')?.value || '';
+
+            // Cargar todas las unidades con el filtro actual
+            const params = new URLSearchParams({
+                estado: estado,
+                limit: 9999,
+                offset: 0,
+                q: '',
+            });
+
+            const r = await fetch(`${API}/status?${params}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const d = await r.json();
+
+            if (!d.ok) {
+                toast(d.message || 'Error al cargar las unidades.', 'error');
+                return;
+            }
+
+            const items  = d.data || [];
+            const counts = d.counts || {};
+
+            if (!items.length) {
+                toast('No hay unidades para generar el PDF.', 'error');
+                return;
+            }
+
+            await SITGO_PDF.generar(
+                'flota_aceite',
+                {
+                    items:  items,
+                    counts: counts,
+                    filtro: estado || 'Todos',
+                },
+                `estado_aceite_${new Date().toISOString().slice(0,10)}.pdf`,
+                {
+                    titulo_documento: 'REPORTE DE ESTADO DE ACEITE',
+                    doc_color:        '#0f172a',
+                }
+            );
+        } catch (e) {
+            console.error(e);
+            toast('Error de conexión al generar el PDF.', 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     function formatFecha(f){
         if (!f) return '';
         try{

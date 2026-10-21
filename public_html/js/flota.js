@@ -9,9 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let dt = null;
     let allUnidades = [];
 
-    /* ============================================================
-       MAPA DE ESTADOS
-       ============================================================ */
     const STATUS_MAP = {
         0: { text: 'Desincorporada',     color: 'badge-secondary' },
         1: { text: 'Operativa',          color: 'badge-success'   },
@@ -21,9 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
         5: { text: 'Crítica',            color: 'badge-danger'    },
     };
 
-    /* ============================================================
-       RENDER ROW
-       ============================================================ */
     function renderRow(u){
         const st = STATUS_MAP[u.status_unidad] || { text: '—', color: 'badge-secondary' };
         return `
@@ -53,9 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
     }
 
-    /* ============================================================
-       INIT
-       ============================================================ */
     (async () => {
         try{
             await cargarCombos();
@@ -89,9 +80,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
-    /* ============================================================
-       API
-       ============================================================ */
     async function fetchJSON(url, opts = {}){
         const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, ...opts });
         return r.json();
@@ -122,9 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ============================================================
-       EVENTOS
-       ============================================================ */
     function bindEvents(){
         $('btnNuevo')?.addEventListener('click', abrirCrear);
         $('btnCancelar')?.addEventListener('click', cerrarFormulario);
@@ -151,9 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ============================================================
-       SECCIÓN COLAPSABLE
-       ============================================================ */
     function toggleSeccion(idSeccion, idBtn){
         const s = $(idSeccion);
         s.classList.toggle('collapsed');
@@ -171,9 +153,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (t) t.style.transform = 'rotate(0deg)';
     }
 
-    /* ============================================================
-       CREAR
-       ============================================================ */
     function abrirCrear(){
         const f = $('formFlota');
         f.reset();
@@ -195,9 +174,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => $('id_unidad')?.focus(), 300);
     }
 
-    /* ============================================================
-       EDITAR
-       ============================================================ */
     async function abrirEditar(id){
         try{
             const d = await fetchJSON(API + '/obtener/' + id);
@@ -230,9 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================================
-       CAMBIAR STATUS
-       ============================================================ */
     async function abrirStatus(id){
         try{
             const d = await fetchJSON(API + '/obtener/' + id);
@@ -279,9 +252,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================================
-       GUARDAR
-       ============================================================ */
     function bindForm(){
         $('formFlota')?.addEventListener('submit', guardar);
     }
@@ -361,9 +331,9 @@ document.addEventListener('DOMContentLoaded', () => {
         $('btnToggleReporte')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion('seccionReporte', 'btnToggleReporte'); });
         $('filtroGrupos')?.addEventListener('input', filtrarGrupos);
         $('btnLimpiarReporte')?.addEventListener('click', limpiarReporte);
-        $('btnGenerarPDF')?.addEventListener('click', () => {
-            toast('Generación de PDF se implementará en la siguiente fase.', 'error');
-        });
+
+        // Generar PDF
+        $('btnGenerarPDF')?.addEventListener('click', generarPdfOperatividad);
 
         pintarGrupos();
     }
@@ -480,9 +450,56 @@ document.addEventListener('DOMContentLoaded', () => {
         filtrarGrupos();
     }
 
-    /* ============================================================
-       MODAL GENÉRICO
-       ============================================================ */
+    async function generarPdfOperatividad(){
+        const checks = document.querySelectorAll('.reporte-check:checked');
+        if (!checks.length){
+            toast('Selecciona al menos un grupo.', 'error');
+            return;
+        }
+
+        const summaryData = [];
+        checks.forEach(chk => {
+            const ids = JSON.parse(chk.dataset.ids);
+            const nombre = chk.dataset.name;
+
+            let cant = 0, op = 0, inop = 0, crit = 0;
+            ids.forEach(id => {
+                const u = allUnidades.find(x => x.id_flota == id);
+                if (!u) return;
+                cant++;
+                const st = STATUS_MAP[u.status_unidad]?.text || '';
+                if (st === 'Operativa')   op++;
+                if (st === 'Inoperativa') inop++;
+                if (st === 'Crítica')     crit++;
+            });
+
+            summaryData.push({
+                groupName: nombre,
+                cantidad: cant,
+                operativas: op,
+                inoperativas: inop,
+                criticas: crit,
+            });
+        });
+
+        const btn = $('btnGenerarPDF');
+        btn.disabled = true;
+
+        try {
+            await SITGO_PDF.generar(
+                'flota_operatividad',
+                { summaryData },
+                `operatividad_${new Date().toISOString().slice(0,10)}.pdf`,
+                {
+                    titulo_documento: 'REPORTE DE OPERATIVIDAD',
+                    doc_color: '#1e40af',
+                }
+            );
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
     function abrirModal(titulo, contenidoHTML, onGuardar){
         const modal = document.getElementById('modalGenerico');
         const body  = document.getElementById('modalGenericoBody');
@@ -509,9 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.cerrarModalGenerico = cerrarModalGenerico;
 
-    /* ============================================================
-       HELPERS
-       ============================================================ */
     function limpiarErrores(){
         const form = $('formFlota');
         form.querySelectorAll('.error').forEach(el => el.textContent = '');

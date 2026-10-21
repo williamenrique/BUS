@@ -28,10 +28,16 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 Resumen de stock y despachos · Haz clic en el producto para ver su trayectoria
             </p>
         </div>
-        <a href="<?= base_url('despachos/i/' . (int)$instId) ?>" class="btn btn-ghost">
-            <?= icon_tag('arrow-left', 'arrow-left', 'w-4 h-4') ?>
-            <span>Volver a Despachos</span>
-        </a>
+        <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+            <button id="btnGenerarPdfInventario" class="btn btn-primary">
+                <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+                <span>Generar PDF Inventario</span>
+            </button>
+            <a href="<?= base_url('despachos/i/' . (int)$instId) ?>" class="btn btn-ghost">
+                <?= icon_tag('arrow-left', 'arrow-left', 'w-4 h-4') ?>
+                <span>Volver a Despachos</span>
+            </a>
+        </div>
     </div>
 
     <div class="card">
@@ -104,14 +110,14 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 </p>
             </div>
         </div>
+        <button id="btnGenerarPdfProducto" class="btn btn-primary">
+            <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+            <span>Generar PDF Historial</span>
+        </button>
     </div>
 
-    <!-- Info del producto -->
-    <div class="historial-producto-info" id="timelineProductoInfo">
-        <!-- Se llena por JS -->
-    </div>
+    <div class="historial-producto-info" id="timelineProductoInfo"></div>
 
-    <!-- Timeline -->
     <div id="timelineWrap">
         <div id="timelineContainer">
             <div class="historial-loading">
@@ -121,7 +127,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </div>
     </div>
 
-    <!-- Paginación -->
     <div class="dt-footer" id="timelinePaginationWrap" style="display:none;">
         <div class="dt-info">
             Mostrando <strong id="startTimeline">0</strong>–<strong id="endTimeline">0</strong>
@@ -131,3 +136,9 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 
 </div>
+
+<script>
+    window.SITGO_BASE = "<?= BASE_URL ?>";
+    window.SITGO_INST = <?= (int)($instId ?? 1) ?>;
+    
+</script>

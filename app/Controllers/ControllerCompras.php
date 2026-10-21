@@ -34,7 +34,7 @@ class ControllerCompras extends Controller{
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
-        $limit  = max(1, min(100, (int)($_GET['limit'] ?? 10)));
+        $limit  = max(1, min(5000, (int)($_GET['limit'] ?? 10)));
         $offset = max(0, (int)($_GET['offset'] ?? 0));
 
         $this->safe(function() use ($q, $limit, $offset, $instId){
@@ -56,7 +56,7 @@ class ControllerCompras extends Controller{
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
-        $limit  = max(1, min(100, (int)($_GET['limit'] ?? 10)));
+        $limit  = max(1, min(5000, (int)($_GET['limit'] ?? 10)));
         $offset = max(0, (int)($_GET['offset'] ?? 0));
 
         $filtros = [
@@ -147,7 +147,6 @@ class ControllerCompras extends Controller{
             }
             $articulos = $m->articulosCosteados($id);
 
-            // Totales
             $totalDivisa = 0;
             $totalBs = 0;
             foreach ($articulos as $a){
