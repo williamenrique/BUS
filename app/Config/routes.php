@@ -1,6 +1,25 @@
 <?php
 return [
     // ============================================================
+    // Público · Movimientos (sin login)
+    // ============================================================
+    ['path' => '/movimientos',                                  'method' => 'GET',  'handler' => 'ControllerPublico@index'],
+    ['path' => '/movimientos/instituciones',                    'method' => 'GET',  'handler' => 'ControllerPublico@getInstituciones'],
+    ['path' => '/movimientos/estado-flota',                     'method' => 'POST', 'handler' => 'ControllerPublico@getEstadoFlota'],
+    ['path' => '/movimientos/unidades-por-estado',              'method' => 'POST', 'handler' => 'ControllerPublico@getUnidadesPorEstado'],
+    ['path' => '/movimientos/estado-aceite',                    'method' => 'POST', 'handler' => 'ControllerPublico@getEstadoAceite'],
+    ['path' => '/movimientos/unidades-por-estado-aceite',       'method' => 'POST', 'handler' => 'ControllerPublico@getUnidadesPorEstadoAceite'],
+    ['path' => '/movimientos/resumen-flota',                    'method' => 'POST', 'handler' => 'ControllerPublico@getResumenFlota'],
+    ['path' => '/movimientos/movimientos-data',                 'method' => 'POST', 'handler' => 'ControllerPublico@getMovimientosData'],
+    ['path' => '/movimientos/detalle-orden',                    'method' => 'POST', 'handler' => 'ControllerPublico@getDetalleOrden'],
+    ['path' => '/movimientos/detalle-aceite',                   'method' => 'POST', 'handler' => 'ControllerPublico@getDetalleAceite'],
+    ['path' => '/movimientos/detalle-mantenimiento',            'method' => 'POST', 'handler' => 'ControllerPublico@getDetalleMantenimiento'],
+    ['path' => '/movimientos/detalle-kilometraje',              'method' => 'POST', 'handler' => 'ControllerPublico@getDetalleKilometraje'],
+    ['path' => '/movimientos/historial-unidad',                 'method' => 'POST', 'handler' => 'ControllerPublico@getHistorialUnidad'],
+    ['path' => '/movimientos/ventas-estacion',                  'method' => 'POST', 'handler' => 'ControllerPublico@getVentasEstacionData'],
+    ['path' => '/movimientos/pdf',     'method' => 'POST', 'handler' => 'ControllerPublico@pdfGenerar'],
+    ['path' => '/movimientos/pdf-ver', 'method' => 'GET',  'handler' => 'ControllerPublico@pdfVer'],
+    // ============================================================
     // Auth
     // ============================================================
     ['path' => '/',          'method' => 'GET',  'handler' => 'ControllerAuth@showLogin'],

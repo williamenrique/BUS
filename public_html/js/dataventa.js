@@ -9,7 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     let dtOpenSales = null;
     let dtVentasCierre = null;
     let filtroFechaActivo = false;
-    let ventaAbiertaActual = null;   // { id_user, fecha }
+
+    // Contexto de la tabla inferior
+    let tablaVentasCtx = { tipo: null, id_user: null, fecha: null, id_cierre: null };
 
     /* ============================================================
        INIT
@@ -147,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             onDataLoaded: () => { refreshIcons(); bindCierresActions(); }
         });
 
+        // dtVentasCierre SOLO se usa cuando se ve un cierre cerrado
         dtVentasCierre = new DataTable({
             tbodyId: 'tbodyVentasCierre',
             endpoint: API + '/ventas-cierre/listar',
@@ -160,8 +163,8 @@ document.addEventListener('DOMContentLoaded', () => {
             endId: 'endVentasCierre',
             autoLoad: false,
             getExtraParams: () => {
-                if (!ventasCierreActual?.id_cierre) return {};
-                return { id_cierre: ventasCierreActual.id_cierre };
+                if (!tablaVentasCtx.id_cierre) return {};
+                return { id_cierre: tablaVentasCtx.id_cierre };
             },
             renderRow: (v) => `
                 <tr>
@@ -173,12 +176,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${esc(v.tipo_pago)}</td>
                     <td class="text-right">${fmtNum(v.monto, 2)}</td>
                     <td class="text-right">
-                        <button class="action-btn" data-action="print" data-id="${v.id_venta}" data-user="${v.id_user}" data-fecha="${v.fecha_venta}" title="Reimprimir">
-                            <i data-lucide="printer" class="w-4 h-4"></i>
-                        </button>
+                        <div class="actions">
+                            <button class="action-btn" data-action="reimprimir" data-id="${v.id_venta}" data-user="${tablaVentasCtx.id_user}" data-fecha="${tablaVentasCtx.fecha}" title="Reimprimir">
+                                <i data-lucide="printer" class="w-4 h-4"></i>
+                            </button>
+                            <button class="action-btn delete" data-action="eliminar-ticket" data-id="${v.id_venta}" data-user="${tablaVentasCtx.id_user}" data-fecha="${tablaVentasCtx.fecha}" title="Eliminar ticket">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>`,
-            onDataLoaded: () => { refreshIcons(); bindVentasCierreActions(); }
+            onDataLoaded: () => { refreshIcons(); }
         });
     }
 
@@ -216,23 +224,86 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /* ============================================================
+       BIND DE ACCIONES DE LA TABLA INFERIOR (ventas)
+       ============================================================ */
     function bindVentasCierreActions(){
         const tbody = $('tbodyVentasCierre');
         if (!tbody || tbody._bound) return;
         tbody._bound = true;
         tbody.addEventListener('click', async (e) => {
-            const b = e.target.closest('[data-action="print"]');
+            const b = e.target.closest('[data-action]');
             if (!b) return;
-            const { id, user, fecha } = b.dataset;
-            const t = await fetchJSON(API + '/ticket/' + id, {
+            const { action, id, user, fecha } = b.dataset;
+            if (action === 'reimprimir')     await reimprimirTicket(id, user, fecha);
+            if (action === 'eliminar-ticket') await eliminarTicket(id, user, fecha, b);
+        });
+    }
+
+    /* ============================================================
+       REIMPRIMIR TICKET
+       ============================================================ */
+    async function reimprimirTicket(idVenta, idUser, fecha){
+        const t = await fetchJSON(API + '/ticket/' + idVenta, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fecha, id_user: idUser })
+        });
+        if (!t.ok){ toast(t.message || 'No se pudo obtener el ticket.', 'error'); return; }
+        if (typeof fntImprimirTicket === 'function'){
+            await fntImprimirTicket({ ticketData: t.ticketData, copia: 1 });
+        }
+    }
+
+    /* ============================================================
+       ELIMINAR TICKET (de un cierre o de ventas abiertas)
+       ============================================================ */
+    async function eliminarTicket(idVenta, idUser, fecha, btnEl){
+        const tipoCtx = tablaVentasCtx.tipo; // 'abiertas' | 'cierre'
+        const msg = tipoCtx === 'cierre'
+            ? `¿Eliminar el ticket #${idVenta}? Se recalcularán los totales del cierre.`
+            : `¿Eliminar el ticket #${idVenta}?`;
+        if (!confirm(msg)) return;
+
+        btnEl.disabled = true;
+        try {
+            const d = await fetchJSON(API + '/eliminar-venta', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fecha, id_user: user })
+                body: JSON.stringify({ id_venta: idVenta, fecha, id_user: idUser })
             });
-            if (t.ok && typeof fntImprimirTicket === 'function'){
-                await fntImprimirTicket({ ticketData: t.ticketData, copia: 1 });
+            if (!d.ok){ toast(d.message || 'Error al eliminar.', 'error'); return; }
+            toast(d.message || 'Ticket eliminado.', 'success');
+
+            // Refrescar la tabla inferior según el contexto
+            if (tipoCtx === 'cierre' && tablaVentasCtx.id_cierre){
+                dtVentasCierre.refresh();
+                // Recalcular los totales del cierre (data-cierre) y refrescar listado de cierres
+                const dataCierre = await fetchJSON(API + '/data-cierre', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id_cierre: tablaVentasCtx.id_cierre })
+                });
+                if (dataCierre.ok && dataCierre.cierreData){
+                    ventasCierreActual = Object.assign({}, dataCierre.cierreData, {
+                        usuario_id: tablaVentasCtx.id_user,
+                        id_cierre:  tablaVentasCtx.id_cierre,
+                    });
+                }
+                dtCierres?.refresh();
+            } else if (tipoCtx === 'abiertas'){
+                // Recargar las ventas abiertas de ese usuario/fecha
+                await verVentasAbiertas(idUser, fecha);
+                dtOpenSales?.refresh();
             }
-        });
+
+            refreshIcons();
+        } catch (e) {
+            console.error(e);
+            toast('Error de conexión.', 'error');
+        } finally {
+            btnEl.disabled = false;
+        }
     }
 
     /* ============================================================
@@ -259,12 +330,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $('btnImprimirPdf')?.addEventListener('click', () => {
             if (!ventasCierreActual) return;
-            ventaAbiertaActual = null;
             abrirModalPdf('cierre');
         });
 
         $('btnPdfLitros')?.addEventListener('click', () => {
-            ventaAbiertaActual = null;
             abrirModalPdf('litros');
         });
     }
@@ -306,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function abrirModalPdfAbiertas(idUser, fecha){
-        ventaAbiertaActual = { id_user: idUser, fecha };
+        tablaVentasCtx = { tipo: 'abiertas', id_user: idUser, fecha, id_cierre: null };
         abrirModalPdf('abiertas');
     }
 
@@ -358,12 +427,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       GENERAR PDF · VENTAS ABIERTAS (Sistema puede)
+       GENERAR PDF · VENTAS ABIERTAS
        ============================================================ */
     async function generarPdfAbiertas(seccion){
-        if (!ventaAbiertaActual){ toast('No hay venta seleccionada.', 'error'); return; }
+        if (!tablaVentasCtx.id_user){ toast('No hay venta seleccionada.', 'error'); return; }
 
-        const { id_user, fecha } = ventaAbiertaActual;
+        const { id_user, fecha } = tablaVentasCtx;
 
         const det = await fetchJSON(API + '/detalle-ventas', {
             method: 'POST',
@@ -386,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const cierreData = {
             id_cierre:        null,
             fecha_cierre:     fecha,
-            estacion:         '',    // el template lo resuelve; en admin no hay station específica
+            estacion:         '',
             usuario_nombres:  ventas[0]?.operador || '',
             usuario_apellidos:'',
             tasa_dia:         parseFloat(ventas[0]?.tasa_dia || 0),
@@ -431,7 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ventas.forEach(v => {
             const litros    = parseFloat(v.cantidad_litros || 0);
-            const efectivob = parseFloat(v.efectivob || 0);
+            const efectivob = parseFloat(v.effectivob ?? v.efectivob ?? 0);
             const debito    = parseFloat(v.tarjeta_debito || 0);
             const divisa    = parseFloat(v.monto_divisa || 0);
 
@@ -501,6 +570,8 @@ document.addEventListener('DOMContentLoaded', () => {
        ============================================================ */
     async function verCierre(idCierre, idUser, fecha){
         ventasCierreActual = { fecha_cierre: fecha, usuario_id: idUser, id_cierre: idCierre };
+        tablaVentasCtx = { tipo: 'cierre', id_user: idUser, fecha, id_cierre: idCierre };
+
         const dataCierre = await fetchJSON(API + '/data-cierre', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -516,6 +587,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function verVentasAbiertas(idUser, fecha){
+        tablaVentasCtx = { tipo: 'abiertas', id_user: idUser, fecha, id_cierre: null };
+
         const d = await fetchJSON(API + '/ventas-abiertas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -533,16 +606,27 @@ document.addEventListener('DOMContentLoaded', () => {
             $('totalVentasCierre').textContent = '0';
             $('paginationVentasCierre').innerHTML = '';
         } else {
+            // OJO: estos datos vienen de getDetallado (shape distinto a listarVentasCierre).
+            // Los renderizamos aquí mismo (no usamos dtVentasCierre).
             tbody.innerHTML = d.data.map(v => `
                 <tr>
-                    <td>#${v.numero_venta}</td>
+                    <td>#${v.numero_venta ?? v.id_venta ?? ''}</td>
                     <td>${esc(v.hora_venta || '')}</td>
-                    <td>${esc(v.tipo_vehiculo)}</td>
+                    <td>${esc(v.tipo_vehiculo || '')}</td>
                     <td>${esc(v.tipo_combustible || '—')}</td>
-                    <td class="text-right">${fmtLitros(v.cantidad_litros)}</td>
-                    <td>${esc(v.tipo_pago)}</td>
+                    <td class="text-right">${fmtLitros(v.cantidad_litros ?? v.litros ?? 0)}</td>
+                    <td>${esc(v.tipo_pago || '')}</td>
                     <td class="text-right">${fmtNum(v.monto, 2)}</td>
-                    <td class="text-right"></td>
+                    <td class="text-right">
+                        <div class="actions">
+                            <button class="action-btn" data-action="reimprimir" data-id="${v.numero_venta ?? v.id_venta}" data-user="${idUser}" data-fecha="${fecha}" title="Reimprimir">
+                                <i data-lucide="printer" class="w-4 h-4"></i>
+                            </button>
+                            <button class="action-btn delete" data-action="eliminar-ticket" data-id="${v.numero_venta ?? v.id_venta}" data-user="${idUser}" data-fecha="${fecha}" title="Eliminar ticket">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </td>
                 </tr>
             `).join('');
             refreshIcons();
@@ -551,10 +635,11 @@ document.addEventListener('DOMContentLoaded', () => {
             $('totalVentasCierre').textContent = String(d.data.length);
             $('paginationVentasCierre').innerHTML = '';
         }
+        bindVentasCierreActions();
     }
 
     /* ============================================================
-       CERRAR VENTA ABIERTA (admin)
+       CERRAR VENTA ABIERTA
        ============================================================ */
     async function cerrarVentaAbierta(idUser, fecha){
         if (!confirm(`¿Cerrar la venta abierta del día ${formatFecha(fecha)}? Se generará un cierre.`)) return;
@@ -572,7 +657,6 @@ document.addEventListener('DOMContentLoaded', () => {
             dtOpenSales?.refresh();
             dtCierres?.refresh();
 
-            // Si la venta cerrada es la que estábamos viendo, refrescar el detalle
             if (ventasCierreActual && String(ventasCierreActual.usuario_id) === String(idUser) && ventasCierreActual.fecha_cierre === fecha){
                 $('ventasCierreSection').style.display = 'none';
             }
@@ -593,6 +677,9 @@ document.addEventListener('DOMContentLoaded', () => {
         toast(d.message, 'success');
         dtCierres?.refresh();
         dtOpenSales?.refresh();
+        if (tablaVentasCtx.id_cierre === parseInt(idCierre)){
+            $('ventasCierreSection').style.display = 'none';
+        }
     }
 
     async function eliminarAbiertas(idUser, fecha){
@@ -605,6 +692,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
         toast(d.message, 'success');
         dtOpenSales?.refresh();
+        if (tablaVentasCtx.tipo === 'abiertas' && String(tablaVentasCtx.id_user) === String(idUser) && tablaVentasCtx.fecha === fecha){
+            $('ventasCierreSection').style.display = 'none';
+        }
     }
 
     /* ============================================================

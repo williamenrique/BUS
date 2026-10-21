@@ -1,6 +1,7 @@
 <?php
 /**
  * Header común para todos los PDFs (excepto Estación).
+ * Soporta ocultar el logo con $meta['mostrar_logo'] = false.
  */
 
 $inst = $meta['institucion'] ?? ['nombre' => 'INSTITUCIÓN', 'rif' => ''];
@@ -10,11 +11,12 @@ $color = $meta['doc_color'] ?? '#1e40af';
 $tituloDoc = strtoupper($meta['titulo_documento'] ?? '');
 $docNumero = $meta['doc_numero'] ?? '';
 $extraHeader = $meta['extra_header'] ?? '';
+$mostrarLogo = $meta['mostrar_logo'] ?? true;   // ← nuevo flag
 
-// Logo en base64 (usando variable $logoData para no colisionar con $data)
+// Logo en base64 (solo si se debe mostrar)
 $logoPath = dirname(__DIR__, 4) . '/public_html/img/logo.png';
 $logoBase64 = '';
-if (file_exists($logoPath)) {
+if ($mostrarLogo && file_exists($logoPath)) {
     $tipo = pathinfo($logoPath, PATHINFO_EXTENSION);
     $logoData = file_get_contents($logoPath);
     $logoBase64 = 'data:image/' . $tipo . ';base64,' . base64_encode($logoData);
@@ -22,14 +24,16 @@ if (file_exists($logoPath)) {
 
 $direccion = 'Av. Principal, Sector Industrial, San Felipe, Edo. Yaracuy';
 $telefono  = '0253-0000000';
+
+$colLogo = $mostrarLogo ? '70' : '0';
 ?>
 <table class="pdf-header" width="100%" cellpadding="0" cellspacing="0">
     <tr>
-        <td class="header-col-logo" width="70">
-            <?php if ($logoBase64): ?>
+        <?php if ($mostrarLogo && $logoBase64): ?>
+            <td class="header-col-logo" width="70">
                 <img src="<?= $logoBase64 ?>" alt="Logo" class="header-logo">
-            <?php endif; ?>
-        </td>
+            </td>
+        <?php endif; ?>
 
         <td class="header-col-info">
             <div class="header-nombre"><?= htmlspecialchars($nombreInstitucion) ?></div>

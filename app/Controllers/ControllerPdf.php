@@ -39,6 +39,7 @@ class ControllerPdf extends Controller
             'bienes_reporte',
             'flota_hoja_vida', 'flota_operatividad', 'flota_aceite',
             'estacion_reporte_dia', 'estacion_litros',
+            'publico_movimientos', 'publico_ventas_estacion', 'publico_aceite',
         ];
         if (!in_array($view, $permitidos, true)) {
             $this->json(['ok' => false, 'message' => 'Template no permitido.'], 403);
