@@ -95,8 +95,8 @@
     <!-- ============================================ -->
     <!-- MODAL RECUPERAR CONTRASEÑA                    -->
     <!-- ============================================ -->
-    <div class="modal" id="modalForgot" style="display:none;">
-        <div class="modal-content">
+    <div class="login-modal-backdrop" id="modalForgot" style="display:none;">
+        <div class="login-modal-content">
             <button class="modal-close" id="closeForgot" type="button">&times;</button>
             <form id="formForgot" novalidate>
                 <div class="modal-header">
