@@ -14,6 +14,25 @@
         _updateLastUpdate();
         setInterval(_updateLastUpdate, 30000);
         if (window.lucide) lucide.createIcons();
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // Marcar sección activa según el scroll
+        const secciones = document.querySelectorAll('.pub-sec');
+        const links = document.querySelectorAll('.publico-nav-links a[href^="#"]');
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const id = entry.target.id;
+                    links.forEach(l => {
+                        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+                    });
+                }
+            });
+        }, { rootMargin: '-40% 0px -55% 0px' });
+
+        secciones.forEach(s => observer.observe(s));
+    });
     </script>
 
     <!-- ⬇️ IMPORTANTE: pdf.js para SITGO_PDF -->

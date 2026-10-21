@@ -16,7 +16,11 @@ $pageTitle = $pageTitle ?? 'Movimientos Públicos';
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body { background: #f1f5f9; }
+        
+        body {
+            background: #f1f5f9;
+            padding-top: 0;   /* el navbar es sticky, no fixed, no hace falta */
+        }
         .publico-wrap { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
         .publico-nav {
             position: sticky; top: 0; z-index: 30;
@@ -125,6 +129,43 @@ $pageTitle = $pageTitle ?? 'Movimientos Públicos';
         #resumenBody .resumen-row:hover { background: #f8fafc; }
         #resumenBody .resumen-row.selected { background: #eff6ff; }
         #resumenBody .resumen-row.selected td { border-color: #bfdbfe; }
+
+        /* Movimientos: link actions y scroll del panel */
+        #movBody a[data-mov-action] {
+            display: inline-flex;
+            align-items: center;
+            gap: .2rem;
+        }
+        #movBody a[data-mov-action]:hover {
+            text-decoration: underline !important;
+        }
+        #movDetalle {
+            scrollbar-width: thin;
+        }
+        #movDetalle::-webkit-scrollbar { width: 6px; }
+        #movDetalle::-webkit-scrollbar-thumb { background: rgba(100,116,139,.35); border-radius: 4px; }
+        /* ============================================
+        FIX · Anclas con offset del navbar sticky
+        ============================================ */
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 80px;   /* compensa la altura del navbar fijo */
+        }
+
+        /* Marca la sección activa en el navbar */
+        .publico-nav-links a.active {
+            background: #2563eb !important;
+            color: #fff !important;
+        }
+        /* Botón Filtrar con cambios pendientes */
+        #btnMovFiltrar.has-changes {
+            box-shadow: 0 0 0 3px rgba(245,158,11,.25);
+            animation: pulseFil 1.4s ease-in-out infinite;
+        }
+        @keyframes pulseFil {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,.25); }
+            50%      { box-shadow: 0 0 0 6px rgba(245,158,11,.15); }
+        }
     </style>
 </head>
 <body>

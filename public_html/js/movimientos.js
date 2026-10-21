@@ -5,7 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let instituciones = [];
     let instSeleccionada = { flota: null, aceite: null, resumen: null, movimientos: null };
 
-    /* Estado */
     let movimientosAll = [];
     let movimientosFiltered = [];
     let movCurrentPage = 1;
@@ -74,10 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const hace30 = new Date();
         hace30.setDate(hoy.getDate() - 30);
         const fmt = d => d.toISOString().split('T')[0];
-        $('movFechaInicio').value = fmt(hace30);
-        $('movFechaFin').value = fmt(hoy);
-        $('estFechaInicio').value = fmt(hace30);
-        $('estFechaFin').value = fmt(hoy);
+
+        if ($('movFechaInicio')) $('movFechaInicio').value = fmt(hace30);
+        if ($('movFechaFin'))    $('movFechaFin').value    = fmt(hoy);
+        if ($('estFechaInicio')) $('estFechaInicio').value = fmt(hace30);
+        if ($('estFechaFin'))    $('estFechaFin').value    = fmt(hoy);
     }
 
     /* ============================================================
@@ -103,10 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (instituciones[0]) sel.value = instituciones[0].id_institucion;
         });
 
-        instSeleccionada.flota = parseInt(instituciones[0]?.id_institucion ?? 1);
-        instSeleccionada.aceite = instSeleccionada.flota;
-        instSeleccionada.resumen = instSeleccionada.flota;
-        instSeleccionada.movimientos = instSeleccionada.flota;
+        instSeleccionada.flota        = parseInt(instituciones[0]?.id_institucion ?? 1);
+        instSeleccionada.aceite       = instSeleccionada.flota;
+        instSeleccionada.resumen      = instSeleccionada.flota;
+        instSeleccionada.movimientos  = instSeleccionada.flota;
     }
 
     function abreviar(nombre){
@@ -133,13 +133,13 @@ document.addEventListener('DOMContentLoaded', () => {
         $('instFlota')?.addEventListener('change', e => {
             instSeleccionada.flota = parseInt(e.target.value);
             flotaStatusActual = null;
-            $('flotaTablaWrap').style.display = 'none';
+            if ($('flotaTablaWrap')) $('flotaTablaWrap').style.display = 'none';
             cargarFlota();
         });
         $('instAceite')?.addEventListener('change', e => {
             instSeleccionada.aceite = parseInt(e.target.value);
             aceiteStatusActual = null;
-            $('aceiteTablaWrap').style.display = 'none';
+            if ($('aceiteTablaWrap')) $('aceiteTablaWrap').style.display = 'none';
             cargarAceite();
         });
         $('instResumen')?.addEventListener('change', e => {
@@ -151,7 +151,27 @@ document.addEventListener('DOMContentLoaded', () => {
             cargarMovimientos();
         });
 
-        /* Flota stats */
+        /* Nav interno con offset */
+        document.querySelectorAll('.publico-nav-links a[href^="#"]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const href = link.getAttribute('href');
+                const target = document.querySelector(href);
+                if (!target) return;
+                e.preventDefault();
+
+                const nav = document.querySelector('.publico-nav');
+                const navHeight = nav ? nav.offsetHeight : 0;
+                const extraOffset = 12;
+                const y = target.getBoundingClientRect().top + window.pageYOffset - navHeight - extraOffset;
+
+                window.scrollTo({ top: y, behavior: 'smooth' });
+
+                document.querySelectorAll('.publico-nav-links a').forEach(a => a.classList.remove('active'));
+                link.classList.add('active');
+            });
+        });
+
+        /* Flota */
         document.querySelectorAll('#flotaStats .pub-stat[data-status]').forEach(card => {
             card.addEventListener('click', () => {
                 document.querySelectorAll('#flotaStats .pub-stat').forEach(c => c.classList.remove('active'));
@@ -162,18 +182,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         $('flotaSearch')?.addEventListener('input', renderFlotaTabla);
 
-        /* Aceite stats */
+        /* Aceite */
         document.querySelectorAll('.pub-stat[data-aceite]').forEach(card => {
             card.addEventListener('click', () => {
                 document.querySelectorAll('.pub-stat[data-aceite]').forEach(c => c.classList.remove('active'));
                 card.classList.add('active');
                 aceiteStatusActual = card.dataset.aceite;
-                $('btnPdfAceite').disabled = false;
+                if ($('btnPdfAceite')) $('btnPdfAceite').disabled = false;
                 cargarUnidadesPorAceite(aceiteStatusActual);
             });
         });
         $('aceiteSearch')?.addEventListener('input', renderAceiteTabla);
-
         $('btnPdfAceite')?.addEventListener('click', () => generarPdfAceite('por_estado'));
         $('btnPdfAceiteCompleto')?.addEventListener('click', () => generarPdfAceite('completo'));
 
@@ -184,7 +203,20 @@ document.addEventListener('DOMContentLoaded', () => {
         $('btnPdfResumen')?.addEventListener('click', generarPdfResumen);
 
         /* Movimientos */
-        $('btnMovFiltrar')?.addEventListener('click', cargarMovimientos);
+        $('movTipo')?.addEventListener('change', () => {
+            movCurrentPage = 1;
+            cargarMovimientos();
+        });
+        $('btnMovFiltrar')?.addEventListener('click', () => {
+            movCurrentPage = 1;
+            cargarMovimientos();
+        });
+        $('movFechaInicio')?.addEventListener('change', () => {
+            $('btnMovFiltrar')?.classList.add('has-changes');
+        });
+        $('movFechaFin')?.addEventListener('change', () => {
+            $('btnMovFiltrar')?.classList.add('has-changes');
+        });
         $('movSearch')?.addEventListener('input', () => { movCurrentPage = 1; renderMovimientos(); });
         $('movLimit')?.addEventListener('change', e => { movPerPage = parseInt(e.target.value); movCurrentPage = 1; renderMovimientos(); });
 
@@ -208,29 +240,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.success){ console.error('Error estado flota:', d); return; }
 
         const r = d.data || {};
-        $('flotaOperativas').textContent = r.operativas || 0;
-        $('flotaInoperativas').textContent = r.inoperativas || 0;
-        $('flotaMantenimiento').textContent = r.en_mantenimiento || 0;
-        $('flotaCriticas').textContent = r.criticas || 0;
-        $('flotaTotal').textContent = r.total || 0;
+        if ($('flotaOperativas'))   $('flotaOperativas').textContent   = r.operativas || 0;
+        if ($('flotaInoperativas')) $('flotaInoperativas').textContent = r.inoperativas || 0;
+        if ($('flotaMantenimiento')) $('flotaMantenimiento').textContent = r.en_mantenimiento || 0;
+        if ($('flotaCriticas'))     $('flotaCriticas').textContent     = r.criticas || 0;
+        if ($('flotaTotal'))        $('flotaTotal').textContent        = r.total || 0;
     }
 
     async function cargarUnidadesPorEstado(status){
-        $('flotaTablaWrap').style.display = 'block';
-        $('flotaTablaBody').innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
+        if ($('flotaTablaWrap')) $('flotaTablaWrap').style.display = 'block';
+        if ($('flotaTablaBody')) $('flotaTablaBody').innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
 
         const d = await fetchJSON(API + '/unidades-por-estado', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status, id_institucion: instSeleccionada.flota })
         });
-        if (!d.success){ $('flotaTablaBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>'; return; }
+        if (!d.success){
+            if ($('flotaTablaBody')) $('flotaTablaBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>';
+            return;
+        }
 
         flotaAll = d.data || [];
         renderFlotaTabla();
     }
 
     function renderFlotaTabla(){
+        if (!$('flotaTablaBody')) return;
         const q = ($('flotaSearch')?.value || '').toLowerCase().trim();
         const items = flotaAll.filter(u => {
             if (!q) return true;
@@ -267,27 +303,31 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.success){ console.error('Error estado aceite:', d); return; }
 
         const r = d.data || {};
-        $('aceiteOk').textContent = r.ok || 0;
-        $('aceiteProximo').textContent = r.proximo || 0;
-        $('aceiteRequerido').textContent = r.requerido || 0;
+        if ($('aceiteOk'))        $('aceiteOk').textContent        = r.ok || 0;
+        if ($('aceiteProximo'))   $('aceiteProximo').textContent   = r.proximo || 0;
+        if ($('aceiteRequerido')) $('aceiteRequerido').textContent = r.requerido || 0;
     }
 
     async function cargarUnidadesPorAceite(status){
-        $('aceiteTablaWrap').style.display = 'block';
-        $('aceiteTablaBody').innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
+        if ($('aceiteTablaWrap')) $('aceiteTablaWrap').style.display = 'block';
+        if ($('aceiteTablaBody')) $('aceiteTablaBody').innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
 
         const d = await fetchJSON(API + '/unidades-por-estado-aceite', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status, id_institucion: instSeleccionada.aceite })
         });
-        if (!d.success){ $('aceiteTablaBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>'; return; }
+        if (!d.success){
+            if ($('aceiteTablaBody')) $('aceiteTablaBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>';
+            return;
+        }
 
         aceiteAll = d.data || [];
         renderAceiteTabla();
     }
 
     function renderAceiteTabla(){
+        if (!$('aceiteTablaBody')) return;
         const q = ($('aceiteSearch')?.value || '').toLowerCase().trim();
         const items = aceiteAll.filter(u => {
             if (!q) return true;
@@ -343,6 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function keyResumen(r){ return `${r.marca_modelo}|${r.transmision}|${r.combustible}`; }
 
     function renderResumenTabla(){
+        if (!$('resumenBody')) return;
         const q = ($('resumenSearch')?.value || '').toLowerCase().trim();
         const items = resumenAll.filter(r => {
             if (!q) return true;
@@ -351,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!items.length){
             $('resumenBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Sin datos</td></tr>';
-            $('btnPdfResumen').disabled = true;
+            if ($('btnPdfResumen')) $('btnPdfResumen').disabled = true;
             actualizarResumenSeleccionados();
             return;
         }
@@ -375,7 +416,6 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         }).join('');
 
-        // Click en la fila entera → toggle checkbox
         document.querySelectorAll('#resumenBody .resumen-row').forEach(tr => {
             tr.addEventListener('click', () => {
                 const k = tr.dataset.key;
@@ -385,7 +425,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Click directo en el checkbox → toggle (sin doble trigger)
         document.querySelectorAll('#resumenBody .resumen-check').forEach(cb => {
             cb.addEventListener('change', e => {
                 const k = e.target.dataset.key;
@@ -400,7 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function toggleResumenAll(e){
         const checked = e.target.checked;
-        // Sincronizar ambos checkboxes "seleccionar todos"
         if ($('resumenSelectAll')) $('resumenSelectAll').checked = checked;
         if ($('resumenSelectAllHeader')) $('resumenSelectAllHeader').checked = checked;
 
@@ -422,18 +460,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 total += parseInt(r.total || 0);
                 op    += parseInt(r.operativas || 0);
                 inop  += parseInt(r.inoperativas || 0);
-                // crit = 0 (no hay dato de críticas en el modelo)
             }
         });
 
-        // KPIs
         if ($('resumenSelTotal')) $('resumenSelTotal').textContent = total;
         if ($('resumenSelOp'))    $('resumenSelOp').textContent    = op;
         if ($('resumenSelInop'))  $('resumenSelInop').textContent  = inop;
         if ($('resumenSelCrit'))  $('resumenSelCrit').textContent  = crit;
         if ($('resumenSelCount')) $('resumenSelCount').textContent = `${seleccionados.length}`;
 
-        // Lista
         const body = $('resumenSelectedBody');
         if (!body) return;
 
@@ -452,22 +487,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if ($('btnPdfResumen')) $('btnPdfResumen').disabled = seleccionados.length === 0;
 
-        // Sincronizar checkbox maestro
         const allChecked = resumenAll.length > 0 && seleccionados.length === resumenAll.length;
         if ($('resumenSelectAll')) $('resumenSelectAll').checked = allChecked;
         if ($('resumenSelectAllHeader')) $('resumenSelectAllHeader').checked = allChecked;
     }
 
     /* ============================================================
-       MOVIMIENTOS
+       MOVIMIENTOS · CARGA
        ============================================================ */
     async function cargarMovimientos(){
+        if (!$('movBody')) return;
         $('movBody').innerHTML = '<tr><td colspan="8" class="dt-loading">Cargando...</td></tr>';
 
         const body = {
-            fechaInicio: $('movFechaInicio').value,
-            fechaFin: $('movFechaFin').value,
-            tipoMovimiento: $('movTipo').value,
+            fechaInicio: $('movFechaInicio')?.value || '',
+            fechaFin: $('movFechaFin')?.value || '',
+            tipoMovimiento: $('movTipo')?.value || 'todos',
             id_institucion: instSeleccionada.movimientos
         };
 
@@ -476,6 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+
+        $('btnMovFiltrar')?.classList.remove('has-changes');
+
         if (!d.success){
             $('movBody').innerHTML = '<tr><td colspan="8" class="dt-empty">Error al cargar</td></tr>';
             return;
@@ -487,6 +525,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderMovimientos(){
+        if (!$('movBody')) return;
+
         const q = ($('movSearch')?.value || '').toLowerCase().trim();
         movimientosFiltered = movimientosAll.filter(m => {
             if (!q) return true;
@@ -502,21 +542,54 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!page.length){
             $('movBody').innerHTML = '<tr><td colspan="8" class="dt-empty">Sin movimientos</td></tr>';
         } else {
-            $('movBody').innerHTML = page.map((m, idx) => `
-                <tr data-idx="${start + idx}" style="cursor:pointer;">
-                    <td>${start + idx + 1}</td>
-                    <td><span class="badge badge-info">${esc(m.tipo)}</span></td>
-                    <td>${formatFecha(m.fecha)}</td>
-                    <td><code style="font-size:.72rem;">${esc(m.referencia)}</code></td>
-                    <td><strong>${esc(m.unidad)}</strong></td>
-                    <td>${esc(m.operador || '—')}</td>
-                    <td>${esc(m.mecanico || '—')}</td>
-                    <td>${esc(m.estado || '—')}</td>
-                </tr>
-            `).join('');
+            $('movBody').innerHTML = page.map((m, idx) => {
+                const realIdx = start + idx;
+
+                let refHtml = `<code style="font-size:.72rem;">${esc(m.referencia)}</code>`;
+                if (m.id_despacho){
+                    refHtml = `<a href="javascript:void(0)" data-mov-action="detalle" data-mov-idx="${realIdx}" style="color:#1d4ed8; font-weight:600; text-decoration:none;"><i data-lucide="file-text" class="w-3 h-3" style="display:inline; vertical-align:middle;"></i> ${esc(m.referencia)}</a>`;
+                } else if (m.id_aceite){
+                    refHtml = `<a href="javascript:void(0)" data-mov-action="detalle" data-mov-idx="${realIdx}" style="color:#b45309; font-weight:600; text-decoration:none;"><i data-lucide="droplet" class="w-3 h-3" style="display:inline; vertical-align:middle;"></i> ${esc(m.referencia)}</a>`;
+                } else if (m.id_mantenimiento){
+                    refHtml = `<a href="javascript:void(0)" data-mov-action="detalle" data-mov-idx="${realIdx}" style="color:#334155; font-weight:600; text-decoration:none;"><i data-lucide="tools" class="w-3 h-3" style="display:inline; vertical-align:middle;"></i> ${esc(m.referencia)}</a>`;
+                } else if (m.id_kilometraje){
+                    refHtml = `<a href="javascript:void(0)" data-mov-action="detalle" data-mov-idx="${realIdx}" style="color:#6d28d9; font-weight:600; text-decoration:none;"><i data-lucide="gauge" class="w-3 h-3" style="display:inline; vertical-align:middle;"></i> ${esc(m.referencia)}</a>`;
+                }
+
+                let unidadHtml = `<strong>${esc(m.unidad || '—')}</strong>`;
+                if (m.id_flota){
+                    unidadHtml = `<a href="javascript:void(0)" data-mov-action="historial" data-mov-idx="${realIdx}" style="color:#1d4ed8; font-weight:700; text-decoration:none;"><i data-lucide="bus" class="w-3 h-3" style="display:inline; vertical-align:middle;"></i> ${esc(m.unidad)}</a>`;
+                }
+
+                return `
+                    <tr data-idx="${realIdx}" style="cursor:pointer;">
+                        <td>${realIdx + 1}</td>
+                        <td><span class="badge badge-info">${esc(m.tipo)}</span></td>
+                        <td>${formatFecha(m.fecha)}</td>
+                        <td>${refHtml}</td>
+                        <td>${unidadHtml}</td>
+                        <td>${esc(m.operador || '—')}</td>
+                        <td>${esc(m.mecanico || '—')}</td>
+                        <td>${esc(m.estado || '—')}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.querySelectorAll('#movBody [data-mov-action]').forEach(a => {
+                a.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const action = a.dataset.movAction;
+                    const idx = parseInt(a.dataset.movIdx);
+                    const m = movimientosFiltered[idx];
+                    if (!m) return;
+                    if (action === 'detalle')   mostrarDetalleMovimiento(m);
+                    if (action === 'historial') mostrarHistorialUnidad(m);
+                });
+            });
 
             document.querySelectorAll('#movBody tr[data-idx]').forEach(tr => {
-                tr.addEventListener('click', () => {
+                tr.addEventListener('click', e => {
+                    if (e.target.closest('[data-mov-action]')) return;
                     const idx = parseInt(tr.dataset.idx);
                     const m = movimientosFiltered[idx];
                     if (m) mostrarDetalleMovimiento(m);
@@ -524,13 +597,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        $('movStart').textContent = total ? start + 1 : 0;
-        $('movEnd').textContent = Math.min(start + movPerPage, total);
-        $('movTotal').textContent = total;
+        if ($('movStart')) $('movStart').textContent = total ? start + 1 : 0;
+        if ($('movEnd'))   $('movEnd').textContent   = Math.min(start + movPerPage, total);
+        if ($('movTotal')) $('movTotal').textContent = total;
         renderPaginacion();
+        refreshIcons();
     }
 
     function renderPaginacion(){
+        if (!$('movPagination')) return;
         const total = movimientosFiltered.length;
         const totalPages = Math.max(1, Math.ceil(total / movPerPage));
         let html = '';
@@ -565,45 +640,432 @@ document.addEventListener('DOMContentLoaded', () => {
         return [1,'...',current-1,current,current+1,'...',total];
     }
 
-    function mostrarDetalleMovimiento(m){
-        selectedMov = m;
-        const d = $('movDetalle');
-        if (!d) return;
+    /* ============================================================
+       PANEL · DETALLE SEGÚN TIPO
+       ============================================================ */
+    function mostrarCargandoPanel(){
+        if (!$('movDetalle')) return;
+        $('movDetalle').innerHTML = `
+            <div style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                <div class="dt-loading" style="font-size:.9rem;">Cargando detalle...</div>
+            </div>`;
+    }
 
-        const dt = m.tipo;
+    async function mostrarDetalleMovimiento(m){
+        if (!$('movDetalle')) return;
+        selectedMov = m;
+        mostrarCargandoPanel();
+
+        const tipo = m.tipo;
+        if (tipo === 'Despacho Almacén' && m.id_despacho){
+            await panelDespacho(m);
+        } else if (tipo === 'Cambio Aceite' && m.id_aceite){
+            await panelAceite(m);
+        } else if (tipo === 'Mantenimiento Flota' && m.id_mantenimiento){
+            await panelMantenimiento(m);
+        } else if (tipo === 'Actualización KM' && m.id_kilometraje){
+            await panelKilometraje(m);
+        } else {
+            renderPanelBasico(m);
+        }
+        refreshIcons();
+    }
+
+    function renderPanelBasico(m){
+        if (!$('movDetalle')) return;
         const iconMap = { 'Despacho Almacén':'file-text', 'Mantenimiento Flota':'tools', 'Cambio Aceite':'droplet', 'Actualización KM':'gauge' };
         const colorMap = { 'Despacho Almacén':'#2563eb', 'Mantenimiento Flota':'#64748b', 'Cambio Aceite':'#f59e0b', 'Actualización KM':'#8b5cf6' };
+        const dt = m.tipo;
 
-        let extra = '';
-        if (dt === 'Despacho Almacén' && m.id_despacho){
-            extra = `<div style="margin-top:.75rem;"><button class="btn btn-primary btn-sm" id="movPdfDesp"><i data-lucide="file-text" class="w-4 h-4"></i><span>Generar PDF</span></button></div>`;
+        $('movDetalle').innerHTML = `
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:2.25rem; height:2.25rem; border-radius:.45rem; background:${colorMap[dt]||'#64748b'}22; color:${colorMap[dt]||'#64748b'};">
+                    <i data-lucide="${iconMap[dt]||'circle'}" style="width:18px; height:18px;"></i>
+                </span>
+                <div>
+                    <strong style="font-size:.95rem; color:#0f172a; display:block;">${esc(dt)}</strong>
+                    <code style="font-size:.72rem; color:#64748b;">${esc(m.referencia)}</code>
+                </div>
+            </div>
+            <div style="font-size:.82rem; color:#475569; display:grid; gap:.5rem;">
+                <div><strong>Fecha:</strong> ${formatFecha(m.fecha)}</div>
+                <div><strong>Unidad:</strong> ${esc(m.unidad || '—')}</div>
+                <div><strong>Estado:</strong> ${esc(m.estado || '—')}</div>
+                <div style="margin-top:.4rem; padding:.65rem .85rem; background:#fff; border:1px solid #e2e8f0; border-radius:.4rem;"><strong>Observación:</strong><br>${esc(m.observacion || 'Sin observaciones')}</div>
+            </div>
+        `;
+    }
+
+    async function panelDespacho(m){
+        const d = await fetchJSON(API + '/detalle-orden', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idDespacho: m.id_despacho })
+        });
+        if (!d.success){ renderPanelBasico(m); return; }
+
+        const o = d.data;
+        const arts = o.productos || [];
+
+        let artHtml = '';
+        if (arts.length){
+            artHtml = arts.map(a => `
+                <tr>
+                    <td class="text-upper" style="font-size:.75rem;">${esc(a.producto || '')}</td>
+                    <td class="text-center" style="font-size:.75rem; font-weight:600;">${esc(a.cant_despacho || '')}</td>
+                </tr>
+            `).join('');
+        } else {
+            artHtml = '<tr><td colspan="2" class="text-center" style="color:#94a3b8; padding:.75rem;">Sin artículos</td></tr>';
         }
 
-        d.innerHTML = `
-            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem;">
-                <span style="display:inline-flex; align-items:center; justify-content:center; width:2rem; height:2rem; border-radius:.4rem; background:${colorMap[dt]||'#64748b'}22; color:${colorMap[dt]||'#64748b'};">
-                    <i data-lucide="${iconMap[dt]||'circle'}" style="width:16px; height:16px;"></i>
+        $('movDetalle').innerHTML = `
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:2.25rem; height:2.25rem; border-radius:.45rem; background:#2563eb22; color:#2563eb;">
+                    <i data-lucide="file-text" style="width:18px; height:18px;"></i>
                 </span>
-                <strong style="font-size:.88rem; color:#0f172a;">${esc(dt)}</strong>
+                <div>
+                    <strong style="font-size:.95rem; color:#0f172a; display:block;">Orden de Despacho</strong>
+                    <code style="font-size:.72rem; color:#64748b;">${esc(m.referencia)}</code>
+                </div>
             </div>
-            <div style="font-size:.8rem; color:#475569; display:grid; gap:.4rem;">
-                <div><strong>Referencia:</strong> <code>${esc(m.referencia)}</code></div>
-                <div><strong>Fecha:</strong> ${formatFecha(m.fecha)}</div>
-                <div><strong>Unidad:</strong> ${esc(m.unidad)}</div>
-                <div><strong>Operador:</strong> ${esc(m.operador || '—')}</div>
-                <div><strong>Mecánico:</strong> ${esc(m.mecanico || '—')}</div>
-                <div><strong>Despachador:</strong> ${esc(m.despachador || '—')}</div>
-                <div><strong>Estado:</strong> ${esc(m.estado || '—')}</div>
-                <div style="margin-top:.4rem; padding:.5rem .65rem; background:#fff; border:1px solid #e2e8f0; border-radius:.35rem;"><strong>Observación:</strong> ${esc(m.observacion || 'Sin observaciones')}</div>
+
+            <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:.5rem; padding:.65rem .85rem; margin-bottom:.75rem;">
+                <div style="font-size:.65rem; color:#1e40af; text-transform:uppercase; font-weight:700; margin-bottom:.3rem;">Unidad</div>
+                <strong style="font-size:.9rem; color:#0f172a;">${esc(o.id_unidad || '—')}</strong>
+                <div style="font-size:.75rem; color:#475569;">${esc(o.marca_unidad || '')} ${esc(o.modelo_unidad || '')}</div>
+                <div style="font-size:.72rem; color:#64748b; margin-top:.2rem;"><strong>VIN:</strong> <code>${esc(o.vim_unidad || '—')}</code></div>
             </div>
-            ${extra}
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.75rem; font-size:.75rem;">
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Operador</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${esc(o.operador_nombre || '—')}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Mecánico</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${esc(o.mecanico_nombre || '—')}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem; grid-column:1/-1;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Despachador</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${esc(o.despachador_nombre || '—')}</div>
+                </div>
+            </div>
+
+            ${o.observacion ? `<div style="background:#f8fafc; border-left:3px solid #cbd5e1; padding:.5rem .75rem; border-radius:.25rem; margin-bottom:.75rem; font-size:.78rem; color:#475569; font-style:italic;">${esc(o.observacion)}</div>` : ''}
+
+            <div style="margin-bottom:.75rem;">
+                <div style="font-size:.75rem; font-weight:700; color:#334155; margin-bottom:.35rem;">Artículos despachados (${arts.length})</div>
+                <div style="max-height:180px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:.35rem;">
+                    <table class="pub-tabla" style="font-size:.75rem;">
+                        <thead><tr><th>Producto</th><th class="text-center" style="width:70px;">Cant.</th></tr></thead>
+                        <tbody>${artHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+
+            <button class="btn btn-primary btn-sm" id="movPdfDesp" style="width:100%; justify-content:center;">
+                <i data-lucide="file-text" class="w-4 h-4"></i>
+                <span>Generar PDF de la Orden</span>
+            </button>
         `;
-        refreshIcons();
+
         $('movPdfDesp')?.addEventListener('click', generarPdfDespacho);
     }
 
+    async function panelAceite(m){
+        const d = await fetchJSON(API + '/detalle-aceite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idAceite: m.id_aceite, id_institucion: instSeleccionada.movimientos })
+        });
+        if (!d.success){ renderPanelBasico(m); return; }
+
+        const a = d.data;
+        const kmCambio = parseInt(a.kilometraje_cambio || 0);
+        const kmAnterior = parseInt(a.kilometraje_anterior || 0);
+        const kmProximo = parseInt(a.kilometraje_proximo_cambio || 0);
+        const diff = kmProximo > 0 && kmCambio > 0 ? kmProximo - kmCambio : 0;
+
+        $('movDetalle').innerHTML = `
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:2.25rem; height:2.25rem; border-radius:.45rem; background:#f59e0b22; color:#f59e0b;">
+                    <i data-lucide="droplet" style="width:18px; height:18px;"></i>
+                </span>
+                <div>
+                    <strong style="font-size:.95rem; color:#0f172a; display:block;">Cambio de Aceite</strong>
+                    <code style="font-size:.72rem; color:#64748b;">${esc(m.referencia)}</code>
+                </div>
+            </div>
+
+            <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:.5rem; padding:.65rem .85rem; margin-bottom:.75rem;">
+                <div style="font-size:.65rem; color:#b45309; text-transform:uppercase; font-weight:700; margin-bottom:.3rem;">Unidad</div>
+                <strong style="font-size:.9rem; color:#0f172a;">${esc(a.id_unidad || '—')}</strong>
+                <div style="font-size:.72rem; color:#64748b; margin-top:.2rem;"><strong>VIN:</strong> <code>${esc(a.vim_unidad || '—')}</code></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.75rem; font-size:.75rem;">
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Fecha cambio</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${formatFecha(a.fecha_cambio)}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Responsable</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem; font-size:.72rem;">${esc(a.responsable_nombre || 'Sistema')}</div>
+                </div>
+            </div>
+
+            <div style="font-size:.75rem; font-weight:700; color:#334155; margin-bottom:.35rem;">Kilometrajes</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.4rem; margin-bottom:.75rem;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">KM Anterior</div>
+                    <div style="font-size:.95rem; font-weight:800; color:#475569;">${kmAnterior ? kmAnterior.toLocaleString('es-VE') : '—'}</div>
+                </div>
+                <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">KM Cambio</div>
+                    <div style="font-size:.95rem; font-weight:800; color:#b45309;">${kmCambio ? kmCambio.toLocaleString('es-VE') : '—'}</div>
+                </div>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Próximo</div>
+                    <div style="font-size:.95rem; font-weight:800; color:#1e40af;">${kmProximo ? kmProximo.toLocaleString('es-VE') : '—'}</div>
+                </div>
+                <div style="background:${diff <= 0 ? '#fee2e2' : (diff <= 1000 ? '#fef3c7' : '#dcfce7')}; border:1px solid ${diff <= 0 ? '#fecaca' : (diff <= 1000 ? '#fde68a' : '#bbf7d0')}; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Restantes</div>
+                    <div style="font-size:.95rem; font-weight:800; color:${diff <= 0 ? '#991b1b' : (diff <= 1000 ? '#b45309' : '#166534')};">${diff > 0 ? diff.toLocaleString('es-VE') : '0'}</div>
+                </div>
+            </div>
+
+            ${a.observaciones ? `<div style="background:#f8fafc; border-left:3px solid #f59e0b; padding:.5rem .75rem; border-radius:.25rem; font-size:.78rem; color:#475569; font-style:italic;"><strong>Observaciones:</strong><br>${esc(a.observaciones)}</div>` : ''}
+        `;
+    }
+
+    async function panelMantenimiento(m){
+        const d = await fetchJSON(API + '/detalle-mantenimiento', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idMantenimiento: m.id_mantenimiento, id_institucion: instSeleccionada.movimientos })
+        });
+        if (!d.success){ renderPanelBasico(m); return; }
+
+        const x = d.data;
+        const tipo = (x.tipo_mantenimiento === 'c' || x.tipo_mantenimiento === 'C') ? 'Correctivo' : 'Preventivo';
+
+        $('movDetalle').innerHTML = `
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:2.25rem; height:2.25rem; border-radius:.45rem; background:#64748b22; color:#64748b;">
+                    <i data-lucide="tools" style="width:18px; height:18px;"></i>
+                </span>
+                <div>
+                    <strong style="font-size:.95rem; color:#0f172a; display:block;">Mantenimiento ${tipo}</strong>
+                    <code style="font-size:.72rem; color:#64748b;">${esc(m.referencia)}</code>
+                </div>
+            </div>
+
+            <div style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:.5rem; padding:.65rem .85rem; margin-bottom:.75rem;">
+                <div style="font-size:.65rem; color:#475569; text-transform:uppercase; font-weight:700; margin-bottom:.3rem;">Unidad</div>
+                <strong style="font-size:.9rem; color:#0f172a;">${esc(x.id_unidad || '—')}</strong>
+                <div style="font-size:.72rem; color:#64748b; margin-top:.2rem;"><strong>VIN:</strong> <code>${esc(x.vim_unidad || '—')}</code></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.75rem; font-size:.75rem;">
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Entrada</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${formatFecha(x.fecha_entrada)}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Salida</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${x.fecha_salida ? formatFecha(x.fecha_salida) : 'Pendiente'}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Operador</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${esc(x.operardor_unidad || '—')}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Mecánico</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${esc(x.nomb_mecanico || '—')}</div>
+                </div>
+            </div>
+
+            ${x.diagnostico ? `<div style="background:#f8fafc; border-left:3px solid #64748b; padding:.5rem .75rem; border-radius:.25rem; margin-bottom:.5rem; font-size:.78rem;"><strong>Diagnóstico:</strong><br>${esc(x.diagnostico)}</div>` : ''}
+            ${x.recomendacion ? `<div style="background:#f8fafc; border-left:3px solid #16a34a; padding:.5rem .75rem; border-radius:.25rem; margin-bottom:.5rem; font-size:.78rem;"><strong>Recomendación:</strong><br>${esc(x.recomendacion)}</div>` : ''}
+            ${x.obsOperador ? `<div style="background:#f8fafc; border-left:3px solid #3b82f6; padding:.5rem .75rem; border-radius:.25rem; margin-bottom:.5rem; font-size:.78rem;"><strong>Obs. Operador:</strong><br>${esc(x.obsOperador)}</div>` : ''}
+            ${x.obsSupervisor ? `<div style="background:#f8fafc; border-left:3px solid #8b5cf6; padding:.5rem .75rem; border-radius:.25rem; margin-bottom:.5rem; font-size:.78rem;"><strong>Obs. Supervisor:</strong><br>${esc(x.obsSupervisor)}</div>` : ''}
+        `;
+    }
+
+    async function panelKilometraje(m){
+        const d = await fetchJSON(API + '/detalle-kilometraje', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idKilometraje: m.id_kilometraje, id_institucion: instSeleccionada.movimientos })
+        });
+        if (!d.success){ renderPanelBasico(m); return; }
+
+        const x = d.data;
+        const kmActual = parseInt(x.kilometraje_actual || 0);
+        const kmAnterior = parseInt(x.kilometraje_anterior || 0);
+        const recorrido = kmActual > 0 && kmAnterior > 0 ? kmActual - kmAnterior : 0;
+
+        $('movDetalle').innerHTML = `
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:2.25rem; height:2.25rem; border-radius:.45rem; background:#8b5cf622; color:#8b5cf6;">
+                    <i data-lucide="gauge" style="width:18px; height:18px;"></i>
+                </span>
+                <div>
+                    <strong style="font-size:.95rem; color:#0f172a; display:block;">Actualización de KM</strong>
+                    <code style="font-size:.72rem; color:#64748b;">${esc(m.referencia)}</code>
+                </div>
+            </div>
+
+            <div style="background:#ede9fe; border:1px solid #ddd6fe; border-radius:.5rem; padding:.65rem .85rem; margin-bottom:.75rem;">
+                <div style="font-size:.65rem; color:#6d28d9; text-transform:uppercase; font-weight:700; margin-bottom:.3rem;">Unidad</div>
+                <strong style="font-size:.9rem; color:#0f172a;">${esc(x.id_unidad || '—')}</strong>
+                <div style="font-size:.72rem; color:#64748b; margin-top:.2rem;"><strong>VIN:</strong> <code>${esc(x.vim_unidad || '—')}</code></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.5rem; margin-bottom:.75rem; font-size:.75rem;">
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Fecha</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${formatFecha(x.fecha_actualizacion)}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.5rem .65rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Registrado por</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem; font-size:.72rem;">${esc(x.responsable_nombre || 'Sistema')}</div>
+                </div>
+            </div>
+
+            <div style="font-size:.75rem; font-weight:700; color:#334155; margin-bottom:.35rem;">Lecturas de kilometraje</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:.4rem;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Anterior</div>
+                    <div style="font-size:.9rem; font-weight:800; color:#475569;">${kmAnterior ? kmAnterior.toLocaleString('es-VE') : '—'}</div>
+                </div>
+                <div style="background:#ede9fe; border:1px solid #ddd6fe; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Actual</div>
+                    <div style="font-size:.9rem; font-weight:800; color:#6d28d9;">${kmActual ? kmActual.toLocaleString('es-VE') : '—'}</div>
+                </div>
+                <div style="background:#dcfce7; border:1px solid #bbf7d0; border-radius:.4rem; padding:.5rem; text-align:center;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Recorrido</div>
+                    <div style="font-size:.9rem; font-weight:800; color:#166534;">${recorrido ? recorrido.toLocaleString('es-VE') : '—'}</div>
+                </div>
+            </div>
+        `;
+    }
+
     /* ============================================================
-       PDF · DESPACHO (orden individual)
+       PANEL · HISTORIAL DE UNIDAD
+       ============================================================ */
+    async function mostrarHistorialUnidad(m){
+        if (!$('movDetalle')) return;
+        if (!m.id_flota){ mostrarDetalleMovimiento(m); return; }
+        mostrarCargandoPanel();
+
+        const d = await fetchJSON(API + '/historial-unidad', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idFlota: m.id_flota, id_institucion: instSeleccionada.movimientos })
+        });
+        if (!d.success){
+            $('movDetalle').innerHTML = `<div style="padding:1rem; color:#dc2626; font-size:.85rem;">${esc(d.message || 'Error al cargar historial')}</div>`;
+            return;
+        }
+
+        const unidad = d.data.unidad || {};
+        const historial = d.data.historial || [];
+        const counts = d.data.counts || { despacho:0, aceite:0, mantenimiento:0, status:0 };
+
+        const km = parseInt(unidad.km_actual || 0);
+        const ultCambio = parseInt(unidad.ultimo_cambio_aceite || 0);
+        const proxCambio = ultCambio > 0 ? ultCambio + 5000 : 0;
+        const faltan = proxCambio > 0 ? proxCambio - km : 0;
+
+        const tipoIcon = { despacho:'file-text', aceite:'droplet', mantenimiento:'tools', status:'refresh-cw' };
+        const tipoColor = { despacho:'#2563eb', aceite:'#f59e0b', mantenimiento:'#64748b', status:'#8b5cf6' };
+        const tipoLabel = { despacho:'Despacho', aceite:'Cambio de Aceite', mantenimiento:'Mantenimiento', status:'Cambio de Estado' };
+
+        let timelineHtml = '';
+        if (!historial.length){
+            timelineHtml = '<div style="text-align:center; padding:2rem 1rem; color:#94a3b8; font-style:italic;">Sin eventos registrados</div>';
+        } else {
+            timelineHtml = historial.map(ev => {
+                const color = tipoColor[ev.tipo] || '#64748b';
+                const icon = tipoIcon[ev.tipo] || 'circle';
+                const label = tipoLabel[ev.tipo] || ev.tipo;
+
+                let detalle = ev.descripcion || ev.detalles || '';
+                try {
+                    const det = typeof ev.detalles === 'string' ? JSON.parse(ev.detalles) : ev.detalles;
+                    if (ev.tipo === 'aceite' && det){
+                        detalle = `Cambio a ${parseInt(det.kilometraje_cambio||0).toLocaleString('es-VE')} KM (anterior: ${parseInt(det.kilometraje_anterior||0).toLocaleString('es-VE')})`;
+                    }
+                } catch(_) {}
+
+                return `
+                    <div style="display:flex; gap:.65rem; padding:.65rem 0; border-bottom:1px solid #f1f5f9;">
+                        <div style="flex-shrink:0; width:1.75rem; height:1.75rem; border-radius:50%; background:${color}22; color:${color}; display:flex; align-items:center; justify-content:center;">
+                            <i data-lucide="${icon}" style="width:14px; height:14px;"></i>
+                        </div>
+                        <div style="flex:1; min-width:0;">
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:.4rem; flex-wrap:wrap;">
+                                <strong style="font-size:.78rem; color:${color};">${esc(label)} #${ev.id_evento}</strong>
+                                <span style="font-size:.68rem; color:#94a3b8;">${formatFecha(ev.fecha)}</span>
+                            </div>
+                            <div style="font-size:.75rem; color:#475569; margin-top:.2rem; line-height:1.4;">${detalle}</div>
+                            <div style="font-size:.68rem; color:#94a3b8; margin-top:.15rem;"><i data-lucide="user" style="width:10px; height:10px; display:inline;"></i> ${esc(ev.usuario || 'Sistema')}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        $('movDetalle').innerHTML = `
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem; padding-bottom:.75rem; border-bottom:1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:2.25rem; height:2.25rem; border-radius:.45rem; background:#1e40af22; color:#1e40af;">
+                    <i data-lucide="bus" style="width:18px; height:18px;"></i>
+                </span>
+                <div>
+                    <strong style="font-size:.95rem; color:#0f172a; display:block;">Hoja de Vida</strong>
+                    <code style="font-size:.72rem; color:#64748b;">${esc(unidad.id_unidad || '—')}</code>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.4rem; margin-bottom:.75rem; font-size:.72rem;">
+                <div style="background:#f8fafc; padding:.45rem .6rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Marca / Modelo</div>
+                    <div style="color:#334155; font-weight:600; margin-top:.15rem;">${esc(unidad.marca || '')} ${esc(unidad.modelo || '')}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.45rem .6rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">KM Actual</div>
+                    <div style="color:#1e40af; font-weight:700; margin-top:.15rem;">${km.toLocaleString('es-VE')}</div>
+                </div>
+                <div style="background:#f8fafc; padding:.45rem .6rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Próx. Cambio</div>
+                    <div style="color:#b45309; font-weight:700; margin-top:.15rem;">${proxCambio ? proxCambio.toLocaleString('es-VE') : '—'}</div>
+                </div>
+                <div style="background:${faltan <= 0 ? '#fee2e2' : (faltan <= 1000 ? '#fef3c7' : '#dcfce7')}; padding:.45rem .6rem; border-radius:.35rem;">
+                    <div style="font-size:.6rem; color:#64748b; text-transform:uppercase; font-weight:700;">Faltan</div>
+                    <div style="color:${faltan <= 0 ? '#991b1b' : (faltan <= 1000 ? '#b45309' : '#166534')}; font-weight:700; margin-top:.15rem;">${faltan > 0 ? faltan.toLocaleString('es-VE') : '0'}</div>
+                </div>
+            </div>
+
+            <div style="display:flex; gap:.35rem; flex-wrap:wrap; margin-bottom:.75rem; font-size:.68rem;">
+                <span style="background:#eff6ff; color:#1e40af; padding:.2rem .5rem; border-radius:999px; font-weight:600;">Despachos: ${counts.despacho||0}</span>
+                <span style="background:#fef3c7; color:#b45309; padding:.2rem .5rem; border-radius:999px; font-weight:600;">Aceite: ${counts.aceite||0}</span>
+                <span style="background:#f1f5f9; color:#475569; padding:.2rem .5rem; border-radius:999px; font-weight:600;">Mant.: ${counts.mantenimiento||0}</span>
+                <span style="background:#ede9fe; color:#6d28d9; padding:.2rem .5rem; border-radius:999px; font-weight:600;">Estados: ${counts.status||0}</span>
+            </div>
+
+            <div style="font-size:.75rem; font-weight:700; color:#334155; margin-bottom:.35rem;">Historial de eventos (${historial.length})</div>
+            <div style="max-height:350px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:.4rem; padding:0 .75rem;">
+                ${timelineHtml}
+            </div>
+        `;
+
+        refreshIcons();
+    }
+
+    /* ============================================================
+       PDF · DESPACHO
        ============================================================ */
     async function generarPdfDespacho(){
         if (!selectedMov?.id_despacho) return;
@@ -652,15 +1114,21 @@ document.addEventListener('DOMContentLoaded', () => {
        ESTACIÓN
        ============================================================ */
     async function cargarEstacionesSelect(){
+        const sel = $('estEstacion');
+        if (!sel) return;
+
         const d = await fetchJSON(API + '/ventas-estacion', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fechaInicio: $('estFechaInicio').value, fechaFin: $('estFechaFin').value, estacionId: 'todas' })
+            body: JSON.stringify({
+                fechaInicio: $('estFechaInicio')?.value || '',
+                fechaFin: $('estFechaFin')?.value || '',
+                estacionId: 'todas'
+            })
         });
         if (!d.success) return;
 
         const estaciones = d.estaciones || [];
-        const sel = $('estEstacion');
         sel.innerHTML = '<option value="todas">Todas las estaciones</option>';
         estaciones.forEach(e => {
             const opt = document.createElement('option');
@@ -671,19 +1139,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function cargarEstacion(){
-        $('estBody').innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
+        const bodyEl = $('estBody');
+        if (!bodyEl) return;
+
+        bodyEl.innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
 
         const d = await fetchJSON(API + '/ventas-estacion', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                fechaInicio: $('estFechaInicio').value,
-                fechaFin: $('estFechaFin').value,
-                estacionId: $('estEstacion').value
+                fechaInicio: $('estFechaInicio')?.value || '',
+                fechaFin: $('estFechaFin')?.value || '',
+                estacionId: $('estEstacion')?.value || 'todas'
             })
         });
         if (!d.success){
-            $('estBody').innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>';
+            bodyEl.innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>';
             return;
         }
 
@@ -694,6 +1165,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderEstacion(){
+        if (!$('estBody')) return;
+
         const q = ($('estSearch')?.value || '').toLowerCase().trim();
         estFiltered = estAll.filter(e => {
             if (!q) return true;
@@ -732,13 +1205,14 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        $('estStart').textContent = total ? start + 1 : 0;
-        $('estEnd').textContent = Math.min(start + estPerPage, total);
-        $('estTotal').textContent = total;
+        if ($('estStart')) $('estStart').textContent = total ? start + 1 : 0;
+        if ($('estEnd'))   $('estEnd').textContent   = Math.min(start + estPerPage, total);
+        if ($('estTotal')) $('estTotal').textContent = total;
         renderEstPag();
     }
 
     function renderEstPag(){
+        if (!$('estPagination')) return;
         const total = estFiltered.length;
         const totalPages = Math.max(1, Math.ceil(total / estPerPage));
         let html = '';
@@ -769,16 +1243,19 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderEstacionChart(){
         const canvas = $('estChart');
         const empty = $('estChartEmpty');
-        const type = $('estChartType').value;
+        if (!canvas) return;
+
+        const type = $('estChartType')?.value || 'litros_dia';
 
         if (!estAll.length){
             canvas.style.display = 'none';
-            empty.style.display = 'block';
+            if (empty) empty.style.display = 'block';
             if (estChart) { estChart.destroy(); estChart = null; }
             return;
         }
         canvas.style.display = 'block';
-        empty.style.display = 'none';
+        if (empty) empty.style.display = 'none';
+
         if (estChart) { estChart.destroy(); estChart = null; }
 
         let labels = [], data = [], label = '', colors = [];
@@ -808,7 +1285,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const map = {};
             estAll.forEach(e => {
                 if (parseFloat(e.litros_gasolina) > 0) map['Gasolina'] = (map['Gasolina']||0) + parseFloat(e.litros_gasolina);
-                if (parseFloat(e.litros_diesel) > 0) map['Diésel'] = (map['Diésel']||0) + parseFloat(e.litros_diesel);
+                if (parseFloat(e.litros_diesel) > 0)   map['Diésel']   = (map['Diésel']||0)   + parseFloat(e.litros_diesel);
             });
             labels = Object.keys(map);
             data = labels.map(l => map[l]);
@@ -875,6 +1352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function abrirModalDetalleEstacion(item){
+        if (!$('modalDetalleBody')) return;
         $('modalDetalleTitle').textContent = `Ventas · ${formatFecha(item.fecha)} · ${item.estacion}`;
         const ventas = item.ventas || [];
 
@@ -966,12 +1444,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         await SITGO_PDF.generar(
             'publico_aceite',
-            {
-                items,
-                filtro: filtroTexto,
-                modo,
-                institucion_nombre: nombreInstitucion(instSeleccionada.aceite),
-            },
+            { items, filtro: filtroTexto, modo },
             `aceite_${modo === 'completo' ? 'completo' : aceiteStatusActual}_${new Date().toISOString().slice(0,10)}.pdf`,
             {
                 titulo_documento: 'REPORTE DE ACEITE',
@@ -985,7 +1458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       PDF · RESUMEN FLOTA (operatividad)
+       PDF · OPERATIVIDAD FLOTA
        ============================================================ */
     async function generarPdfResumen(){
         if (resumenSelected.size === 0){
@@ -1016,7 +1489,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       PDF · VENTAS ESTACIÓN (con header fijo "ABASTECIMIENTO")
+       PDF · VENTAS ESTACIÓN
        ============================================================ */
     async function generarPdfEstacion(){
         if (!estAll.length){
@@ -1025,22 +1498,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const sel = $('estEstacion');
-        const nombreEst = sel.value === 'todas' ? 'Todas las estaciones' : (sel.options[sel.selectedIndex].text || 'N/D');
+        const nombreEst = (sel?.value === 'todas' || !sel) ? 'Todas las estaciones' : (sel.options[sel.selectedIndex].text || 'N/D');
 
         await SITGO_PDF.generar(
             'publico_ventas_estacion',
             {
                 data: estAll,
-                fechaInicio: $('estFechaInicio').value,
-                fechaFin: $('estFechaFin').value,
+                fechaInicio: $('estFechaInicio')?.value || '',
+                fechaFin: $('estFechaFin')?.value || '',
                 estacionNombre: nombreEst,
-                institucion_nombre: nombreInstitucion(instSeleccionada.movimientos),
             },
-            `ventas_estacion_${$('estFechaInicio').value}_${$('estFechaFin').value}.pdf`,
+            `ventas_estacion_${$('estFechaInicio')?.value || ''}_${$('estFechaFin')?.value || ''}.pdf`,
             {
                 titulo_documento: 'VENTAS DE ESTACIÓN',
                 doc_color: '#1e40af',
-                mostrar_header: false,   // ← única excepción: header fijo "SERVICIO SOCIALISTA DE ABASTECIMIENTO..."
+                mostrar_header: false,
             }
         );
     }

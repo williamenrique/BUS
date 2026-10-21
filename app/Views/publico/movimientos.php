@@ -107,7 +107,6 @@ require __DIR__ . '/inc/header.php';
         <div class="pub-sec-body">
             <div class="pub-2col">
 
-                <!-- Columna izquierda: tabla de grupos -->
                 <div>
                     <div style="display:flex; gap:.5rem; align-items:center; margin-bottom:.65rem; flex-wrap:wrap;">
                         <div class="filter-search" style="flex:1; min-width:200px;">
@@ -137,7 +136,6 @@ require __DIR__ . '/inc/header.php';
                     </div>
                 </div>
 
-                <!-- Columna derecha: panel de seleccionados -->
                 <div class="card">
                     <div class="card-body" style="padding:1rem;">
                         <h4 style="margin:0 0 .75rem; font-size:.88rem; font-weight:700; color:#0f172a; display:flex; align-items:center; gap:.4rem;">
@@ -146,7 +144,6 @@ require __DIR__ . '/inc/header.php';
                             <span id="resumenSelCount" class="badge badge-info" style="margin-left:auto;">0</span>
                         </h4>
 
-                        <!-- KPIs de totales -->
                         <div style="display:grid; grid-template-columns:1fr 1fr; gap:.4rem; margin-bottom:.75rem;">
                             <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:.5rem; padding:.55rem .65rem; text-align:center;">
                                 <div style="font-size:.62rem; color:#64748b; text-transform:uppercase; font-weight:700;">Total</div>
@@ -166,7 +163,6 @@ require __DIR__ . '/inc/header.php';
                             </div>
                         </div>
 
-                        <!-- Lista de seleccionados -->
                         <div style="max-height:260px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:.4rem;">
                             <table class="pub-tabla" style="font-size:.78rem;">
                                 <thead>
@@ -229,12 +225,12 @@ require __DIR__ . '/inc/header.php';
                     <label>&nbsp;</label>
                     <button class="btn btn-primary btn-sm" id="btnMovFiltrar">
                         <i data-lucide="filter" class="w-4 h-4"></i>
-                        <span>Filtrar</span>
+                        <span>Filtrar por fechas</span>
                     </button>
                 </div>
             </div>
 
-            <div class="pub-2col">
+            <div class="pub-2col" style="align-items:start;">
                 <div class="card">
                     <div class="dt-toolbar">
                         <div class="dt-toolbar-left">
@@ -254,7 +250,7 @@ require __DIR__ . '/inc/header.php';
                             </div>
                         </div>
                     </div>
-                    <div class="table-wrap" style="max-height:500px;">
+                    <div class="table-wrap" style="max-height:600px; overflow-y:auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -276,11 +272,14 @@ require __DIR__ . '/inc/header.php';
                     </div>
                 </div>
 
-                <div>
-                    <div class="pub-detail" id="movDetalle">
-                        <div style="text-align:center; padding:2rem 1rem; color:#94a3b8;">
-                            <i data-lucide="mouse-pointer-click" style="width:32px; height:32px; margin:0 auto .75rem;"></i>
-                            <p style="margin:0; font-size:.85rem;">Selecciona un movimiento para ver su detalle</p>
+                <div class="card" style="position:sticky; top:1rem;">
+                    <div class="pub-detail" id="movDetalle" style="min-height:400px; max-height:calc(100vh - 200px); overflow-y:auto;">
+                        <div style="text-align:center; padding:3rem 1rem; color:#94a3b8;">
+                            <i data-lucide="mouse-pointer-click" style="width:40px; height:40px; margin:0 auto 1rem;"></i>
+                            <h4 style="margin:0 0 .35rem; font-size:.9rem; color:#475569; font-weight:600;">Selecciona un movimiento</h4>
+                            <p style="margin:0; font-size:.82rem; line-height:1.4;">
+                                Haz clic en una <strong>referencia</strong> para ver el detalle completo, o en una <strong>unidad</strong> para ver su historial.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -314,7 +313,7 @@ require __DIR__ . '/inc/header.php';
                 <div class="form-group">
                     <label>Estación</label>
                     <select id="estEstacion">
-                        <option value="todas">Todas</option>
+                        <option value="todas">Todas las estaciones</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -345,7 +344,7 @@ require __DIR__ . '/inc/header.php';
                             </div>
                         </div>
                     </div>
-                    <div class="table-wrap" style="max-height:500px;">
+                    <div class="table-wrap" style="max-height:500px; overflow-y:auto;">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -353,7 +352,7 @@ require __DIR__ . '/inc/header.php';
                                     <th class="text-right">Litros</th>
                                     <th class="text-right">Ventas</th>
                                     <th class="text-right">Monto Bs</th>
-                                    <th></th>
+                                    <th class="text-right"></th>
                                 </tr>
                             </thead>
                             <tbody id="estBody">
