@@ -317,7 +317,7 @@
                     }
 
                     const d = await r.json();
-                    console.log('📦 Respuesta:', d);
+                    // console.log('📦 Respuesta:', d);
 
                     if (!d.ok) {
                         toast(d.message || 'Error al cargar los productos.', 'error');
@@ -326,7 +326,7 @@
 
                     let batch = d.data;
                     if (batch && !Array.isArray(batch) && typeof batch === 'object') {
-                        console.log('⚠️ data viene agrupada, aplanando…');
+                        // console.log('⚠️ data viene agrupada, aplanando…');
                         const aplanado = [];
                         Object.values(batch).forEach(sub => {
                             if (Array.isArray(sub)) aplanado.push(...sub);
@@ -337,7 +337,7 @@
 
                     if (total === null) {
                         total = d.totalFiltrados ?? d.total ?? batch.length;
-                        console.log(`📊 Total según backend: ${total}`);
+                        // console.log(`📊 Total según backend: ${total}`);
                     }
 
                     allItems = allItems.concat(batch);

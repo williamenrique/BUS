@@ -1,8 +1,6 @@
-console.log('✅ usuarios.js cargado. SITGO_BASE =', window.SITGO_BASE);
-
 document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'usuarios';
-    console.log('📡 API Usuarios =', API);
+    // console.log('📡 API Usuarios =', API);
 
     const $ = id => document.getElementById(id);
     let dt = null;

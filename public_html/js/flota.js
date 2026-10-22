@@ -1,4 +1,4 @@
-console.log('✅ flota.js cargado. SITGO_BASE =', window.SITGO_BASE);
+// console.log('✅ flota.js cargado. SITGO_BASE =', window.SITGO_BASE);
 
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;

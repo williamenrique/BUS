@@ -1,8 +1,6 @@
-console.log('✅ personal.js cargado. SITGO_BASE =', window.SITGO_BASE);
-
 document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'personal';
-    console.log('📡 API Personal =', API);
+    // console.log('📡 API Personal =', API);
 
     const $ = id => document.getElementById(id);
 

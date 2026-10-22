@@ -1,5 +1,3 @@
-console.log('✅ estacion.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     if (typeof initQZTrayConnection === 'function') initQZTrayConnection();
 

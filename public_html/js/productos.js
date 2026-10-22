@@ -1,5 +1,3 @@
-console.log('✅ productos.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'productos/i/' + INST;

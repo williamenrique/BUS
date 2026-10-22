@@ -38,3 +38,8 @@
   Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
   Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
 ------------------------------------------------------------
+[2026-10-22 09:08:28] [APP] Undefined constant "DEPARTAMENTO_OPERACIONES"
+  SQLSTATE: 0
+  Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
+  Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
+------------------------------------------------------------

@@ -61,8 +61,18 @@ define('MULTI_INSTITUCION', true);   // activa el filtrado por institución
 // Recuperación de contraseña
 // ============================================
 
-define('DEPARTAMENTO_SISTEMA',   1);   // "Sistema"
-define('DEPARTAMENTO_ESTACION',  2);   // "Estacion"
+// ============================================
+// Departamentos (coinciden con table_departamentos)
+// ============================================
+define('DEPARTAMENTO_SISTEMA',        1);   // "Sistema"
+define('DEPARTAMENTO_ESTACION',       2);   // "Estacion"
+define('DEPARTAMENTO_ADMINISTRACION', 3);   // "Administracion"
+define('DEPARTAMENTO_ALMACEN',        4);   // "Almacen"
+define('DEPARTAMENTO_BIENES',         5);   // "Bienes"
+define('DEPARTAMENTO_OPERACIONES',    6);   // "Operaciones"
+define('DEPARTAMENTO_COMPRAS',        7);   // "Compras"
+define('DEPARTAMENTO_TALLER',         8);   // "Taller"
+
 define('PASSWORD_DEFAULT_RESET', '123456');
 // Nombres
 define('SITENAME', 'SITGO');

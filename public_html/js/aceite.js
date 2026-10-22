@@ -1,5 +1,3 @@
-console.log('✅ aceite.js cargado. SITGO_BASE =', window.SITGO_BASE);
-
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'flota/aceite/i/' + INST;

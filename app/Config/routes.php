@@ -260,7 +260,6 @@ return [
         // ============================================================
     // Dashboard (Sistema)
     // ============================================================
-    ['path' => '/dashboard/instituciones',                 'method' => 'GET',  'handler' => 'ControllerDashboard@getInstituciones'],
     ['path' => '/dashboard/almacen',                       'method' => 'GET',  'handler' => 'ControllerDashboard@getAlmacenData'],
     ['path' => '/dashboard/almacen/top-productos',         'method' => 'GET',  'handler' => 'ControllerDashboard@getTopProductosAlmacen'],
     ['path' => '/dashboard/almacen/ultimas-ordenes',       'method' => 'GET',  'handler' => 'ControllerDashboard@getUltimasOrdenesAlmacen'],

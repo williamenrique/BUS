@@ -1,5 +1,3 @@
-console.log('✅ recuperar.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'recuperar';
     const $ = id => document.getElementById(id);

@@ -1,5 +1,3 @@
-console.log('✅ estacion-seleccionar.js cargado');
-
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('formEstacion');
     const btn  = document.getElementById('btnContinuar');
