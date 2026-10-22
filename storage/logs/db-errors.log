@@ -43,3 +43,13 @@
   Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
   Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
 ------------------------------------------------------------
+[2026-10-22 10:50:35] [APP] Too few arguments to function App\Controllers\ControllerFlota::historial(), 1 passed and exactly 2 expected
+  SQLSTATE: 0
+  Mensaje: Too few arguments to function App\Controllers\ControllerFlota::historial(), 1 passed and exactly 2 expected
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerFlota.php:231
+------------------------------------------------------------
+[2026-10-22 10:53:50] [APP] Too few arguments to function App\Controllers\ControllerFlota::historial(), 1 passed and exactly 2 expected
+  SQLSTATE: 0
+  Mensaje: Too few arguments to function App\Controllers\ControllerFlota::historial(), 1 passed and exactly 2 expected
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerFlota.php:231
+------------------------------------------------------------

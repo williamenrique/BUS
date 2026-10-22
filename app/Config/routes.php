@@ -125,7 +125,12 @@ return [
     ['path' => '/flota/aceite/cambio',       'method' => 'POST', 'handler' => 'ControllerFlota@setCambioAceite'],
     ['path' => '/flota/aceite/eliminar',     'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
     ['path' => '/flota/aceite',              'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
-
+    // ============================================================
+    // Flota · Historial de cambios de estado
+    // ============================================================
+    ['path' => '/flota/status/i/{inst}',         'method' => 'GET',  'handler' => 'ControllerFlotaStatus@index'],
+    ['path' => '/flota/status/i/{inst}/listar',  'method' => 'GET',  'handler' => 'ControllerFlotaStatus@listar'],
+    ['path' => '/flota/status/i/{inst}/combos',  'method' => 'GET',  'handler' => 'ControllerFlotaStatus@combos'],
     // ============================================================
     // Menú (admin)
     // ============================================================

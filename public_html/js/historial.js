@@ -26,21 +26,77 @@ document.addEventListener('DOMContentLoaded', () => {
         5: 'Crítica',
     };
 
-    cargar();
+    /* ============================================================
+       Leer ?tipo= de la URL y preseleccionar el filtro
+       ============================================================ */
+    (function aplicarTipoDesdeUrl() {
+        const params  = new URLSearchParams(window.location.search);
+        const tipoUrl = params.get('tipo');
+        if (!tipoUrl) return;
 
+        const sel = $('hf_tipo');
+        if (!sel) return;
+
+        const validos = ['despacho', 'aceite', 'mantenimiento', 'status'];
+        if (validos.includes(tipoUrl)) {
+            sel.value = tipoUrl;
+        }
+    })();
+
+    /* ============================================================
+       Filtros
+       ------------------------------------------------------------
+       - El submit del form sigue funcionando (Buscar).
+       - Además, cualquier cambio en un filtro dispara cargar()
+         automáticamente (tipo, fechas, búsqueda).
+       - El input de búsqueda tiene un pequeño debounce.
+       ============================================================ */
+
+    // Submit del form (botón "Buscar")
     $('formFiltrosHistorial')?.addEventListener('submit', (e) => {
         e.preventDefault();
         state.page = 1;
         cargar();
     });
+
+    // Botón limpiar
     $('btnLimpiarFiltros')?.addEventListener('click', () => {
         $('formFiltrosHistorial').reset();
         state.page = 1;
         cargar();
     });
 
+    // Cambio de tipo (Despachos / Aceite / Mantenimiento / Estado)
+    $('hf_tipo')?.addEventListener('change', () => {
+        state.page = 1;
+        cargar();
+    });
+
+    // Cambio de fechas
+    $('hf_desde')?.addEventListener('change', () => {
+        state.page = 1;
+        cargar();
+    });
+    $('hf_hasta')?.addEventListener('change', () => {
+        state.page = 1;
+        cargar();
+    });
+
+    // Búsqueda con debounce (300ms)
+    let searchDebounce = null;
+    $('hf_q')?.addEventListener('input', () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+            state.page = 1;
+            cargar();
+        }, 300);
+    });
+
     // Generar PDF
     $('btnGenerarPdfHistorial')?.addEventListener('click', generarPdf);
+
+    // Carga inicial (después de aplicar ?tipo= y bindear eventos)
+    cargar();
 
     async function cargar(){
         const cont = $('timelineContainer');
@@ -84,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.disabled = true;
 
         try {
-            // Cargar TODOS los eventos (sin paginación) con los filtros actuales
             const payload = {
                 desde:  $('hf_desde')?.value || '',
                 hasta:  $('hf_hasta')?.value || '',

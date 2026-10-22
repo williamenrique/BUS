@@ -84,29 +84,32 @@ $MOSTRAR = [
             Estado de Flota
         </h3>
 
+        <!-- ============================================ -->
+        <!-- Tarjetas de estado de flota (siempre visibles) -->
+        <!-- ============================================ -->
         <div class="estacion-stats" id="flota-stats">
-            <div class="estacion-stat stat-green" data-flota-status="1" style="cursor:pointer;">
+            <div class="estacion-stat stat-green" data-panel-tipo="flota" data-panel-valor="1" style="cursor:pointer;">
                 <div class="estacion-stat-icon"><i data-lucide="check-circle" class="w-5 h-5"></i></div>
                 <div>
                     <span class="estacion-stat-label">Operativas</span>
                     <strong id="flota-operativas">0</strong>
                 </div>
             </div>
-            <div class="estacion-stat stat-amber" data-flota-status="2" style="cursor:pointer;">
+            <div class="estacion-stat stat-amber" data-panel-tipo="flota" data-panel-valor="2" style="cursor:pointer;">
                 <div class="estacion-stat-icon"><i data-lucide="alert-triangle" class="w-5 h-5"></i></div>
                 <div>
                     <span class="estacion-stat-label">Inoperativas</span>
                     <strong id="flota-inoperativas">0</strong>
                 </div>
             </div>
-            <div class="estacion-stat stat-blue" data-flota-status="3" style="cursor:pointer;">
+            <div class="estacion-stat stat-blue" data-panel-tipo="flota" data-panel-valor="3" style="cursor:pointer;">
                 <div class="estacion-stat-icon"><i data-lucide="wrench" class="w-5 h-5"></i></div>
                 <div>
                     <span class="estacion-stat-label">Mantenimiento</span>
                     <strong id="flota-mantenimiento">0</strong>
                 </div>
             </div>
-            <div class="estacion-stat" data-flota-status="4" style="cursor:pointer; background:linear-gradient(135deg,#334155,#0f172a);">
+            <div class="estacion-stat" data-panel-tipo="flota" data-panel-valor="4" style="cursor:pointer; background:linear-gradient(135deg,#334155,#0f172a);">
                 <div class="estacion-stat-icon"><i data-lucide="alert-octagon" class="w-5 h-5"></i></div>
                 <div>
                     <span class="estacion-stat-label">Críticas</span>
@@ -115,60 +118,40 @@ $MOSTRAR = [
             </div>
         </div>
 
-        <!-- PANEL A · Resumen de aceite + top flota (por defecto) -->
-        <div id="flota-panel-resumen">
-            <div class="estacion-desgloses" style="grid-template-columns:1fr 1fr 1fr;">
-                <div class="estacion-desglose">
-                    <h4 class="estacion-desglose-title"><i data-lucide="droplet" class="w-4 h-4"></i> Aceite OK</h4>
-                    <p style="margin:0; font-size:1.4rem; font-weight:800; color:#16a34a;" id="aceite-ok">0</p>
-                </div>
-                <div class="estacion-desglose">
-                    <h4 class="estacion-desglose-title"><i data-lucide="clock" class="w-4 h-4"></i> Próximo</h4>
-                    <p style="margin:0; font-size:1.4rem; font-weight:800; color:#b45309;" id="aceite-proximo">0</p>
-                </div>
-                <div class="estacion-desglose">
-                    <h4 class="estacion-desglose-title"><i data-lucide="alert-circle" class="w-4 h-4"></i> Requerido</h4>
-                    <p style="margin:0; font-size:1.4rem; font-weight:800; color:#dc2626;" id="aceite-requerido">0</p>
-                </div>
+        <!-- ============================================ -->
+        <!-- Tarjetas de aceite (siempre visibles)        -->
+        <!-- ============================================ -->
+        <div class="estacion-desgloses" id="aceite-stats" style="grid-template-columns:1fr 1fr 1fr;">
+            <div class="estacion-desglose" data-panel-tipo="aceite" data-panel-valor="ok" style="cursor:pointer;">
+                <h4 class="estacion-desglose-title"><i data-lucide="droplet" class="w-4 h-4"></i> Aceite OK</h4>
+                <p style="margin:0; font-size:1.4rem; font-weight:800; color:#16a34a;" id="aceite-ok">0</p>
             </div>
-
-            <div class="table-wrap" style="max-height:340px; margin-top:1rem;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Marca / Modelo</th>
-                            <th>Transmisión</th>
-                            <th>Combustible</th>
-                            <th class="text-center">Total</th>
-                            <th class="text-center">Operativas</th>
-                            <th class="text-center">Inoperativas</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-resumen-flota">
-                        <tr><td colspan="6" class="dt-loading">Cargando...</td></tr>
-                    </tbody>
-                </table>
+            <div class="estacion-desglose" data-panel-tipo="aceite" data-panel-valor="proximo" style="cursor:pointer;">
+                <h4 class="estacion-desglose-title"><i data-lucide="clock" class="w-4 h-4"></i> Próximo</h4>
+                <p style="margin:0; font-size:1.4rem; font-weight:800; color:#b45309;" id="aceite-proximo">0</p>
+            </div>
+            <div class="estacion-desglose" data-panel-tipo="aceite" data-panel-valor="requerido" style="cursor:pointer;">
+                <h4 class="estacion-desglose-title"><i data-lucide="alert-circle" class="w-4 h-4"></i> Requerido</h4>
+                <p style="margin:0; font-size:1.4rem; font-weight:800; color:#dc2626;" id="aceite-requerido">0</p>
             </div>
         </div>
 
-        <!-- PANEL B · Unidades del estado seleccionado (oculto por defecto) -->
-        <div id="flota-panel-estado" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:.75rem; flex-wrap:wrap; margin-bottom:.75rem;">
+        <!-- ============================================ -->
+        <!-- Tabla dinámica (se re-renderiza según tarjeta) -->
+        <!-- ============================================ -->
+        <div class="flota-tabla-wrap">
+            <div class="flota-tabla-head">
                 <h4 class="estacion-card-title" style="margin:0; font-size:.92rem;">
                     <i data-lucide="list" class="w-4 h-4 text-primary"></i>
-                    Unidades <span id="flota-estado-nombre">—</span>
+                    Unidades <span id="flota-estado-nombre">Operativas</span>
                     <span class="badge badge-info" id="flota-estado-count" style="margin-left:.35rem;">0</span>
                 </h4>
-                <button class="btn btn-ghost btn-sm" id="btn-volver-resumen">
-                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
-                    <span>Volver al resumen</span>
-                </button>
+                <div class="filter-search" style="max-width:280px;">
+                    <span class="filter-search-icon"><i data-lucide="search" class="w-4 h-4"></i></span>
+                    <input type="text" id="flota-estado-search" placeholder="Buscar unidad, marca, modelo...">
+                </div>
             </div>
-            <div class="filter-search" style="max-width:320px; margin-bottom:.75rem;">
-                <span class="filter-search-icon"><i data-lucide="search" class="w-4 h-4"></i></span>
-                <input type="text" id="flota-estado-search" placeholder="Buscar unidad, marca, modelo...">
-            </div>
-            <div class="table-wrap" style="max-height:400px;">
+            <div class="table-wrap flota-tabla-scroll">
                 <table class="data-table">
                     <thead>
                         <tr>
@@ -177,8 +160,8 @@ $MOSTRAR = [
                             <th>VIN</th>
                             <th>Transmisión</th>
                             <th>Combustible</th>
-                            <th class="text-right">KM</th>
-                            <th class="text-right">Últ. Cambio</th>
+                            <th class="text-right">KM Actual</th>
+                            <th class="text-right">Próx. Cambio</th>
                         </tr>
                     </thead>
                     <tbody id="flota-estado-body">

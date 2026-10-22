@@ -244,14 +244,18 @@ class ModelDashboard extends Model
                 else                     $aceite['ok']++;
             }
 
-            // ---- Agrupado por marca/modelo (sin cambios) ----
+            // ---- Agrupado por marca/modelo ----
+            // Agregamos GROUP_CONCAT de id_flota + id_unidad para armar
+            // los links al historial de cada unidad en el resumen.
             $grouped = $this->fetchAll(
                 "SELECT CONCAT(fm.marca_unidad,' / ',fmo.modelo_unidad) AS unidad_grupo,
                         fm.marca_unidad, fmo.modelo_unidad,
                         f.transmision, f.tipo_combustible,
                         COUNT(*) AS total,
                         SUM(CASE WHEN f.status_unidad = 1 THEN 1 ELSE 0 END) AS operativas,
-                        SUM(CASE WHEN f.status_unidad <> 1 THEN 1 ELSE 0 END) AS inoperativas
+                        SUM(CASE WHEN f.status_unidad <> 1 THEN 1 ELSE 0 END) AS inoperativas,
+                        GROUP_CONCAT(f.id_flota ORDER BY f.id_unidad SEPARATOR ',')   AS ids_flota,
+                        GROUP_CONCAT(f.id_unidad ORDER BY f.id_unidad SEPARATOR ',')  AS ids_unidad
                  FROM table_flota f
                  INNER JOIN table_flota_marca fm ON fm.id_marca = f.id_marca
                  INNER JOIN table_flota_modelo fmo ON fmo.id_modelo = f.id_modelo

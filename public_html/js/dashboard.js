@@ -8,8 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let monthlyChart = null;
 
     /* Estado flota */
-    let flotaStatusActual = null;
     let flotaUnidadesAll = [];
+    let panelActual = { tipo: 'flota', valor: '1' };
     let sessionsIntervalId = null;
 
     /* ============================================================
@@ -83,14 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     (async () => {
         await setupInstitucionSelector();
 
-        if ($('sec-flota'))     await loadFlota();
+        if ($('sec-flota'))     { await loadFlota(); await abrirPanel('flota', '1'); }
         if ($('sec-almacen'))   await loadAlmacen();
         if ($('sec-compras'))   await loadCompras();
         if ($('sec-bienes'))    await loadBienes();
         if ($('sec-estacion'))  { await loadEstacion(); await populateMonthSelects(); await loadDailySales(); }
         if ($('sec-sesiones'))  {
             await loadActiveSessions();
-            // Auto-refresh cada 30s
             sessionsIntervalId = setInterval(loadActiveSessions, 30000);
         }
 
@@ -109,19 +108,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('sec-compras')  ? loadCompras()  : null,
                 $('sec-bienes')   ? loadBienes()   : null,
             ]);
+
+            // Recargar el panel activo con la nueva institución
+            if ($('sec-flota') && panelActual.tipo) {
+                abrirPanel(panelActual.tipo, panelActual.valor);
+            }
         });
 
         $('btnRefreshSessions')?.addEventListener('click', loadActiveSessions);
 
-        /* Tarjetas de flota clickeables */
-        document.querySelectorAll('#flota-stats [data-flota-status]').forEach(card => {
+        /* Tarjetas clickeables (flota + aceite) */
+        document.querySelectorAll('[data-panel-tipo]').forEach(card => {
             card.addEventListener('click', () => {
-                const status = parseInt(card.dataset.flotaStatus, 10);
-                abrirEstadoFlota(status);
+                abrirPanel(card.dataset.panelTipo, card.dataset.panelValor);
             });
         });
 
-        $('btn-volver-resumen')?.addEventListener('click', volverResumenFlota);
         $('flota-estado-search')?.addEventListener('input', renderFlotaEstadoTabla);
     }
 
@@ -152,7 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       FLOTA · Resumen general
+       FLOTA · Carga de contadores
        ============================================================ */
     async function loadFlota() {
         const d = await fetchJSON(API + '/operaciones' + qInst());
@@ -167,69 +169,48 @@ document.addEventListener('DOMContentLoaded', () => {
         setText('aceite-ok',        o.aceite_status?.ok ?? 0);
         setText('aceite-proximo',   o.aceite_status?.proximo ?? 0);
         setText('aceite-requerido', o.aceite_status?.requerido ?? 0);
-
-        const tbody = $('tabla-resumen-flota');
-        if (!tbody) return;
-
-        if (!o.grouped || !o.grouped.length) {
-            tbody.innerHTML = '<tr><td colspan="6" class="dt-empty">Sin datos</td></tr>';
-        } else {
-            tbody.innerHTML = o.grouped.map(g => `
-                <tr>
-                    <td>${g.marca_unidad} ${g.modelo_unidad}</td>
-                    <td>${g.transmision || '—'}</td>
-                    <td>${g.tipo_combustible || '—'}</td>
-                    <td class="text-center">${g.total}</td>
-                    <td class="text-center" style="color:#16a34a; font-weight:600;">${g.operativas}</td>
-                    <td class="text-center" style="color:#dc2626; font-weight:600;">${g.inoperativas}</td>
-                </tr>
-            `).join('');
-        }
     }
 
     /* ============================================================
-       FLOTA · Unidades por estado (click en tarjetas)
+       FLOTA · Panel dinámico (tarjeta → tabla)
+       tipo: 'flota' | 'aceite'
+       valor: '1'|'2'|'3'|'4'  |  'ok'|'proximo'|'requerido'
        ============================================================ */
-    async function abrirEstadoFlota(status) {
-        flotaStatusActual = status;
+    async function abrirPanel(tipo, valor) {
+        panelActual = { tipo, valor };
 
-        // Marcar tarjeta activa
-        document.querySelectorAll('#flota-stats [data-flota-status]').forEach(c => {
+        // Marcar tarjeta activa (solo la clickeada)
+        document.querySelectorAll('[data-panel-tipo]').forEach(c => {
             c.classList.remove('active');
             c.style.boxShadow = '';
         });
-        const card = document.querySelector(`#flota-stats [data-flota-status="${status}"]`);
+        const card = document.querySelector(`[data-panel-tipo="${tipo}"][data-panel-valor="${valor}"]`);
         if (card) {
             card.classList.add('active');
             card.style.boxShadow = '0 0 0 3px rgba(37,99,235,.25)';
         }
 
-        // Cambiar paneles
-        const pResumen = $('flota-panel-resumen');
-        const pEstado  = $('flota-panel-estado');
-        if (pResumen) pResumen.style.display = 'none';
-        if (pEstado)  pEstado.style.display  = 'block';
+        // Nombre legible en el título de la tabla
+        const nombresFlota  = { '1':'Operativas', '2':'Inoperativas', '3':'En Mantenimiento', '4':'Críticas' };
+        const nombresAceite = { 'ok':'Aceite OK', 'proximo':'Próximo Cambio', 'requerido':'Cambio Requerido' };
+        const nombre = tipo === 'flota'
+            ? (nombresFlota[String(valor)] || '—')
+            : (nombresAceite[String(valor)] || '—');
 
-        const nombreStatus = { 1:'Operativas', 2:'Inoperativas', 3:'En Mantenimiento', 4:'Críticas' };
-        setText('flota-estado-nombre', nombreStatus[status] || '—');
+        setText('flota-estado-nombre', nombre);
         setText('flota-estado-count', 0);
 
-        // Cargar unidades
         const body = $('flota-estado-body');
         if (body) body.innerHTML = '<tr><td colspan="7" class="dt-loading">Cargando...</td></tr>';
 
-        const d = await fetchJSON(API + '/operaciones' + qInst());
-        if (!d.success) {
-            if (body) body.innerHTML = '<tr><td colspan="7" class="dt-empty">Error al cargar</td></tr>';
-            return;
-        }
+        const endpoint = tipo === 'flota'
+            ? 'movimientos/unidades-por-estado'
+            : 'movimientos/unidades-por-estado-aceite';
 
-        // Reutilizamos getOperacionesData pero NO devuelve unidades individuales.
-        // Hacemos una llamada extra al endpoint de unidades por estado (el mismo de /movimientos público).
-        const r = await fetchJSON((window.SITGO_BASE || '/') + 'movimientos/unidades-por-estado', {
+        const r = await fetchJSON((window.SITGO_BASE || '/') + endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status, id_institucion: institucionActual })
+            body: JSON.stringify({ status: valor, id_institucion: institucionActual })
         });
 
         if (!r.success || !r.data) {
@@ -258,12 +239,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Base para armar la URL del historial respetando BASE_URL
         const base = (window.SITGO_BASE || '/');
+        const inst = institucionActual;   // institución activa
 
         body.innerHTML = items.map(u => {
-            // URL del historial de la unidad (abre en nueva pestaña)
-            const urlHistorial = base + 'flota/historial/' + u.id_flota;
+            // URL correcta: /flota/i/{inst}/historial/{id_flota}
+            const urlHistorial = `${base}flota/i/${inst}/historial/${u.id_flota}`;
 
             return `
                 <tr>
@@ -280,23 +261,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td>${u.transmision || '—'}</td>
                     <td>${u.tipo_combustible || '—'}</td>
                     <td class="text-right">${fmtNum(u.km_actual, 0)}</td>
-                    <td class="text-right">${fmtNum(u.ultimo_cambio_aceite, 0)}</td>
+                    <td class="text-right">${fmtNum(u.proximo_cambio_aceite, 0)}</td>
                 </tr>
             `;
         }).join('');
-    }
-
-    function volverResumenFlota() {
-        flotaStatusActual = null;
-        flotaUnidadesAll = [];
-        if ($('flota-panel-resumen')) $('flota-panel-resumen').style.display = '';
-        if ($('flota-panel-estado'))  $('flota-panel-estado').style.display  = 'none';
-        if ($('flota-estado-search')) $('flota-estado-search').value = '';
-
-        document.querySelectorAll('#flota-stats [data-flota-status]').forEach(c => {
-            c.classList.remove('active');
-            c.style.boxShadow = '';
-        });
     }
 
     /* ============================================================
@@ -606,25 +574,22 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ============================================================
        SESIONES ACTIVAS
        ============================================================ */
-    let sessionsHash = '';        // hash de la última data renderizada
-    let sessionsFirstLoad = true; // solo el primer load muestra "Cargando..."
+    let sessionsHash = '';
+    let sessionsFirstLoad = true;
 
     async function loadActiveSessions() {
         const list = $('active-users-list');
         const noMsg = $('no-active-users');
         if (!list) return;
 
-        // Solo mostrar "Cargando..." la primera vez
         if (sessionsFirstLoad) {
             list.innerHTML = '<div class="text-muted" style="padding:1rem; text-align:center; grid-column:1/-1;">Cargando...</div>';
         }
 
         const d = await fetchJSON(API_USERS + '/sesiones-activas');
 
-        // ¿Sin sesiones?
         if (!d.success || !d.data || !d.data.length) {
             const hash = 'empty';
-            // Si ya estaba vacío, no re-renderizar
             if (!sessionsFirstLoad && sessionsHash === hash) return;
 
             sessionsHash = hash;
@@ -635,16 +600,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Construir un hash ligero con los campos que importan
-        // (session_id + status + nick). Si el hash no cambió, no se re-renderiza.
         const hash = d.data.map(s =>
             `${s.session_id}|${s.usuario_status}|${s.usuario_nick}`
         ).join('##');
 
-        if (!sessionsFirstLoad && hash === sessionsHash) {
-            // Nada cambió → refresco silencioso, no toca el DOM
-            return;
-        }
+        if (!sessionsFirstLoad && hash === sessionsHash) return;
 
         sessionsHash = hash;
         sessionsFirstLoad = false;
@@ -657,12 +617,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? '<span class="badge badge-success">Activo</span>'
                 : '<span class="badge badge-danger">Inactivo</span>';
 
-            // Iniciales para fallback
-            const iniciales = (s.usuario_nick || '?')
-                .substring(0, 2)
-                .toUpperCase();
+            const iniciales = (s.usuario_nick || '?').substring(0, 2).toUpperCase();
 
-            // Avatar: imagen si existe, si no → div con iniciales
             const avatarHtml = s.imagen_url
                 ? `<img src="${s.imagen_url}" alt="${s.usuario_nick}"
                         class="session-avatar"
@@ -701,7 +657,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         refreshIcons();
 
-        // Delegación de eventos (una sola vez por render)
         list.querySelectorAll('[data-force-logout]').forEach(btn => {
             btn.addEventListener('click', () => forceLogout(btn.dataset.forceLogout));
         });
@@ -712,7 +667,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ============================================================
        MODAL DE CONFIRMACIÓN · SITGO
-       Devuelve una Promesa<boolean> — reemplaza al confirm() nativo.
        ============================================================ */
     function sitgoConfirm(options = {}){
         return new Promise((resolve) => {
@@ -721,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 message   = 'Esta acción no se puede deshacer.',
                 okText    = 'Confirmar',
                 cancelText= 'Cancelar',
-                type      = 'warning',   // warning | danger | info | success
+                type      = 'warning',
                 icon      = 'alert-triangle'
             } = options;
 
@@ -734,36 +688,29 @@ document.addEventListener('DOMContentLoaded', () => {
             const okTextEl = $('sitgoConfirmOkText');
             const cancelTextEl = $('sitgoConfirmCancelText');
 
-            // Sin modal en el DOM → fallback al confirm nativo (por seguridad)
             if (!modal){
                 resolve(window.confirm(`${title}\n\n${message}`));
                 return;
             }
 
-            // Aplicar textos e iconos
             titleEl.textContent  = title;
             msgEl.textContent    = message;
             okTextEl.textContent = okText;
             cancelTextEl.textContent = cancelText;
 
-            // Resetear tipo del icono
             iconWrap.classList.remove('danger','info','success','warning');
             if (type !== 'warning') iconWrap.classList.add(type);
 
-            // Cambiar el icono (Lucide)
             iconWrap.innerHTML = `<i data-lucide="${icon}" class="w-6 h-6"></i>`;
             if (window.lucide && typeof window.lucide.createIcons === 'function'){
                 try{ window.lucide.createIcons(); } catch(_) {}
             }
 
-            // Botón OK: si es danger, usar rojo; si no, primary
             okBtn.classList.toggle('btn-danger', type === 'danger');
             okBtn.classList.toggle('btn-primary', type !== 'danger');
 
-            // Mostrar
             modal.classList.add('open');
 
-            // Limpieza + resolver
             const cleanup = (result) => {
                 modal.classList.remove('open');
                 okBtn.removeEventListener('click', onOk);
@@ -788,7 +735,6 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.addEventListener('click', onBackdrop);
             document.addEventListener('keydown', onKey);
 
-            // Foco en Cancelar por defecto (seguridad UX)
             setTimeout(() => cancelBtn.focus(), 50);
         });
     }
@@ -827,29 +773,29 @@ document.addEventListener('DOMContentLoaded', () => {
        DESHABILITAR USUARIO
        ============================================================ */
     async function disableUser(userId) {
-            const confirmado = await sitgoConfirm({
-                title: 'Deshabilitar usuario',
-                message: 'El usuario no podrá iniciar sesión mientras esté deshabilitado. ¿Continuar?',
-                okText: 'Sí, deshabilitar',
-                cancelText: 'Cancelar',
-                type: 'warning',
-                icon: 'user-x',
-            });
-            if (!confirmado) return;
+        const confirmado = await sitgoConfirm({
+            title: 'Deshabilitar usuario',
+            message: 'El usuario no podrá iniciar sesión mientras esté deshabilitado. ¿Continuar?',
+            okText: 'Sí, deshabilitar',
+            cancelText: 'Cancelar',
+            type: 'warning',
+            icon: 'user-x',
+        });
+        if (!confirmado) return;
 
-            const d = await fetchJSON(API_USERS + '/cambiar-status/' + userId, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ usuario_status: 0 })
-            });
+        const d = await fetchJSON(API_USERS + '/cambiar-status/' + userId, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usuario_status: 0 })
+        });
 
-            if (d.ok || d.success) {
-                toast('Usuario deshabilitado', 'success');
-                sessionsHash = '';
-                sessionsFirstLoad = true;
-                loadActiveSessions();
-            } else {
-                toast(d.message || 'No se pudo deshabilitar', 'error');
-            }
+        if (d.ok || d.success) {
+            toast('Usuario deshabilitado', 'success');
+            sessionsHash = '';
+            sessionsFirstLoad = true;
+            loadActiveSessions();
+        } else {
+            toast(d.message || 'No se pudo deshabilitar', 'error');
+        }
     }
 });
