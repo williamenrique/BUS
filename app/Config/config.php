@@ -72,6 +72,7 @@ define('DEPARTAMENTO_BIENES',         5);   // "Bienes"
 define('DEPARTAMENTO_OPERACIONES',    6);   // "Operaciones"
 define('DEPARTAMENTO_COMPRAS',        7);   // "Compras"
 define('DEPARTAMENTO_TALLER',         8);   // "Taller"
+define('DEPARTAMENTO_TESORERIA',      9);   // "Tesoría"
 
 define('PASSWORD_DEFAULT_RESET', '123456');
 // Nombres

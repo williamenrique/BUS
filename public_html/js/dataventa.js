@@ -10,7 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let dtVentasCierre = null;
     let filtroFechaActivo = false;
 
-    // Contexto de la tabla inferior
     let tablaVentasCtx = { tipo: null, id_user: null, fecha: null, id_cierre: null };
 
     /* ============================================================
@@ -149,7 +148,6 @@ document.addEventListener('DOMContentLoaded', () => {
             onDataLoaded: () => { refreshIcons(); bindCierresActions(); }
         });
 
-        // dtVentasCierre SOLO se usa cuando se ve un cierre cerrado
         dtVentasCierre = new DataTable({
             tbodyId: 'tbodyVentasCierre',
             endpoint: API + '/ventas-cierre/listar',
@@ -177,16 +175,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="text-right">${fmtNum(v.monto, 2)}</td>
                     <td class="text-right">
                         <div class="actions">
-                            <button class="action-btn" data-action="reimprimir" data-id="${v.id_venta}" data-user="${tablaVentasCtx.id_user}" data-fecha="${tablaVentasCtx.fecha}" title="Reimprimir">
+                            <button class="action-btn" data-action="reimprimir" data-id="${v.id_venta}" data-user="${tablaVentasCtx.id_user || ''}" data-fecha="${tablaVentasCtx.fecha || ''}" title="Reimprimir (COPIA)">
                                 <i data-lucide="printer" class="w-4 h-4"></i>
                             </button>
-                            <button class="action-btn delete" data-action="eliminar-ticket" data-id="${v.id_venta}" data-user="${tablaVentasCtx.id_user}" data-fecha="${tablaVentasCtx.fecha}" title="Eliminar ticket">
+                            <button class="action-btn delete" data-action="eliminar-ticket" data-id="${v.id_venta}" data-user="${tablaVentasCtx.id_user || ''}" data-fecha="${tablaVentasCtx.fecha || ''}" title="Eliminar ticket">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </td>
                 </tr>`,
-            onDataLoaded: () => { refreshIcons(); }
+            onDataLoaded: () => { refreshIcons(); bindVentasCierreActions(); }
         });
     }
 
@@ -224,9 +222,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /* ============================================================
-       BIND DE ACCIONES DE LA TABLA INFERIOR (ventas)
-       ============================================================ */
     function bindVentasCierreActions(){
         const tbody = $('tbodyVentasCierre');
         if (!tbody || tbody._bound) return;
@@ -235,35 +230,68 @@ document.addEventListener('DOMContentLoaded', () => {
             const b = e.target.closest('[data-action]');
             if (!b) return;
             const { action, id, user, fecha } = b.dataset;
-            if (action === 'reimprimir')     await reimprimirTicket(id, user, fecha);
+            if (action === 'reimprimir')      await reimprimirTicket(id);
             if (action === 'eliminar-ticket') await eliminarTicket(id, user, fecha, b);
         });
     }
 
     /* ============================================================
-       REIMPRIMIR TICKET
+       REIMPRIMIR TICKET (tolerante: solo id_venta)
+       ------------------------------------------------------------
+       Siempre envía copia:1 para que el ticket diga "COPIA".
        ============================================================ */
-    async function reimprimirTicket(idVenta, idUser, fecha){
-        const t = await fetchJSON(API + '/ticket/' + idVenta, {
+    async function reimprimirTicket(idVenta){
+        if (!idVenta){
+            toast('No se identificó la venta a reimprimir.', 'error');
+            return;
+        }
+
+        // Mostrar feedback inmediato
+        toast('Preparando ticket para reimpresión…', 'success');
+
+        const t = await fetchJSON(API + '/ticket-by-venta/' + idVenta, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, id_user: idUser })
+            body: '{}'
         });
-        if (!t.ok){ toast(t.message || 'No se pudo obtener el ticket.', 'error'); return; }
+
+        if (!t.ok || !t.ticketData){
+            toast(t.message || 'No se pudo obtener el ticket.', 'error');
+            return;
+        }
+
+        // Llamar al impresor con copia:1 (obligatorio para que salga "COPIA")
         if (typeof fntImprimirTicket === 'function'){
-            await fntImprimirTicket({ ticketData: t.ticketData, copia: 1 });
+            try{
+                await fntImprimirTicket({ ticketData: t.ticketData, copia: 1 });
+                toast('Ticket enviado a la impresora.', 'success');
+            } catch(e){
+                console.error(e);
+                toast('Error al imprimir: ' + e.message, 'error');
+            }
+        } else {
+            toast('Módulo de impresión no cargado.', 'error');
         }
     }
 
     /* ============================================================
-       ELIMINAR TICKET (de un cierre o de ventas abiertas)
+       ELIMINAR TICKET (usa sitgoConfirm global)
        ============================================================ */
     async function eliminarTicket(idVenta, idUser, fecha, btnEl){
-        const tipoCtx = tablaVentasCtx.tipo; // 'abiertas' | 'cierre'
+        const tipoCtx = tablaVentasCtx.tipo;
         const msg = tipoCtx === 'cierre'
             ? `¿Eliminar el ticket #${idVenta}? Se recalcularán los totales del cierre.`
             : `¿Eliminar el ticket #${idVenta}?`;
-        if (!confirm(msg)) return;
+
+        const ok = await sitgoConfirm({
+            title: 'Eliminar ticket',
+            message: msg,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
 
         btnEl.disabled = true;
         try {
@@ -275,10 +303,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!d.ok){ toast(d.message || 'Error al eliminar.', 'error'); return; }
             toast(d.message || 'Ticket eliminado.', 'success');
 
-            // Refrescar la tabla inferior según el contexto
             if (tipoCtx === 'cierre' && tablaVentasCtx.id_cierre){
                 dtVentasCierre.refresh();
-                // Recalcular los totales del cierre (data-cierre) y refrescar listado de cierres
                 const dataCierre = await fetchJSON(API + '/data-cierre', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -292,7 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 dtCierres?.refresh();
             } else if (tipoCtx === 'abiertas'){
-                // Recargar las ventas abiertas de ese usuario/fecha
                 await verVentasAbiertas(idUser, fecha);
                 dtOpenSales?.refresh();
             }
@@ -387,7 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       GENERAR PDF · CIERRE CERRADO
+       GENERAR PDF · CIERRE
        ============================================================ */
     async function generarPdfCierre(seccion){
         if (!ventasCierreActual?.id_cierre){
@@ -427,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       GENERAR PDF · VENTAS ABIERTAS
+       GENERAR PDF · ABIERTAS
        ============================================================ */
     async function generarPdfAbiertas(seccion){
         if (!tablaVentasCtx.id_user){ toast('No hay venta seleccionada.', 'error'); return; }
@@ -606,8 +631,6 @@ document.addEventListener('DOMContentLoaded', () => {
             $('totalVentasCierre').textContent = '0';
             $('paginationVentasCierre').innerHTML = '';
         } else {
-            // OJO: estos datos vienen de getDetallado (shape distinto a listarVentasCierre).
-            // Los renderizamos aquí mismo (no usamos dtVentasCierre).
             tbody.innerHTML = d.data.map(v => `
                 <tr>
                     <td>#${v.numero_venta ?? v.id_venta ?? ''}</td>
@@ -619,7 +642,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td class="text-right">${fmtNum(v.monto, 2)}</td>
                     <td class="text-right">
                         <div class="actions">
-                            <button class="action-btn" data-action="reimprimir" data-id="${v.numero_venta ?? v.id_venta}" data-user="${idUser}" data-fecha="${fecha}" title="Reimprimir">
+                            <button class="action-btn" data-action="reimprimir" data-id="${v.numero_venta ?? v.id_venta}" title="Reimprimir (COPIA)">
                                 <i data-lucide="printer" class="w-4 h-4"></i>
                             </button>
                             <button class="action-btn delete" data-action="eliminar-ticket" data-id="${v.numero_venta ?? v.id_venta}" data-user="${idUser}" data-fecha="${fecha}" title="Eliminar ticket">
@@ -642,7 +665,15 @@ document.addEventListener('DOMContentLoaded', () => {
        CERRAR VENTA ABIERTA
        ============================================================ */
     async function cerrarVentaAbierta(idUser, fecha){
-        if (!confirm(`¿Cerrar la venta abierta del día ${formatFecha(fecha)}? Se generará un cierre.`)) return;
+        const ok = await sitgoConfirm({
+            title: 'Cerrar venta abierta',
+            message: `¿Cerrar la venta abierta del día ${formatFecha(fecha)}? Se generará un cierre.`,
+            okText: 'Sí, cerrar',
+            cancelText: 'Cancelar',
+            type: 'warning',
+            icon: 'lock',
+        });
+        if (!ok) return;
 
         try {
             const d = await fetchJSON(API + '/cerrar-turno-pendiente', {
@@ -666,8 +697,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ============================================================
+       ELIMINAR CIERRE
+       ============================================================ */
     async function eliminarCierre(idCierre, idUser, fecha){
-        if (!confirm(`¿Eliminar el cierre #${idCierre}? Las ventas volverán a "abiertas".`)) return;
+        const ok = await sitgoConfirm({
+            title: 'Eliminar cierre',
+            message: `¿Eliminar el cierre #${idCierre}? Las ventas volverán a "abiertas".`,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
+
         const d = await fetchJSON(API + '/eliminar-cierre', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -682,8 +725,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ============================================================
+       ELIMINAR ABIERTAS
+       ============================================================ */
     async function eliminarAbiertas(idUser, fecha){
-        if (!confirm('¿Eliminar TODAS las ventas abiertas de este usuario/fecha?')) return;
+        const ok = await sitgoConfirm({
+            title: 'Eliminar ventas abiertas',
+            message: '¿Eliminar TODAS las ventas abiertas de este usuario/fecha?',
+            okText: 'Sí, eliminar todo',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
+
         const d = await fetchJSON(API + '/eliminar-ventas-abiertas', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

@@ -12,9 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
         userId: 0,
         idEstacion: 0,
         idCierreActual: 0,
-        usuarioNombre:   '',   // ← NUEVO
-        usuarioApellido: '',   // ← NUEVO
-        estacionNombre:  '',   // ← AÑADIR
+        usuarioNombre:   '',
+        usuarioApellido: '',
+        estacionNombre:  '',
+        submitting:      false,   // ← evita doble submit de venta
+        cerrando:        false,   // ← evita doble cierre
+        actualizandoTasa:false,   // ← evita doble update de tasa
     };
 
     /* ============================================================
@@ -52,10 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.tiposCombustible = d.tiposCombustible || [];
         state.userId           = d.idUser;
         state.idEstacion       = d.idEstacion;
-        state.usuarioNombre   = d.usuarioNombre   || '';
-        state.usuarioApellido = d.usuarioApellido || '';
-        state.estacionNombre  = d.estacionNombre  || '';   // ← AÑADIR
-
+        state.usuarioNombre    = d.usuarioNombre   || '';
+        state.usuarioApellido  = d.usuarioApellido || '';
+        state.estacionNombre   = d.estacionNombre  || '';
 
         llenar($('tipoVehiculo'), state.tiposVehiculo, 'Seleccione...');
         llenar($('tipoPago'),     state.tiposPago,     'Seleccione...');
@@ -206,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         cont.querySelectorAll('[data-action="pdf-pend"]').forEach(b => {
             b.addEventListener('click', () => {
-                // Guardamos la fecha/idUser del pendiente para el modal
                 state._pdfFechaPendiente = b.dataset.fecha;
                 state._pdfUserPendiente  = b.dataset.user;
                 abrirModalPdf('pendiente');
@@ -228,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('formVenta')?.addEventListener('submit', registrarVenta);
         $('btnCerrarDia')?.addEventListener('click', cerrarDia);
 
-        // Botón "Generar PDF" del resumen del día → abre modal
         $('btnGenerarPDF')?.addEventListener('click', () => {
             if (!state.idEstacion){ toast('Sin estación asignada.', 'error'); return; }
             abrirModalPdf('hoy');
@@ -276,21 +276,38 @@ Precio Total: ${mt} ${simbolo}
        ACCIONES
        ============================================================ */
     async function actualizarTasa(){
+        if (state.actualizandoTasa) return;
+
         const tasa = parseFloat($('tasaInput')?.value);
         if (!tasa || tasa <= 0){ toast('Ingresa una tasa válida.', 'error'); return; }
 
-        const d = await fetchJSON(API + '/update-tasa', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tasa })
-        });
-        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-        toast(d.message, 'success');
-        await cargar();
+        state.actualizandoTasa = true;
+        const btn = $('btnUpdateTasa');
+        if (btn) btn.disabled = true;
+
+        try {
+            const d = await fetchJSON(API + '/update-tasa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tasa })
+            });
+            if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+            toast(d.message, 'success');
+            await cargar();
+        } finally {
+            state.actualizandoTasa = false;
+            if (btn) btn.disabled = false;
+        }
     }
 
+    /* ============================================================
+       REGISTRAR VENTA (con protección anti doble submit)
+       ============================================================ */
     async function registrarVenta(e){
         e.preventDefault();
+
+        // 1) Bloqueo si ya hay una venta en proceso
+        if (state.submitting) return;
 
         const payload = {
             tipo_vehiculo:    $('tipoVehiculo').value,
@@ -306,29 +323,46 @@ Precio Total: ${mt} ${simbolo}
             return;
         }
 
-        // 1) Grabar la venta (esto sí debe esperar)
-        const d = await fetchJSON(API + '/registrar-venta', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        // 2) Marcar envío y deshabilitar botón
+        state.submitting = true;
+        const submitBtn = $('formVenta')?.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
 
-        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-        toast(d.message, 'success');
+        try {
+            const d = await fetchJSON(API + '/registrar-venta', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
 
-        // 2) Limpiar el form YA (feedback inmediato al usuario)
-        $('formVenta').reset();
-        $('monto').value = '';
-        $('tipoCombustible').value = '1';
-        updatePreview();
+            if (!d.ok){
+                toast(d.message || 'Error', 'error');
+                return;
+            }
 
-        // 3) Recargar el resumen EN PARALELO con la impresión
-        cargar().catch(err => console.warn('cargar:', err));
+            toast(d.message, 'success');
 
-        // 4) Imprimir EN PARALELO (no bloquea la UI)
-        if (d.ticketData && typeof fntImprimirTicket === 'function'){
-            fntImprimirTicket({ ticketData: d.ticketData, copia: 0 })
-                .catch(err => console.warn('Impresión falló:', err));
+            // Limpiar form
+            $('formVenta').reset();
+            $('monto').value = '';
+            $('tipoCombustible').value = '1';
+            updatePreview();
+
+            // Recargar resumen en paralelo
+            cargar().catch(err => console.warn('cargar:', err));
+
+            // Imprimir ticket en paralelo
+            if (d.ticketData && typeof fntImprimirTicket === 'function'){
+                fntImprimirTicket({ ticketData: d.ticketData, copia: 0 })
+                    .catch(err => console.warn('Impresión falló:', err));
+            }
+        } catch (err) {
+            console.error(err);
+            toast('Error de conexión.', 'error');
+        } finally {
+            // 3) Liberar bloqueo SIEMPRE
+            state.submitting = false;
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
 
@@ -345,71 +379,109 @@ Precio Total: ${mt} ${simbolo}
         }
     }
 
+    /* ============================================================
+       CERRAR DÍA (con protección anti doble clic)
+       ============================================================ */
     async function cerrarDia(){
-        if (!confirm('¿Cerrar el día actual? No se podrán registrar más ventas para esta fecha.')) return;
+        if (state.cerrando) return;
 
-        const fecha = fechaHoy();
+        const ok = await sitgoConfirm({
+            title: 'Cerrar el día',
+            message: '¿Deseas cerrar el día actual? No se podrán registrar más ventas para esta fecha. Se generará un cierre con todos los tickets abiertos.',
+            okText: 'Sí, cerrar día',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'door-closed',
+        });
+        if (!ok) return;
 
-        if (typeof fntPreguntarModoDetallado === 'function'){
-            const modo = await fntPreguntarModoDetallado();
-            if (modo){
-                const detalle = await fetchJSON(API + '/detalle-ventas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fecha, id_user: state.userId })
-                });
-                if (detalle.ok && typeof fntImprimirDetallado === 'function'){
-                    try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
+        state.cerrando = true;
+        const btn = $('btnCerrarDia');
+        if (btn) btn.disabled = true;
+
+        try {
+            const fecha = fechaHoy();
+
+            if (typeof fntPreguntarModoDetallado === 'function'){
+                const modo = await fntPreguntarModoDetallado();
+                if (modo){
+                    const detalle = await fetchJSON(API + '/detalle-ventas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fecha, id_user: state.userId })
+                    });
+                    if (detalle.ok && typeof fntImprimirDetallado === 'function'){
+                        try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
+                    }
                 }
             }
+
+            const d = await fetchJSON(API + '/cerrar-dia', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha })
+            });
+            if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+
+            if (d.idCierre) state.idCierreActual = d.idCierre;
+
+            if (d.dataCierre && typeof fntImprimirCierre === 'function'){
+                try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
+            }
+
+            toast(d.message, 'success');
+            await cargar();
+        } finally {
+            state.cerrando = false;
+            if (btn) btn.disabled = false;
         }
-
-        const d = await fetchJSON(API + '/cerrar-dia', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha })
-        });
-        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-
-        if (d.idCierre) state.idCierreActual = d.idCierre;
-
-        if (d.dataCierre && typeof fntImprimirCierre === 'function'){
-            try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
-        }
-
-        toast(d.message, 'success');
-        await cargar();
     }
 
     async function cerrarPendiente(fecha, idUser){
-        if (!confirm(`¿Cerrar el día ${formatFecha(fecha)}?`)) return;
+        if (state.cerrando) return;
 
-        if (typeof fntPreguntarModoDetallado === 'function'){
-            const modo = await fntPreguntarModoDetallado();
-            if (modo){
-                const detalle = await fetchJSON(API + '/detalle-ventas', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ fecha, id_user: idUser })
-                });
-                if (detalle.ok && typeof fntImprimirDetallado === 'function'){
-                    try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
+        const ok = await sitgoConfirm({
+            title: 'Cerrar día pendiente',
+            message: `¿Deseas cerrar el día ${formatFecha(fecha)}? Se generará un cierre con los tickets abiertos de esa fecha.`,
+            okText: 'Sí, cerrar',
+            cancelText: 'Cancelar',
+            type: 'warning',
+            icon: 'calendar-clock',
+        });
+        if (!ok) return;
+
+        state.cerrando = true;
+
+        try {
+            if (typeof fntPreguntarModoDetallado === 'function'){
+                const modo = await fntPreguntarModoDetallado();
+                if (modo){
+                    const detalle = await fetchJSON(API + '/detalle-ventas', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fecha, id_user: idUser })
+                    });
+                    if (detalle.ok && typeof fntImprimirDetallado === 'function'){
+                        try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
+                    }
                 }
             }
-        }
 
-        const d = await fetchJSON(API + '/cerrar-turno-pendiente', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, id_user: idUser })
-        });
-        if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
+            const d = await fetchJSON(API + '/cerrar-turno-pendiente', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fecha, id_user: idUser })
+            });
+            if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
 
-        if (d.dataCierre && typeof fntImprimirCierre === 'function'){
-            try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
+            if (d.dataCierre && typeof fntImprimirCierre === 'function'){
+                try{ await fntImprimirCierre(d.dataCierre); } catch(e){ console.warn(e); }
+            }
+            toast(d.message, 'success');
+            await cargar();
+        } finally {
+            state.cerrando = false;
         }
-        toast(d.message, 'success');
-        await cargar();
     }
 
     /* ============================================================
@@ -454,13 +526,12 @@ Precio Total: ${mt} ${simbolo}
     }
 
     /* ============================================================
-       GENERAR PDF · CIERRE (o día abierto)
+       GENERAR PDF
        ============================================================ */
     async function generarPdfCierre(seccion, tipo = 'hoy'){
         let fecha = fechaHoy();
         let idUser = state.userId;
 
-        // Si es un día pendiente (PDF desde un pendiente), usamos sus datos
         if (tipo === 'pendiente' && state._pdfFechaPendiente){
             fecha = state._pdfFechaPendiente;
             idUser = parseInt(state._pdfUserPendiente) || state.userId;
@@ -469,7 +540,6 @@ Precio Total: ${mt} ${simbolo}
         let cierreData = null;
         let ventas = null;
 
-        // 1) Si tenemos un idCierre (día ya cerrado) → buscar cierre real
         if (state.idCierreActual && tipo !== 'pendiente'){
             const d = await fetchJSON(API + '/data-cierre', {
                 method: 'POST',
@@ -482,7 +552,6 @@ Precio Total: ${mt} ${simbolo}
             }
         }
 
-        // 2) Si no hay cierre (día abierto o pendiente) → usar detalle de ventas
         if (!cierreData){
             const det = await fetchJSON(API + '/detalle-ventas', {
                 method: 'POST',
@@ -546,17 +615,9 @@ Precio Total: ${mt} ${simbolo}
         }
     }
 
-    /**
-     * Calcula el resumen (totales, conteos) a partir del array de ventas
-     * que devuelve /estacion/detalle-ventas.
-     */
     function calcularResumenDesdeVentas(ventas){
         let totalVentas = ventas.length;
-        let totalLitros = 0;
-        let totalDivisa = 0;
-        let totalEfectivo = 0;
-        let totalDebito = 0;
-        let totalGeneralBs = 0;
+        let totalLitros = 0, totalDivisa = 0, totalEfectivo = 0, totalDebito = 0, totalGeneralBs = 0;
         let cantAuto = 0, cantMoto = 0, cantCamion = 0;
         let cantGasolina = 0, cantDiesel = 0;
         let litrosGasolina = 0, litrosDiesel = 0;

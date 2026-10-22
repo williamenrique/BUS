@@ -109,7 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('sec-bienes')   ? loadBienes()   : null,
             ]);
 
-            // Recargar el panel activo con la nueva institución
             if ($('sec-flota') && panelActual.tipo) {
                 abrirPanel(panelActual.tipo, panelActual.valor);
             }
@@ -173,13 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ============================================================
        FLOTA · Panel dinámico (tarjeta → tabla)
-       tipo: 'flota' | 'aceite'
-       valor: '1'|'2'|'3'|'4'  |  'ok'|'proximo'|'requerido'
        ============================================================ */
     async function abrirPanel(tipo, valor) {
         panelActual = { tipo, valor };
 
-        // Marcar tarjeta activa (solo la clickeada)
         document.querySelectorAll('[data-panel-tipo]').forEach(c => {
             c.classList.remove('active');
             c.style.boxShadow = '';
@@ -190,7 +186,6 @@ document.addEventListener('DOMContentLoaded', () => {
             card.style.boxShadow = '0 0 0 3px rgba(37,99,235,.25)';
         }
 
-        // Nombre legible en el título de la tabla
         const nombresFlota  = { '1':'Operativas', '2':'Inoperativas', '3':'En Mantenimiento', '4':'Críticas' };
         const nombresAceite = { 'ok':'Aceite OK', 'proximo':'Próximo Cambio', 'requerido':'Cambio Requerido' };
         const nombre = tipo === 'flota'
@@ -240,10 +235,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const base = (window.SITGO_BASE || '/');
-        const inst = institucionActual;   // institución activa
+        const inst = institucionActual;
 
         body.innerHTML = items.map(u => {
-            // URL correcta: /flota/i/{inst}/historial/{id_flota}
             const urlHistorial = `${base}flota/i/${inst}/historial/${u.id_flota}`;
 
             return `
@@ -521,7 +515,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvas = $('monthlyLitersChart');
 
         if (!start || !end) return;
-        if (start > end) { alert('La fecha inicial no puede ser mayor que la final.'); return; }
+        if (start > end) {
+            await sitgoConfirm({
+                title: 'Rango inválido',
+                message: 'La fecha inicial no puede ser mayor que la final.',
+                okText: 'Entendido',
+                cancelText: 'Cerrar',
+                type: 'warning',
+                icon: 'alert-triangle',
+            });
+            return;
+        }
 
         if (monthlyChart) { monthlyChart.destroy(); monthlyChart = null; }
 
@@ -666,81 +670,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       MODAL DE CONFIRMACIÓN · SITGO
-       ============================================================ */
-    function sitgoConfirm(options = {}){
-        return new Promise((resolve) => {
-            const {
-                title     = '¿Confirmar acción?',
-                message   = 'Esta acción no se puede deshacer.',
-                okText    = 'Confirmar',
-                cancelText= 'Cancelar',
-                type      = 'warning',
-                icon      = 'alert-triangle'
-            } = options;
-
-            const modal    = $('sitgoConfirmModal');
-            const iconWrap = $('sitgoConfirmIconWrap');
-            const titleEl  = $('sitgoConfirmTitle');
-            const msgEl    = $('sitgoConfirmMessage');
-            const okBtn    = $('sitgoConfirmOk');
-            const cancelBtn= $('sitgoConfirmCancel');
-            const okTextEl = $('sitgoConfirmOkText');
-            const cancelTextEl = $('sitgoConfirmCancelText');
-
-            if (!modal){
-                resolve(window.confirm(`${title}\n\n${message}`));
-                return;
-            }
-
-            titleEl.textContent  = title;
-            msgEl.textContent    = message;
-            okTextEl.textContent = okText;
-            cancelTextEl.textContent = cancelText;
-
-            iconWrap.classList.remove('danger','info','success','warning');
-            if (type !== 'warning') iconWrap.classList.add(type);
-
-            iconWrap.innerHTML = `<i data-lucide="${icon}" class="w-6 h-6"></i>`;
-            if (window.lucide && typeof window.lucide.createIcons === 'function'){
-                try{ window.lucide.createIcons(); } catch(_) {}
-            }
-
-            okBtn.classList.toggle('btn-danger', type === 'danger');
-            okBtn.classList.toggle('btn-primary', type !== 'danger');
-
-            modal.classList.add('open');
-
-            const cleanup = (result) => {
-                modal.classList.remove('open');
-                okBtn.removeEventListener('click', onOk);
-                cancelBtn.removeEventListener('click', onCancel);
-                modal.removeEventListener('click', onBackdrop);
-                document.removeEventListener('keydown', onKey);
-                resolve(result);
-            };
-
-            const onOk     = () => cleanup(true);
-            const onCancel = () => cleanup(false);
-            const onBackdrop = (e) => {
-                if (e.target === modal) cleanup(false);
-            };
-            const onKey = (e) => {
-                if (e.key === 'Escape') cleanup(false);
-                if (e.key === 'Enter')  cleanup(true);
-            };
-
-            okBtn.addEventListener('click', onOk);
-            cancelBtn.addEventListener('click', onCancel);
-            modal.addEventListener('click', onBackdrop);
-            document.addEventListener('keydown', onKey);
-
-            setTimeout(() => cancelBtn.focus(), 50);
-        });
-    }
-
-    /* ============================================================
-       FORZAR LOGOUT
+       FORZAR LOGOUT (usa sitgoConfirm global)
        ============================================================ */
     async function forceLogout(nick) {
         const confirmado = await sitgoConfirm({
@@ -770,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       DESHABILITAR USUARIO
+       DESHABILITAR USUARIO (usa sitgoConfirm global)
        ============================================================ */
     async function disableUser(userId) {
         const confirmado = await sitgoConfirm({

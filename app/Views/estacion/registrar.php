@@ -205,6 +205,7 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
 
 <!-- ============================================ -->
 <!-- MODAL · Selector de reporte PDF               -->
+<!-- (solo 2 opciones: Gasolina y Diésel)          -->
 <!-- ============================================ -->
 <div id="modalPdfSelector" class="pdf-modal-backdrop">
     <div class="pdf-modal">
@@ -213,24 +214,7 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
             <button type="button" class="pdf-modal-close" data-close="1">&times;</button>
         </div>
         <div class="pdf-modal-body">
-            <button type="button" class="pdf-opt" data-seccion="resumen">
-                <div class="pdf-opt-icon" style="background:#dbeafe; color:#1e40af;">
-                    <?= icon_tag('bar-chart-3', 'bar-chart-3', 'w-5 h-5') ?>
-                </div>
-                <div class="pdf-opt-text">
-                    <strong>Resumen General</strong>
-                    <small>Totales y desgloses por combustible, vehículo y pago</small>
-                </div>
-            </button>
-            <button type="button" class="pdf-opt" data-seccion="ventas">
-                <div class="pdf-opt-icon" style="background:#dcfce7; color:#166534;">
-                    <?= icon_tag('list', 'list', 'w-5 h-5') ?>
-                </div>
-                <div class="pdf-opt-text">
-                    <strong>Todas las Ventas</strong>
-                    <small>Listado completo del día (gasolina y diésel)</small>
-                </div>
-            </button>
+
             <button type="button" class="pdf-opt" data-seccion="gasolina">
                 <div class="pdf-opt-icon" style="background:#fef3c7; color:#b45309;">
                     <?= icon_tag('fuel', 'fuel', 'w-5 h-5') ?>
@@ -240,6 +224,7 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                     <small>Ventas de gasolina únicamente</small>
                 </div>
             </button>
+
             <button type="button" class="pdf-opt" data-seccion="diesel">
                 <div class="pdf-opt-icon" style="background:#ede9fe; color:#6d28d9;">
                     <?= icon_tag('droplet', 'droplet', 'w-5 h-5') ?>
@@ -249,6 +234,7 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                     <small>Ventas de diésel únicamente</small>
                 </div>
             </button>
+
         </div>
     </div>
 </div>

@@ -1,10 +1,12 @@
-        </main>
+</main>
 
         <footer class="main-footer">
             <?= date('Y') ?> · <?= e(SITGO_APP_FULLNAME) ?> v<?= e(SITGO_VERSION) ?>
         </footer>
     </div><!-- /#content -->
 </div><!-- /#app -->
+
+<?php require VIEWS_PATH . 'inc/confirm_modal.php'; ?>
 
 <script>
     // Variable global para que todos los módulos puedan construir URLs
@@ -15,7 +17,7 @@
 <script src="https://cdn.jsdelivr.net/npm/qz-tray@2.2.5/qz-tray.min.js"></script>
 <script src="<?= asset('js/components/DataTable.js') ?>"></script>
 <script src="<?= asset('js/components/SearchSelect.js') ?>"></script>
-<script src="<?= asset('js/utils.js') ?>"></script>       <!-- 👈 IMPORTANTE -->
+<script src="<?= asset('js/utils.js') ?>"></script>
 <script src="<?= asset('js/pdf.js') ?>"></script>
 <script src="<?= asset('js/app.js') ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

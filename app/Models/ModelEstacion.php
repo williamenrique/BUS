@@ -84,7 +84,7 @@ class ModelEstacion extends Model{
        ============================================================ */
     public function ultimosTickets(int $idUser, string $fecha, int $idEstacion): array{
         $sql = "SELECT v.id_venta, v.fecha_venta, v.hora_venta, v.litros, v.monto,
-                       v.tasa_dia, v.id_user, v.id_tipo_pago,
+                       v.tasa_dia, v.id_user, v.id_tipo_pago, v.id_estacion,
                        tv.nombre AS tipoVehiculo,
                        tc.nombre AS tipoCombustible,
                        tp.nombre AS tipoPago
@@ -93,8 +93,9 @@ class ModelEstacion extends Model{
                 INNER JOIN table_es_tipos_combustible tc ON tc.id_tipo_combustible = v.id_tipo_combustible
                 INNER JOIN table_es_tipos_pago tp ON tp.id_tipo_pago = v.id_tipo_pago
                 WHERE v.fecha_venta = :fecha AND v.id_user = :uid AND v.status_ticket = 1
+                  AND v.id_estacion = :est
                 ORDER BY v.id_venta DESC LIMIT 10";
-        return $this->fetchAll($sql, ['fecha' => $fecha, 'uid' => $idUser]);
+        return $this->fetchAll($sql, ['fecha' => $fecha, 'uid' => $idUser, 'est' => $idEstacion]);
     }
 
     /* ============================================================
@@ -112,8 +113,8 @@ class ModelEstacion extends Model{
                                       WHEN v.id_tipo_pago = 3 THEN v.monto ELSE 0 END), 0) AS total_bs
                 FROM table_es_venta v
                 WHERE v.fecha_venta = :fecha AND v.status_ticket = 1
-                  AND v.id_user = :uid";
-        $resumen = $this->fetchOne($sql, ['fecha' => $fecha, 'uid' => $idUser])
+                  AND v.id_user = :uid AND v.id_estacion = :est";
+        $resumen = $this->fetchOne($sql, ['fecha' => $fecha, 'uid' => $idUser, 'est' => $idEstacion])
             ?: ['total_ventas'=>0,'total_litros'=>0,'total_divisa'=>0,'total_efectivo'=>0,'total_debito'=>0,'total_bs'=>0];
 
         $resumen['tiposVehiculo'] = $this->fetchAll(
@@ -121,9 +122,9 @@ class ModelEstacion extends Model{
              FROM table_es_venta v
              INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
              WHERE v.fecha_venta = :fecha AND v.status_ticket = 1
-               AND v.id_user = :uid
+               AND v.id_user = :uid AND v.id_estacion = :est
              GROUP BY v.id_tipo_vehiculo",
-            ['fecha' => $fecha, 'uid' => $idUser]
+            ['fecha' => $fecha, 'uid' => $idUser, 'est' => $idEstacion]
         );
 
         $resumen['tiposCombustible'] = $this->fetchAll(
@@ -133,28 +134,50 @@ class ModelEstacion extends Model{
              FROM table_es_venta v
              INNER JOIN table_es_tipos_combustible tc ON tc.id_tipo_combustible = v.id_tipo_combustible
              WHERE v.fecha_venta = :fecha AND v.status_ticket = 1
-               AND v.id_user = :uid
+               AND v.id_user = :uid AND v.id_estacion = :est
              GROUP BY v.id_tipo_combustible
              ORDER BY tc.id_tipo_combustible ASC",
-            ['fecha' => $fecha, 'uid' => $idUser]
+            ['fecha' => $fecha, 'uid' => $idUser, 'est' => $idEstacion]
         );
 
         return $resumen;
     }
 
     /* ============================================================
-       VENTAS PENDIENTES
+       VENTAS PENDIENTES (días anteriores sin cerrar)
        ============================================================ */
     public function ventasPendientes(int $idUser, int $idEstacion): array{
         $hoy = date('Y-m-d');
         return $this->fetchAll(
-            "SELECT DISTINCT v.fecha_venta, v.id_user
+            "SELECT DISTINCT v.fecha_venta, v.id_user, v.id_estacion
              FROM table_es_venta v
              WHERE v.id_user = :uid AND v.fecha_venta <> :hoy
                AND (v.id_cierre_diario IS NULL OR v.id_cierre_diario = 0)
+               AND v.id_estacion = :est
              ORDER BY v.fecha_venta DESC",
-            ['uid' => $idUser, 'hoy' => $hoy]
+            ['uid' => $idUser, 'hoy' => $hoy, 'est' => $idEstacion]
         );
+    }
+
+    /* ============================================================
+       ESTACIÓN ABIERTA HOY (para login inteligente)
+       ------------------------------------------------------------
+       Devuelve el id_estacion de la primera venta ABIERTA (status=1)
+       del usuario en la fecha de hoy. Si no hay, devuelve 0.
+       ============================================================ */
+    public function estacionAbiertaHoy(int $idUser): int{
+        $row = $this->fetchOne(
+            "SELECT v.id_estacion
+             FROM table_es_venta v
+             WHERE v.id_user = :uid
+               AND v.fecha_venta = CURDATE()
+               AND v.status_ticket = 1
+               AND v.id_estacion IS NOT NULL
+             ORDER BY v.id_venta DESC
+             LIMIT 1",
+            ['uid' => $idUser]
+        );
+        return (int)($row['id_estacion'] ?? 0);
     }
 
     /* ============================================================
@@ -169,24 +192,26 @@ class ModelEstacion extends Model{
         $userRow = $this->fetchOne("SELECT usuario_rol_id FROM table_usuarios WHERE usuario_id = :id", ['id' => $idUser]);
         $idRol = (int)($userRow['usuario_rol_id'] ?? 0);
 
+        // Número de ticket del día (por usuario + estación)
         $countRow = $this->fetchOne(
             "SELECT COUNT(v.id_venta) AS total
              FROM table_es_venta v
-             WHERE v.fecha_venta = :f AND v.id_user = :u",
-            ['f' => $fecha, 'u' => $idUser]
+             WHERE v.fecha_venta = :f AND v.id_user = :u AND v.id_estacion = :e",
+            ['f' => $fecha, 'u' => $idUser, 'e' => $idEstacion]
         );
         $numeroTicket = (int)($countRow['total'] ?? 0) + 1;
 
         $this->query(
             "INSERT INTO table_es_venta
-                (id_venta, id_user, id_tipo_pago, id_tipo_vehiculo, id_tipo_combustible,
+                (id_venta, id_user, id_estacion, id_tipo_pago, id_tipo_vehiculo, id_tipo_combustible,
                  litros, monto, id_cierre_diario, fecha_venta, hora_venta,
                  tasa_dia, id_rol, status_ticket)
              VALUES
-                (:nv, :uid, :tp, :tv, :tc, :l, :m, 0, :f, :h, :t, :r, 1)",
+                (:nv, :uid, :est, :tp, :tv, :tc, :l, :m, 0, :f, :h, :t, :r, 1)",
             [
                 'nv'  => $numeroTicket,
                 'uid' => $idUser,
+                'est' => $idEstacion,
                 'tp'  => $tipoPago,
                 'tv'  => $tipoVehiculo,
                 'tc'  => $tipoCombustible > 0 ? $tipoCombustible : 1,
@@ -213,10 +238,10 @@ class ModelEstacion extends Model{
                 INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
                 INNER JOIN table_es_tipos_combustible tc ON tc.id_tipo_combustible = v.id_tipo_combustible
                 INNER JOIN table_es_tipos_pago tp ON tp.id_tipo_pago = v.id_tipo_pago
-                LEFT JOIN table_es_estacion e ON e.id_estacion = :est
+                LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
                 WHERE v.id_venta = :v AND v.fecha_venta = :f AND v.id_user = :u
                 LIMIT 1";
-        return $this->fetchOne($sql, ['v' => $idVenta, 'f' => $fecha, 'u' => $idUser, 'est' => $idEstacion]);
+        return $this->fetchOne($sql, ['v' => $idVenta, 'f' => $fecha, 'u' => $idUser]);
     }
 
     /* ============================================================
@@ -232,10 +257,12 @@ class ModelEstacion extends Model{
             );
             $idCierre = (int)$this->lastInsertId();
 
+            // Cerrar SOLO las ventas abiertas del usuario+estación+fecha
             $this->query(
                 "UPDATE table_es_venta SET id_cierre_diario = :c, status_ticket = 0
-                 WHERE id_user = :u AND fecha_venta = :f AND status_ticket = 1",
-                ['c' => $idCierre, 'u' => $idUser, 'f' => $fecha]
+                 WHERE id_user = :u AND fecha_venta = :f AND status_ticket = 1
+                   AND id_estacion = :e",
+                ['c' => $idCierre, 'u' => $idUser, 'f' => $fecha, 'e' => $idEstacion]
             );
 
             $this->db->commit();
@@ -293,10 +320,13 @@ class ModelEstacion extends Model{
                 INNER JOIN table_es_tipos_pago tp ON tp.id_tipo_pago = v.id_tipo_pago
                 INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                 INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
-                LEFT JOIN table_es_cierre c ON c.id_cierre = v.id_cierre_diario
-                LEFT JOIN table_es_estacion e ON e.id_estacion = c.id_estacion
+                LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
                 WHERE v.fecha_venta = :f AND v.id_user = :u";
         $params = ['f' => $fecha, 'u' => $idUser];
+        if ($idEstacion > 0){
+            $sql .= " AND v.id_estacion = :est";
+            $params['est'] = $idEstacion;
+        }
         if (!$forReport) $sql .= " AND v.status_ticket = 1";
         $sql .= " ORDER BY v.id_venta ASC";
         return $this->fetchAll($sql, $params);
@@ -432,33 +462,35 @@ class ModelEstacion extends Model{
 
         $totalGlobal = (int)($this->fetchOne(
             "SELECT COUNT(*) AS t FROM (
-                SELECT v.id_user, v.fecha_venta
+                SELECT v.id_user, v.fecha_venta, v.id_estacion
                 FROM table_es_venta v
                 WHERE v.status_ticket = 1
-                GROUP BY v.id_user, v.fecha_venta
+                GROUP BY v.id_user, v.fecha_venta, v.id_estacion
              ) AS sub"
         )['t'] ?? 0);
 
         $totalFiltrados = (int)($this->fetchOne(
             "SELECT COUNT(*) AS t FROM (
-                SELECT v.id_user, v.fecha_venta
+                SELECT v.id_user, v.fecha_venta, v.id_estacion
                 FROM table_es_venta v
                 INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                 INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
                 WHERE {$where}
-                GROUP BY v.id_user, v.fecha_venta
+                GROUP BY v.id_user, v.fecha_venta, v.id_estacion
              ) AS sub",
             $params
         )['t'] ?? 0);
 
-        $sql = "SELECT v.id_user, v.fecha_venta,
+        $sql = "SELECT v.id_user, v.fecha_venta, v.id_estacion,
                        SUM(v.litros) AS total_litros,
-                       p.personal_nombre AS nombre, p.personal_apellido AS apellido
+                       p.personal_nombre AS nombre, p.personal_apellido AS apellido,
+                       e.estacion
                 FROM table_es_venta v
                 INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                 INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+                LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
                 WHERE {$where}
-                GROUP BY v.id_user, v.fecha_venta, p.personal_nombre, p.personal_apellido
+                GROUP BY v.id_user, v.fecha_venta, v.id_estacion, p.personal_nombre, p.personal_apellido, e.estacion
                 ORDER BY v.fecha_venta DESC, v.id_user
                 LIMIT {$limit} OFFSET {$offset}";
 
@@ -499,7 +531,7 @@ class ModelEstacion extends Model{
             $params
         )['t'] ?? 0);
 
-        $sql = "SELECT v.id_venta, v.fecha_venta, v.hora_venta, v.id_user,
+        $sql = "SELECT v.id_venta, v.fecha_venta, v.hora_venta, v.id_user, v.id_estacion,
                        tv.nombre AS tipo_vehiculo,
                        tc.nombre AS tipo_combustible,
                        tp.nombre AS tipo_pago,
@@ -534,14 +566,16 @@ class ModelEstacion extends Model{
 
     public function ventasAbiertas(): array{
         return $this->fetchAll(
-            "SELECT v.id_user, v.fecha_venta,
+            "SELECT v.id_user, v.fecha_venta, v.id_estacion,
                     SUM(v.litros) AS total_litros,
-                    p.personal_nombre AS nombre, p.personal_apellido AS apellido
+                    p.personal_nombre AS nombre, p.personal_apellido AS apellido,
+                    e.estacion
              FROM table_es_venta v
              INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
              INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+             LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
              WHERE v.status_ticket = 1
-             GROUP BY v.id_user, v.fecha_venta, p.personal_nombre, p.personal_apellido
+             GROUP BY v.id_user, v.fecha_venta, v.id_estacion, p.personal_nombre, p.personal_apellido, e.estacion
              ORDER BY v.fecha_venta DESC"
         );
     }
@@ -618,7 +652,7 @@ class ModelEstacion extends Model{
        ============================================================ */
     public function usuarioInfo(int $idUser): ?array{
         return $this->fetchOne(
-            "SELECT usuario_id, usuario_departamento_id, usuario_rol_id
+            "SELECT usuario_id, usuario_departamento_id, usuario_rol_id, usuario_estacion_id
              FROM table_usuarios WHERE usuario_id = :id",
             ['id' => $idUser]
         );
@@ -627,7 +661,6 @@ class ModelEstacion extends Model{
     /* ============================================================
        ESTACIÓN EN LA SESIÓN
        ============================================================ */
-
     public function guardarEstacionSesion(string $sessionId, int $idEstacion): bool{
         $row = $this->fetchOne(
             "SELECT id FROM table_usuario_sessions WHERE session_id = :sid LIMIT 1",
@@ -690,7 +723,7 @@ class ModelEstacion extends Model{
     }
 
     /* ============================================================
-       PDF · REPORTE DE LITROS (filtrado por estación)
+       PDF · REPORTE DE LITROS (filtrado por estación de la VENTA)
        ============================================================ */
     public function litrosReporte(string $fecha, string $type = 'day', ?string $fechaFin = null, ?int $idEstacion = null): array{
         $where  = [];
@@ -723,7 +756,7 @@ class ModelEstacion extends Model{
         }
 
         if ($idEstacion !== null && $idEstacion > 0){
-            $where[] = "u.usuario_estacion_id = :est";
+            $where[] = "v.id_estacion = :est";
             $params['est'] = $idEstacion;
         }
 
@@ -733,7 +766,6 @@ class ModelEstacion extends Model{
             $sql = "SELECT {$selectAlias},
                            COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
                     FROM table_es_venta v
-                    INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                     WHERE {$whereSql}
                     GROUP BY {$agruparPor}
                     ORDER BY {$agruparPor} ASC";
@@ -745,7 +777,6 @@ class ModelEstacion extends Model{
                        COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
                 FROM table_es_venta v
                 INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
-                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                 WHERE {$whereSql}
                 GROUP BY {$agruparPor}
                 ORDER BY {$agruparPor} ASC";
@@ -777,14 +808,13 @@ class ModelEstacion extends Model{
         }
 
         if ($idEstacion !== null && $idEstacion > 0){
-            $where[] = "u.usuario_estacion_id = :est";
+            $where[] = "v.id_estacion = :est";
             $params['est'] = $idEstacion;
         }
 
         $whereSql = implode(' AND ', $where);
         $sql = "SELECT COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS t
                 FROM table_es_venta v
-                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                 WHERE {$whereSql}";
         return (float)($this->fetchOne($sql, $params)['t'] ?? 0);
     }
@@ -814,7 +844,7 @@ class ModelEstacion extends Model{
         }
 
         if ($idEstacion !== null && $idEstacion > 0){
-            $where[] = "u.usuario_estacion_id = :est";
+            $where[] = "v.id_estacion = :est";
             $params['est'] = $idEstacion;
         }
 
@@ -824,14 +854,10 @@ class ModelEstacion extends Model{
         $whereSql = implode(' AND ', $where);
         $sql = "SELECT COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS t
                 FROM table_es_venta v
-                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
                 WHERE {$whereSql}";
         return (float)($this->fetchOne($sql, $params)['t'] ?? 0);
     }
 
-        /**
-     * Devuelve nombre y apellido del vendedor (usando table_personal).
-     */
     public function nombreVendedor(int $idUser): array{
         $row = $this->fetchOne(
             "SELECT p.personal_nombre, p.personal_apellido
@@ -845,5 +871,25 @@ class ModelEstacion extends Model{
             'nombre'   => $row['personal_nombre']   ?? '',
             'apellido' => $row['personal_apellido'] ?? '',
         ];
+    }
+            /**
+     * Busca un ticket por id_venta (PK única). Más tolerante que getTicketData
+     * porque no requiere id_user ni fecha exactos. Útil para reimprimir.
+     */
+    public function getTicketById(int $idVenta): ?array{
+        $sql = "SELECT v.*, tv.nombre AS tipoVehiculo, tp.nombre AS tipoPago,
+                       tc.nombre AS tipoCombustible,
+                       p.personal_nombre, p.personal_apellido, p.personal_cedula,
+                       e.estacion
+                FROM table_es_venta v
+                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
+                INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+                INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
+                INNER JOIN table_es_tipos_combustible tc ON tc.id_tipo_combustible = v.id_tipo_combustible
+                INNER JOIN table_es_tipos_pago tp ON tp.id_tipo_pago = v.id_tipo_pago
+                LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
+                WHERE v.id_venta = :v
+                LIMIT 1";
+        return $this->fetchOne($sql, ['v' => $idVenta]);
     }
 }

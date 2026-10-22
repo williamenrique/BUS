@@ -27,7 +27,7 @@ class ControllerAuth extends Controller
 
         $v = new Validator();
         $v->required('nick', $nick, 'Usuario')
-        ->required('password', $pass, 'Contraseña');
+          ->required('password', $pass, 'Contraseña');
 
         if ($v->fails()) {
             $this->json(['ok' => false, 'errors' => $v->errors()], 422);
@@ -76,12 +76,12 @@ class ControllerAuth extends Controller
             'rol_nombre'         => $user['rol_nombre'],
             'departamento_id'    => (int)$user['usuario_departamento_id'],
             'departamento_nombre'=> $user['departamento_nombre'],
-            'estacion_id'        => 0, // se hidrata desde table_usuario_sessions abajo
+            'estacion_id'        => 0,
             'personal_id'        => (int)($user['usuario_id_personal'] ?? 0),
             'nombre'             => trim(($user['personal_nombre'] ?? '') . ' ' . ($user['personal_apellido'] ?? '')),
             'email'              => $user['personal_email'] ?? '',
             'imagen'             => $user['usuario_imagen'] ?? '',
-            'es_sistema' => ((int)$user['usuario_departamento_id'] === (int)DEPARTAMENTO_SISTEMA),
+            'es_sistema'         => ((int)$user['usuario_departamento_id'] === (int)DEPARTAMENTO_SISTEMA),
         ];
         $_SESSION['last_activity'] = time();
         $_SESSION['csrf_token']    = bin2hex(random_bytes(32));
@@ -96,7 +96,7 @@ class ControllerAuth extends Controller
         );
 
         // =====================================================
-        // DETERMINAR REDIRECT FINAL (UN SOLO json())
+        // DETERMINAR REDIRECT FINAL
         // =====================================================
         $depId     = (int)$user['usuario_departamento_id'];
         $esSistema = ($depId === (int)DEPARTAMENTO_SISTEMA);
@@ -105,18 +105,24 @@ class ControllerAuth extends Controller
         $redirect = base_url('dashboard');
 
         if ($esEstacion) {
-            // ¿La sesión recién creada tiene estación? (por ahora será 0/NULL)
-            try {
-                $mEst  = new ModelEstacion();
+            $mEst = new ModelEstacion();
+
+            // 1) Si tiene ventas ABIERTAS hoy → usar esa estación (no preguntar)
+            $idEst = $mEst->estacionAbiertaHoy((int)$user['usuario_id']);
+
+            // 2) Si no, revisar si la nueva sesión ya trae estación (raro en login nuevo)
+            if ($idEst <= 0) {
                 $idEst = $mEst->obtenerEstacionSesion($newSid);
-            } catch (\Throwable $e) {
-                error_log('SITGO login estacion lookup: ' . $e->getMessage());
-                $idEst = 0;
             }
 
             if ($idEst > 0) {
-                // Rehidratar por si el usuario ya había elegido estación antes (no debería en login nuevo)
+                // Fijar la estación en sesión y BD de sesión
                 $_SESSION['user']['estacion_id'] = $idEst;
+                try {
+                    $mEst->guardarEstacionSesion($newSid, $idEst);
+                } catch (\Throwable $e) {
+                    error_log('SITGO login estacion save: ' . $e->getMessage());
+                }
                 $redirect = base_url('estacion/registrar');
             } else {
                 $redirect = base_url('estacion/seleccionar');

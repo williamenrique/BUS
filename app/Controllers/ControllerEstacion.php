@@ -73,13 +73,25 @@ class ControllerEstacion extends Controller{
         $est  = $mEst->findEstacion($idEstacion);
         if (!$est){ $this->json(['ok' => false, 'message' => 'Estación inválida.'], 422); return; }
 
+        $u = auth_user();
+        $idUser = (int)$u['id'];
+
+        $idEstAbierta = $mEst->estacionAbiertaHoy($idUser);
+        if ($idEstAbierta > 0 && $idEstAbierta !== $idEstacion){
+            $this->json([
+                'ok' => false,
+                'message' => 'Tienes ventas abiertas en otra estación. Ciérralas antes de cambiar.'
+            ], 422);
+            return;
+        }
+
         $actual = $mEst->obtenerEstacionSesion(session_id());
         if ($actual > 0 && $actual !== $idEstacion){
             $this->json(['ok' => false, 'message' => 'Ya tienes una estación asignada en esta sesión. Cierra sesión para cambiarla.'], 422);
             return;
         }
 
-        $this->safe(function() use ($idEstacion, $est){
+        $this->safe(function() use ($idEstacion, $est, $u){
             $mEst = new ModelEstacion();
             $sid  = session_id();
             $ok = $mEst->guardarEstacionSesion($sid, $idEstacion);
@@ -121,7 +133,6 @@ class ControllerEstacion extends Controller{
         $this->safe(function() use ($idUser, $idEst, $hoy, $u){
             $m = new ModelEstacion();
 
-            // Nombre del vendedor logueado
             $usuarioNombre   = $u['nombre']   ?? '';
             $usuarioApellido = $u['apellido'] ?? '';
 
@@ -131,7 +142,6 @@ class ControllerEstacion extends Controller{
                 $usuarioApellido = $nombre['apellido'] ?: $usuarioApellido;
             }
 
-            // Nombre de la estación
             $estacionNombre = $u['estacion'] ?? '';
             if ($estacionNombre === '' && $idEst > 0){
                 $est = $m->findEstacion($idEst);
@@ -149,7 +159,7 @@ class ControllerEstacion extends Controller{
                 'ventasPendientes'  => $m->ventasPendientes($idUser, $idEst),
                 'idUser'            => $idUser,
                 'idEstacion'        => $idEst,
-                'estacionNombre'    => $estacionNombre,   // ← IMPORTANTE
+                'estacionNombre'    => $estacionNombre,
                 'esSistema'         => $this->esSistema(),
                 'usuarioNombre'     => $usuarioNombre,
                 'usuarioApellido'   => $usuarioApellido,
@@ -274,6 +284,28 @@ class ControllerEstacion extends Controller{
             $this->json(['ok' => true, 'ticketData' => $ticket]);
         });
     }
+        /**
+     * Reimpresión tolerante: busca el ticket solo por id_venta.
+     * No requiere id_user ni fecha exactos.
+     */
+    public function getTicketByVenta(string $id): void{
+        AuthGuard::check();
+        $idVenta = (int)$id;
+        if ($idVenta <= 0){
+            $this->json(['ok' => false, 'message' => 'ID de venta inválido.'], 422);
+            return;
+        }
+
+        $this->safe(function() use ($idVenta){
+            $m = new ModelEstacion();
+            $ticket = $m->getTicketById($idVenta);
+            if (!$ticket){
+                $this->json(['ok' => false, 'message' => 'Ticket no encontrado.'], 404);
+                return;
+            }
+            $this->json(['ok' => true, 'ticketData' => $ticket]);
+        });
+    }
 
     public function generarReportePdf(): void{
         AuthGuard::check();
@@ -300,10 +332,12 @@ class ControllerEstacion extends Controller{
 
     /* ============================================================
        DATAVENTA
+       ------------------------------------------------------------
+       El acceso se controla por ASIGNACIÓN DE MENÚ (routes + menú).
+       Ya NO se valida que el usuario sea del departamento Sistema.
        ============================================================ */
     public function dataventa(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ http_response_code(403); echo 'Acceso restringido. Solo departamento Sistema.'; return; }
         $u = auth_user();
         $mUser = new ModelUsuario();
         $this->view('estacion.dataventa', [
@@ -333,7 +367,6 @@ class ControllerEstacion extends Controller{
 
     public function getHistorialCierres(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $this->safe(function(){
             $this->json(['ok' => true, 'data' => (new ModelEstacion())->historialCierres()]);
         });
@@ -341,7 +374,6 @@ class ControllerEstacion extends Controller{
 
     public function listarCierres(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $q         = (string)($this->query('q', '') ?? '');
         $limit     = max(1, min(100, (int)($this->query('limit', 10) ?? 10)));
         $offset    = max(0, (int)($this->query('offset', 0) ?? 0));
@@ -356,7 +388,6 @@ class ControllerEstacion extends Controller{
 
     public function listarVentasAbiertasPaginado(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $q      = (string)($this->query('q', '') ?? '');
         $limit  = max(1, min(100, (int)($this->query('limit', 10) ?? 10)));
         $offset = max(0, (int)($this->query('offset', 0) ?? 0));
@@ -369,7 +400,6 @@ class ControllerEstacion extends Controller{
 
     public function listarVentasCierre(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $idCierre = (int)($this->query('id_cierre', 0) ?? 0);
         if ($idCierre <= 0){ $this->json(['ok'=>false,'message'=>'id_cierre requerido.'], 422); return; }
         $q      = (string)($this->query('q', '') ?? '');
@@ -384,7 +414,6 @@ class ControllerEstacion extends Controller{
 
     public function getVentasByCierre(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $idCierre = (int)($d['id_cierre'] ?? 0);
         $idUser   = (int)($d['id_user'] ?? 0);
@@ -409,7 +438,6 @@ class ControllerEstacion extends Controller{
 
     public function getOpenSales(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $this->safe(function(){
             $this->json(['ok'=>true,'data'=>(new ModelEstacion())->ventasAbiertas()]);
         });
@@ -417,7 +445,6 @@ class ControllerEstacion extends Controller{
 
     public function closeSale(string $id): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $idVenta = (int)$id;
         $fecha   = $d['fecha'] ?? '';
@@ -431,7 +458,6 @@ class ControllerEstacion extends Controller{
 
     public function deleteVenta(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $this->safe(function() use ($d){
             $ok = (new ModelEstacion())->deleteVenta((int)($d['id_venta']??0), $d['fecha']??'', (int)($d['id_user']??0));
@@ -442,7 +468,6 @@ class ControllerEstacion extends Controller{
 
     public function deleteCierre(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $this->safe(function() use ($d){
             $ok = (new ModelEstacion())->deleteCierre((int)($d['id_cierre']??0), (int)($d['id_user']??0), (int)($d['id_estacion']??0), $d['fecha']??'');
@@ -453,7 +478,6 @@ class ControllerEstacion extends Controller{
 
     public function deleteCierreTotal(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $this->safe(function() use ($d){
             $ok = (new ModelEstacion())->deleteCierreTotal((int)($d['id_cierre']??0), (int)($d['id_user']??0), $d['fecha']??'');
@@ -464,7 +488,6 @@ class ControllerEstacion extends Controller{
 
     public function deleteAllOpenSales(): void{
         AuthGuard::check();
-        if (!$this->esSistema()){ $this->json(['ok'=>false,'message'=>'No autorizado.'], 403); return; }
         $d = $this->input();
         $this->safe(function() use ($d){
             $ok = (new ModelEstacion())->deleteAllOpenSales((int)($d['id_user']??0), $d['fecha']??'');
@@ -515,8 +538,6 @@ class ControllerEstacion extends Controller{
 
     /* ============================================================
        PDF · REPORTE DE LITROS (filtrado por estación)
-       - Estación: filtra por su estación
-       - Sistema: puede pasar id_estacion o null (todas)
        ============================================================ */
     public function getLitrosReporte(): void{
         AuthGuard::check();

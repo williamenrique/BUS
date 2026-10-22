@@ -10,9 +10,6 @@
 
 /* ============================================================
    HELPER DE NOTIFICACIÓN
-   - Escribe en consola siempre.
-   - Si existe toast global, también lo muestra.
-   - Si no, no rompe nada.
    ============================================================ */
 function _qzNotify(msg, type = 'info') {
     const map = { info: 'log', success: 'log', warning: 'warn', error: 'error' };
@@ -20,8 +17,8 @@ function _qzNotify(msg, type = 'info') {
     (console[fn] || console.log)('[QZ Tray]', msg);
 
     try {
-        if (typeof window.toast === 'function') {
-            window.toast(msg, type === 'error' ? 'error' : (type === 'warning' ? 'error' : 'success'));
+        if (typeof window.sitgoToast === 'function') {
+            window.sitgoToast(msg, type === 'error' ? 'error' : (type === 'warning' ? 'error' : 'success'));
             return;
         }
     } catch (_) { /* ignorar */ }
@@ -43,35 +40,34 @@ function _qzNotify(msg, type = 'info') {
 
 /* ============================================================
    PREGUNTAR MODO DEL DETALLADO
-   - Por compatibilidad con estacion.js / dataventa.js.
+   ------------------------------------------------------------
+   - Usa el modal SITGO (sitgoChoice) con dos botones.
    - Devuelve 'unificado' o 'divisa'.
-   - Si el usuario cancela, devuelve null.
-   - Usa Swal si está disponible; si no, cae a prompt().
+   - Devuelve null si el usuario cancela.
+   - Fallback a prompt si el modal no está en el DOM.
    ============================================================ */
 async function fntPreguntarModoDetallado() {
-    // Swal si está disponible
-    if (typeof Swal !== 'undefined' && Swal.fire) {
+    // Modal SITGO
+    if (typeof window.sitgoChoice === 'function') {
         try {
-            const res = await Swal.fire({
-                title: '¿Cómo desea el detallado?',
-                input: 'radio',
-                inputOptions: {
-                    'unificado': 'Unificado (todo en Bs)',
-                    'divisa':    'Detallado (con columna $)'
-                },
-                inputValidator: (v) => v ? null : 'Selecciona una opción',
-                confirmButtonText: 'Aceptar',
-                cancelButtonText: 'Cancelar',
-                showCancelButton: true
+            const modo = await window.sitgoChoice({
+                title:   '¿Cómo deseas el reporte detallado?',
+                message: 'Elige el formato con el que se imprimirá el reporte de ventas del día.',
+                options: [
+                    { value: 'unificado', label: 'Unificado',      hint: 'Todo convertido a Bs' },
+                    { value: 'divisa',    label: 'Con divisa',     hint: 'Columna en $ y columna en Bs' },
+                ],
+                cancelText: 'Cancelar',
+                type:  'info',
+                icon:  'printer',
             });
-            if (!res.isConfirmed || !res.value) return null;
-            return res.value;
+            return modo || null;
         } catch (e) {
-            console.warn('Swal falló, usando prompt:', e);
+            console.warn('sitgoChoice falló, usando prompt:', e);
         }
     }
 
-    // Fallback: prompt
+    // Fallback (solo si sitgoChoice no está disponible)
     const v = window.prompt('Tipo de detallado: 1 = unificado, 2 = divisa', '1');
     if (!v) return null;
     return v === '2' ? 'divisa' : 'unificado';
@@ -247,8 +243,6 @@ async function fntImprimirTicket(datTicket) {
 
 /* ============================================================
    INICIALIZACIÓN QZ TRAY
-   - No lanza si QZ no está. Solo avisa por consola.
-   - No bloquea otras vistas.
    ============================================================ */
 async function initQZTrayConnection() {
     if (typeof qz === 'undefined') {
@@ -257,7 +251,6 @@ async function initQZTrayConnection() {
     }
 
     try {
-        // Seguridad: permitir conexión sin firmar (entorno local / confianza)
         qz.security.setCertificatePromise(function (resolve) {
             resolve(null);
         });
@@ -308,7 +301,6 @@ async function _printToQZ(data, printerName = 'XP-80C') {
 
         const config = qz.configs.create(printerName);
 
-        // Ejecutar qz.print con timeout de 15s
         await Promise.race([
             qz.print(config, data),
             new Promise((_, reject) =>
@@ -327,8 +319,6 @@ async function _printToQZ(data, printerName = 'XP-80C') {
 
 /* ============================================================
    GENERAR PDF (migrado a SITGO_PDF)
-   - Ya no abre window.print()
-   - Usa SITGO_PDF.generar() con el template del sistema
    ============================================================ */
 async function fntGenerarPDF(datosIniciales) {
     if (!datosIniciales || !datosIniciales.fecha) {

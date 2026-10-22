@@ -245,7 +245,7 @@ return [
     ['path' => '/estacion/cierres/listar',        'method' => 'GET',  'handler' => 'ControllerEstacion@listarCierres'],
     ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
     ['path' => '/estacion/ventas-cierre/listar',  'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasCierre'],
-
+    ['path' => '/estacion/ticket-by-venta/{id}',  'method' => 'POST', 'handler' => 'ControllerEstacion@getTicketByVenta'],
     // ============================================================
     // PDF (centralizado)
     // ============================================================
