@@ -656,8 +656,102 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /* ============================================================
+       MODAL DE CONFIRMACIÓN · SITGO
+       Devuelve una Promesa<boolean> — reemplaza al confirm() nativo.
+       ============================================================ */
+    function sitgoConfirm(options = {}){
+        return new Promise((resolve) => {
+            const {
+                title     = '¿Confirmar acción?',
+                message   = 'Esta acción no se puede deshacer.',
+                okText    = 'Confirmar',
+                cancelText= 'Cancelar',
+                type      = 'warning',   // warning | danger | info | success
+                icon      = 'alert-triangle'
+            } = options;
+
+            const modal    = $('sitgoConfirmModal');
+            const iconWrap = $('sitgoConfirmIconWrap');
+            const titleEl  = $('sitgoConfirmTitle');
+            const msgEl    = $('sitgoConfirmMessage');
+            const okBtn    = $('sitgoConfirmOk');
+            const cancelBtn= $('sitgoConfirmCancel');
+            const okTextEl = $('sitgoConfirmOkText');
+            const cancelTextEl = $('sitgoConfirmCancelText');
+
+            // Sin modal en el DOM → fallback al confirm nativo (por seguridad)
+            if (!modal){
+                resolve(window.confirm(`${title}\n\n${message}`));
+                return;
+            }
+
+            // Aplicar textos e iconos
+            titleEl.textContent  = title;
+            msgEl.textContent    = message;
+            okTextEl.textContent = okText;
+            cancelTextEl.textContent = cancelText;
+
+            // Resetear tipo del icono
+            iconWrap.classList.remove('danger','info','success','warning');
+            if (type !== 'warning') iconWrap.classList.add(type);
+
+            // Cambiar el icono (Lucide)
+            iconWrap.innerHTML = `<i data-lucide="${icon}" class="w-6 h-6"></i>`;
+            if (window.lucide && typeof window.lucide.createIcons === 'function'){
+                try{ window.lucide.createIcons(); } catch(_) {}
+            }
+
+            // Botón OK: si es danger, usar rojo; si no, primary
+            okBtn.classList.toggle('btn-danger', type === 'danger');
+            okBtn.classList.toggle('btn-primary', type !== 'danger');
+
+            // Mostrar
+            modal.classList.add('open');
+
+            // Limpieza + resolver
+            const cleanup = (result) => {
+                modal.classList.remove('open');
+                okBtn.removeEventListener('click', onOk);
+                cancelBtn.removeEventListener('click', onCancel);
+                modal.removeEventListener('click', onBackdrop);
+                document.removeEventListener('keydown', onKey);
+                resolve(result);
+            };
+
+            const onOk     = () => cleanup(true);
+            const onCancel = () => cleanup(false);
+            const onBackdrop = (e) => {
+                if (e.target === modal) cleanup(false);
+            };
+            const onKey = (e) => {
+                if (e.key === 'Escape') cleanup(false);
+                if (e.key === 'Enter')  cleanup(true);
+            };
+
+            okBtn.addEventListener('click', onOk);
+            cancelBtn.addEventListener('click', onCancel);
+            modal.addEventListener('click', onBackdrop);
+            document.addEventListener('keydown', onKey);
+
+            // Foco en Cancelar por defecto (seguridad UX)
+            setTimeout(() => cancelBtn.focus(), 50);
+        });
+    }
+
+    /* ============================================================
+       FORZAR LOGOUT
+       ============================================================ */
     async function forceLogout(nick) {
-        if (!confirm(`¿Cerrar la sesión de ${nick}?`)) return;
+        const confirmado = await sitgoConfirm({
+            title: 'Cerrar sesión',
+            message: `¿Deseas cerrar la sesión de "${nick}"? Se le pedirá iniciar sesión nuevamente.`,
+            okText: 'Sí, cerrar sesión',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'log-out',
+        });
+        if (!confirmado) return;
 
         const d = await fetchJSON(API_USERS + '/forzar-logout', {
             method: 'POST',
@@ -673,8 +767,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* ============================================================
+       DESHABILITAR USUARIO
+       ============================================================ */
     async function disableUser(userId) {
-        if (!confirm(`¿Deshabilitar este usuario? No podrá iniciar sesión.`)) return;
+        const confirmado = await sitgoConfirm({
+            title: 'Deshabilitar usuario',
+            message: 'El usuario no podrá iniciar sesión mientras esté deshabilitado. ¿Continuar?',
+            okText: 'Sí, deshabilitar',
+            cancelText: 'Cancelar',
+            type: 'warning',
+            icon: 'user-x',
+        });
+        if (!confirmado) return;
 
         // Reutiliza el endpoint existente: /usuarios/cambiar-status/{id}
         const d = await fetchJSON(API_USERS + '/cambiar-status/' + userId, {
