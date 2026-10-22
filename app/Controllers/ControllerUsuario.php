@@ -534,4 +534,77 @@ class ControllerUsuario extends Controller{
             'path' => $carpeta . '/' . $nombre,
         ];
     }
+        /* ============================================================
+       DASHBOARD · Sesiones activas y forzar logout
+       ============================================================ */
+    public function sesionesActivas(): void
+    {
+        AuthGuard::check();
+        $u = auth_user();
+        if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
+            $this->json(['success' => false, 'message' => 'No autorizado.'], 403);
+            return;
+        }
+
+        $this->safe(function () {
+            $db = \App\Core\Database::getConnection();
+            $sql = "SELECT s.id, s.session_id, s.usuario_id, s.ip_address,
+                           s.usuario_agent, s.created_at, s.last_activity,
+                           u.usuario_nick, u.usuario_status,
+                           p.personal_nombre AS nombres,
+                           p.personal_apellido AS apellidos
+                    FROM table_usuario_sessions s
+                    INNER JOIN table_usuarios u ON u.usuario_id = s.usuario_id
+                    LEFT JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+                    WHERE s.last_activity >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                    ORDER BY s.last_activity DESC";
+            $rows = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+
+            // Formatear fecha
+            foreach ($rows as &$r) {
+                if (!empty($r['created_at'])) {
+                    $r['created_at'] = date('d/m/Y h:i A', strtotime($r['created_at']));
+                }
+            }
+            unset($r);
+
+            $this->json(['success' => true, 'data' => $rows]);
+        });
+    }
+
+    public function forzarLogout(): void {
+        AuthGuard::check();
+        $u = auth_user();
+        if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
+            $this->json(['success' => false, 'message' => 'No autorizado.'], 403);
+            return;
+        }
+
+        $d = $this->input();
+        $nick = trim((string)($d['nick'] ?? ''));
+        if ($nick === '') {
+            $this->json(['success' => false, 'message' => 'Usuario inválido.'], 422);
+            return;
+        }
+
+        $this->safe(function () use ($nick) {
+            $db = \App\Core\Database::getConnection();
+
+            // Buscar usuario
+            $stmt = $db->prepare("SELECT usuario_id FROM table_usuarios WHERE usuario_nick = :n LIMIT 1");
+            $stmt->execute(['n' => $nick]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) {
+                $this->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
+                return;
+            }
+            $uid = (int)$row['usuario_id'];
+
+            // Borrar todas sus sesiones activas
+            $del = $db->prepare("DELETE FROM table_usuario_sessions WHERE usuario_id = :u");
+            $del->execute(['u' => $uid]);
+
+            $this->json(['success' => true, 'message' => "Sesión de {$nick} cerrada."]);
+        });
+    }
 }

@@ -13,3 +13,28 @@
   Mensaje: Call to protected method App\Core\Model::fetchOne() from scope App\Controllers\ControllerEstacion
   Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerEstacion.php:130
 ------------------------------------------------------------
+[2026-10-22 08:26:54] [APP] Undefined constant "DEPARTAMENTO_OPERACIONES"
+  SQLSTATE: 0
+  Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
+  Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
+------------------------------------------------------------
+[2026-10-22 08:29:50] [APP] Undefined constant "DEPARTAMENTO_OPERACIONES"
+  SQLSTATE: 0
+  Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
+  Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
+------------------------------------------------------------
+[2026-10-22 08:29:56] [APP] Undefined constant "DEPARTAMENTO_OPERACIONES"
+  SQLSTATE: 0
+  Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
+  Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
+------------------------------------------------------------
+[2026-10-22 08:38:45] [QUERY] SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`busyaracuydata`.`table_flota_status`, CONSTRAINT `fk_table_flota_status_table_usuarios1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`))
+  SQLSTATE: 23000
+  Mensaje: SQLSTATE[23000]: Integrity constraint violation: 1451 Cannot delete or update a parent row: a foreign key constraint fails (`busyaracuydata`.`table_flota_status`, CONSTRAINT `fk_table_flota_status_table_usuarios1` FOREIGN KEY (`usuario_id`) REFERENCES `table_usuarios` (`usuario_id`))
+  Archivo: C:\xampp\htdocs\BUS\app\Core\Model.php:22
+------------------------------------------------------------
+[2026-10-22 09:07:05] [APP] Undefined constant "DEPARTAMENTO_OPERACIONES"
+  SQLSTATE: 0
+  Mensaje: Undefined constant "DEPARTAMENTO_OPERACIONES"
+  Archivo: C:\xampp\htdocs\BUS\app\Views\dashboard\index.php:8
+------------------------------------------------------------

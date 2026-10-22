@@ -5148,3 +5148,82 @@ body{
         width: 100%;
     }
 }
+/* ============================================
+   29 · NAVBAR DASHBOARD · botones de sección
+   ============================================ */
+
+.navbar-dash-nav {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .35rem .5rem;
+    background: #f1f5f9;
+    border-radius: .6rem;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+}
+
+.navbar-dash-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.navbar-dash-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .45rem .75rem;
+    border-radius: .45rem;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #64748b;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color .15s, color .15s, box-shadow .15s;
+    flex-shrink: 0;
+}
+
+.navbar-dash-link svg,
+.navbar-dash-link i {
+    width: 14px !important;
+    height: 14px !important;
+    stroke-width: 2.2;
+    flex-shrink: 0;
+}
+
+.navbar-dash-link:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.navbar-dash-link.active {
+    background: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(37,99,235,.3);
+}
+
+@media (max-width: 1024px) {
+    .navbar-dash-nav {
+        order: 3;
+        flex-basis: 100%;
+        margin-top: .5rem;
+    }
+}
+
+@media (max-width: 767px) {
+    .navbar-dash-nav {
+        padding: .3rem .4rem;
+    }
+    .navbar-dash-link {
+        font-size: .72rem;
+        padding: .4rem .55rem;
+    }
+    .navbar-dash-link span {
+        display: none;
+    }
+    .navbar-dash-link svg,
+    .navbar-dash-link i {
+        width: 16px !important;
+        height: 16px !important;
+    }
+}

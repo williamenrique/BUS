@@ -1,70 +1,89 @@
-document.addEventListener('DOMContentLoaded', function () {
-    // Solo ejecutar si el contenedor de notificaciones existe en la página
-    if (document.getElementById('notification-bell-container')) {
-        loadAdminNotifications();
+document.addEventListener('DOMContentLoaded', () => {
+    const BASE = window.SITGO_BASE || '/';
+    const API  = BASE + 'recuperar';
 
-        // Opcional: Recargar notificaciones cada cierto tiempo (ej. cada 2 minutos)
-        setInterval(loadAdminNotifications, 120000);
+    const $ = id => document.getElementById(id);
+
+    const badgeGlobal    = $('notifBadgeGlobal');
+    const itemRecuperar  = $('notifItemRecuperar');
+    const badgeRecuperar = $('notifBadgeRecuperar');
+    const btnNotif       = $('btnNotifications');
+
+    /* ============================================================
+       FETCH
+       ============================================================ */
+    async function fetchJSON(url) {
+        try {
+            const r = await fetch(url, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')) return { ok: false };
+            return await r.json();
+        } catch {
+            return { ok: false };
+        }
     }
-});
 
-async function loadAdminNotifications() {
-    try {
-        const response = await fetch(base_url + 'User/getAdminNotifications');
-        const result = await response.json();
+    /* ============================================================
+       ACTUALIZAR BADGES
+       ============================================================ */
+    let ultimoTotal = 0;
 
-        if (result.success) {
-            updateNotificationsUI(result.count, result.notifications);
-        } else {
-            // Si la respuesta es falsa (no autorizado), ocultamos el icono
-            const container = document.getElementById('notification-bell-container');
-            if (container) container.style.display = 'none';
+    async function actualizarNotificaciones() {
+        const d = await fetchJSON(API + '/contador');
+
+        if (!d || !d.ok) {
+            // Si el endpoint falla, ocultar badges y salir
+            if (badgeGlobal)    badgeGlobal.style.display = 'none';
+            if (itemRecuperar)  itemRecuperar.style.display = 'none';
+            return;
         }
 
-    } catch (error) {
-        console.error('Error al cargar notificaciones:', error);
+        const total = parseInt(d.total ?? d.count ?? d.pendientes ?? 0, 10);
+
+        // ---- Badge global (campana) ----
+        if (badgeGlobal) {
+            if (total > 0) {
+                badgeGlobal.textContent = total > 99 ? '99+' : String(total);
+                badgeGlobal.style.display = 'flex';
+            } else {
+                badgeGlobal.style.display = 'none';
+            }
+        }
+
+        // ---- Item "Solicitudes de recuperación" ----
+        // Solo se muestra si el usuario es SISTEMA (el elemento ya existe solo para ellos)
+        if (itemRecuperar && badgeRecuperar) {
+            if (total > 0) {
+                itemRecuperar.style.display = 'flex';
+                badgeRecuperar.textContent = total > 99 ? '99+' : String(total);
+                badgeRecuperar.style.display = 'flex';
+            } else {
+                itemRecuperar.style.display = 'none';
+                badgeRecuperar.style.display = 'none';
+            }
+        }
+
+        // ---- Ring de la campana si hay nuevas ----
+        if (btnNotif && total > ultimoTotal) {
+            btnNotif.classList.add('has-notif');
+            setTimeout(() => btnNotif.classList.remove('has-notif'), 3000);
+        }
+        ultimoTotal = total;
     }
-}
 
-function updateNotificationsUI(count, notifications) {
-    const countBadge = document.getElementById('notification-count');
-    const header = document.querySelector('#notification-panel .dropdown-header');
-    const listContainer = document.getElementById('notification-list');
-    const noNotificationsMessage = listContainer ? listContainer.querySelector('.text-muted') : null;
-    // Verificación de seguridad: si alguno de los elementos no existe, no hacer nada.
-    if (!countBadge || !header || !listContainer) {
-        return;
-    }
+    /* ============================================================
+       INIT + AUTO-REFRESH
+       ============================================================ */
+    // Solo ejecutar si hay campana en el DOM
+    if (btnNotif || badgeGlobal) {
+        actualizarNotificaciones();
+        setInterval(actualizarNotificaciones, 30000); // cada 30s
 
-    if (count > 0) {
-        // Actualizar contador
-        countBadge.textContent = count;
-        countBadge.style.display = 'inline';
-        header.textContent = `${count} Notificacion(es)`;
-
-        // Limpiar lista y ocultar el mensaje de "no hay notificaciones"
-        listContainer.innerHTML = '';
-        // --- INICIO DE LA MODIFICACIÓN ---
-        // Añadir un encabezado único para las solicitudes
-        const headerTitle = `<a href="#" class="dropdown-item disabled text-sm"><i class="fas fa-user-lock mr-2"></i> Solicitudes de Recuperación</a>`;
-        listContainer.innerHTML += headerTitle;
-        listContainer.innerHTML += '<div class="dropdown-divider"></div>';
-
-        notifications.forEach(notif => {
-            const notificationItem = `
-                <a href="${base_url}user/recuperar" class="dropdown-item">
-                    <i class="fas fa-user-circle mr-2 text-info"></i> ${notif.nombre}
-                    <span class="float-right text-muted text-sm">${notif.fecha}</span>
-                </a>
-            `;
-            listContainer.innerHTML += notificationItem;
+        // Refrescar también al abrir el dropdown de notificaciones
+        btnNotif?.addEventListener('click', () => {
+            setTimeout(actualizarNotificaciones, 100);
         });
-        // --- FIN DE LA MODIFICACIÓN ---
-    } else {
-        // Ocultar contador y resetear textos
-        countBadge.style.display = 'none';
-        header.textContent = 'No hay notificaciones';
-        // Mostrar mensaje de que no hay notificaciones
-        listContainer.innerHTML = '<p class="text-center text-muted p-3">No hay notificaciones nuevas.</p>';
     }
-}
+});

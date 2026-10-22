@@ -18,6 +18,7 @@
 <script src="<?= asset('js/utils.js') ?>"></script>       <!-- 👈 IMPORTANTE -->
 <script src="<?= asset('js/pdf.js') ?>"></script>
 <script src="<?= asset('js/app.js') ?>"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="<?= asset('js/dashboard.js') ?>"></script>
 <script src="<?= asset('js/function.imprimirQZ.js') ?>"></script>
 <script src="<?= asset('js/notifications.js') ?>"></script>

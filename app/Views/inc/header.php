@@ -187,6 +187,42 @@ $iniciales = strtoupper(
                 <h1 class="navbar-title"><?= e($pageTitle) ?></h1>
             </div>
 
+            <?php
+            // Barra de navegación del dashboard (solo Sistema y solo en /dashboard)
+            $esSistemaNav = ((int)($user['departamento_id'] ?? 0) === (int)DEPARTAMENTO_SISTEMA);
+            $pathActual   = trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?? '/', '/');
+            $esDashboard  = ($pathActual === 'dashboard' || substr($pathActual, -9) === '/dashboard');
+            ?>
+            <?php if ($esSistemaNav && $esDashboard): ?>
+            <nav class="navbar-dash-nav" id="navbarDashNav" aria-label="Navegación del dashboard">
+                <a href="#sec-sesiones"   class="navbar-dash-link" data-dash-target="sec-sesiones">
+                    <?= icon_tag('users', 'users', 'w-4 h-4') ?>
+                    <span>Sesiones</span>
+                </a>
+                <a href="#sec-flota"      class="navbar-dash-link" data-dash-target="sec-flota">
+                    <?= icon_tag('bus', 'bus', 'w-4 h-4') ?>
+                    <span>Flota</span>
+                </a>
+                <a href="#sec-almacen"    class="navbar-dash-link" data-dash-target="sec-almacen">
+                    <?= icon_tag('package', 'package', 'w-4 h-4') ?>
+                    <span>Almacén</span>
+                </a>
+                <a href="#sec-compras"    class="navbar-dash-link" data-dash-target="sec-compras">
+                    <?= icon_tag('shopping-cart', 'shopping-cart', 'w-4 h-4') ?>
+                    <span>Compras</span>
+                </a>
+                <a href="#sec-bienes"     class="navbar-dash-link" data-dash-target="sec-bienes">
+                    <?= icon_tag('folder-open', 'folder-open', 'w-4 h-4') ?>
+                    <span>Bienes</span>
+                </a>
+                <a href="#sec-estacion"   class="navbar-dash-link" data-dash-target="sec-estacion">
+                    <?= icon_tag('fuel', 'fuel', 'w-4 h-4') ?>
+                    <span>Estación</span>
+                </a>
+                
+            </nav>
+            <?php endif; ?>
+
             <div class="navbar-right">
                 <div class="navbar-search">
                     <input type="text" id="globalSearch" placeholder="Buscar...">
