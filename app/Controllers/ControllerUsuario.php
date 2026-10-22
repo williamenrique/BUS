@@ -534,11 +534,10 @@ class ControllerUsuario extends Controller{
             'path' => $carpeta . '/' . $nombre,
         ];
     }
-        /* ============================================================
-       DASHBOARD · Sesiones activas y forzar logout
-       ============================================================ */
-    public function sesionesActivas(): void
-    {
+    /* ============================================================
+    DASHBOARD · Sesiones activas y forzar logout
+    ============================================================ */
+    public function sesionesActivas(): void {
         AuthGuard::check();
         $u = auth_user();
         if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
@@ -550,7 +549,7 @@ class ControllerUsuario extends Controller{
             $db = \App\Core\Database::getConnection();
             $sql = "SELECT s.id, s.session_id, s.usuario_id, s.ip_address,
                            s.usuario_agent, s.created_at, s.last_activity,
-                           u.usuario_nick, u.usuario_status,
+                           u.usuario_nick, u.usuario_status, u.usuario_imagen,
                            p.personal_nombre AS nombres,
                            p.personal_apellido AS apellidos
                     FROM table_usuario_sessions s
@@ -560,11 +559,15 @@ class ControllerUsuario extends Controller{
                     ORDER BY s.last_activity DESC";
             $rows = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
 
-            // Formatear fecha
+            // Formatear fecha y construir URL de imagen
             foreach ($rows as &$r) {
                 if (!empty($r['created_at'])) {
                     $r['created_at'] = date('d/m/Y h:i A', strtotime($r['created_at']));
                 }
+                // URL absoluta de la imagen (o null si no tiene)
+                $r['imagen_url'] = !empty($r['usuario_imagen'])
+                    ? asset('uploads/storage/' . $r['usuario_imagen'])
+                    : null;
             }
             unset($r);
 

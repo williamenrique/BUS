@@ -5523,3 +5523,59 @@ body{
         width: 100%;
     }
 }
+/* ============================================
+   32 · AVATARES DE SESIONES ACTIVAS
+   ============================================ */
+
+.session-avatar{
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #e2e8f0;
+    flex-shrink: 0;
+    background: #f1f5f9;
+}
+
+.session-avatar-fallback{
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: .9rem;
+    border: 2px solid #e2e8f0;
+}
+/* ============================================
+   33 · LINK DE UNIDAD EN TABLA DE FLOTA
+   ============================================ */
+
+.unidad-link{
+    color: #1d4ed8;
+    text-decoration: none;
+    border-bottom: 1px dashed transparent;
+    transition: color .15s, border-color .15s;
+    cursor: pointer;
+}
+
+.unidad-link:hover{
+    color: #1e40af;
+    border-bottom-color: #1e40af;
+}
+
+.unidad-link strong{
+    font-weight: 700;
+}
+
+.unidad-link::after{
+    content: ' ↗';
+    font-size: .7rem;
+    opacity: .55;
+    margin-left: .15rem;
+    font-weight: 400;
+}
+
+.unidad-link:hover::after{
+    opacity: 1;
+}

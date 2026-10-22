@@ -184,29 +184,43 @@ class ModelDashboard extends Model
     /* ============================================================
        NUEVOS · FLOTA / OPERACIONES
        ============================================================ */
-    public function getOperacionesDashboard(int $idInst): array
-    {
-        $status = ['operativas'=>0,'inoperativas'=>0,'mantenimiento'=>0,'criticas'=>0];
-        $aceite = ['requerido'=>0,'proximo'=>0,'ok'=>0];
+    public function getOperacionesDashboard(int $idInst): array {
+        // Contadores base. Incluimos 'otros' para no perder estados raros.
+        $status = [
+            'operativas'    => 0,
+            'inoperativas'  => 0,
+            'mantenimiento' => 0,
+            'criticas'      => 0,
+            'otros'         => 0,
+        ];
+        $aceite = ['requerido' => 0, 'proximo' => 0, 'ok' => 0];
         $grouped = [];
 
         try {
+            // Traemos TODOS los status (sin BETWEEN) para no perder ninguno
             $rows = $this->fetchAll(
-                "SELECT status_unidad, COUNT(*) t FROM table_flota
-                 WHERE status_unidad BETWEEN 1 AND 5
-                   AND id_institucion = :i
+                "SELECT status_unidad, COUNT(*) t
+                 FROM table_flota
+                 WHERE id_institucion = :i
                  GROUP BY status_unidad",
-                ['i'=>$idInst]
+                ['i' => $idInst]
             );
+
             foreach ($rows as $row) {
+                $total = (int)$row['t'];
                 switch ((int)$row['status_unidad']) {
-                    case 1: $status['operativas'] = (int)$row['t']; break;
-                    case 2: $status['inoperativas'] = (int)$row['t']; break;
-                    case 3: $status['mantenimiento'] = (int)$row['t']; break;
-                    case 5: $status['criticas'] = (int)$row['t']; break;
+                    case 1: $status['operativas']    += $total; break;
+                    case 2: $status['inoperativas']  += $total; break;
+                    case 3: $status['mantenimiento'] += $total; break;
+                    // 4 y 5 son "crítica" según el módulo que lo use.
+                    // Aceptamos ambos para no perder unidades.
+                    case 4:
+                    case 5: $status['criticas']      += $total; break;
+                    default: $status['otros']        += $total; break;
                 }
             }
 
+            // ---- Aceite (sin cambios) ----
             $aceRows = $this->fetchAll(
                 "SELECT tf.id_flota,
                         COALESCE((SELECT km.kilometraje_actual FROM table_flota_kilometraje km
@@ -218,18 +232,19 @@ class ModelDashboard extends Model
                                   ORDER BY ah.fecha_cambio DESC, ah.id_aceite_historial DESC LIMIT 1),0) prox
                  FROM table_flota tf
                  WHERE tf.status_unidad = 1 AND tf.id_institucion = :i",
-                ['i'=>$idInst]
+                ['i' => $idInst]
             );
             foreach ($aceRows as $row) {
-                $km = (int)$row['km_actual'];
+                $km   = (int)$row['km_actual'];
                 $prox = (int)$row['prox'];
                 if ($prox <= 0) continue;
                 $diff = $prox - $km;
-                if ($diff <= 0) $aceite['requerido']++;
-                elseif ($diff <= 1000) $aceite['proximo']++;
-                else $aceite['ok']++;
+                if ($diff <= 0)          $aceite['requerido']++;
+                elseif ($diff <= 1000)   $aceite['proximo']++;
+                else                     $aceite['ok']++;
             }
 
+            // ---- Agrupado por marca/modelo (sin cambios) ----
             $grouped = $this->fetchAll(
                 "SELECT CONCAT(fm.marca_unidad,' / ',fmo.modelo_unidad) AS unidad_grupo,
                         fm.marca_unidad, fmo.modelo_unidad,
@@ -240,11 +255,11 @@ class ModelDashboard extends Model
                  FROM table_flota f
                  INNER JOIN table_flota_marca fm ON fm.id_marca = f.id_marca
                  INNER JOIN table_flota_modelo fmo ON fmo.id_modelo = f.id_modelo
-                 WHERE f.status_unidad IN (1,2,3,5)
+                 WHERE f.status_unidad IN (1,2,3,4,5)
                    AND f.id_institucion = :i
                  GROUP BY fm.marca_unidad, fmo.modelo_unidad, f.transmision, f.tipo_combustible
                  ORDER BY fm.marca_unidad, fmo.modelo_unidad",
-                ['i'=>$idInst]
+                ['i' => $idInst]
             );
         } catch (\Throwable $e) {}
 

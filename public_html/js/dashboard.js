@@ -258,17 +258,32 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        body.innerHTML = items.map(u => `
-            <tr>
-                <td><strong>${u.id_unidad || '—'}</strong></td>
-                <td>${(u.marca_unidad || '') + ' ' + (u.modelo_unidad || '')}</td>
-                <td><code style="font-size:.72rem;">${u.vim_unidad || '—'}</code></td>
-                <td>${u.transmision || '—'}</td>
-                <td>${u.tipo_combustible || '—'}</td>
-                <td class="text-right">${fmtNum(u.km_actual, 0)}</td>
-                <td class="text-right">${fmtNum(u.ultimo_cambio_aceite, 0)}</td>
-            </tr>
-        `).join('');
+        // Base para armar la URL del historial respetando BASE_URL
+        const base = (window.SITGO_BASE || '/');
+
+        body.innerHTML = items.map(u => {
+            // URL del historial de la unidad (abre en nueva pestaña)
+            const urlHistorial = base + 'flota/historial/' + u.id_flota;
+
+            return `
+                <tr>
+                    <td>
+                        <a href="${urlHistorial}"
+                           class="unidad-link"
+                           title="Ver historial de la unidad"
+                           target="_blank" rel="noopener">
+                            <strong>${u.id_unidad || '—'}</strong>
+                        </a>
+                    </td>
+                    <td>${(u.marca_unidad || '') + ' ' + (u.modelo_unidad || '')}</td>
+                    <td><code style="font-size:.72rem;">${u.vim_unidad || '—'}</code></td>
+                    <td>${u.transmision || '—'}</td>
+                    <td>${u.tipo_combustible || '—'}</td>
+                    <td class="text-right">${fmtNum(u.km_actual, 0)}</td>
+                    <td class="text-right">${fmtNum(u.ultimo_cambio_aceite, 0)}</td>
+                </tr>
+            `;
+        }).join('');
     }
 
     function volverResumenFlota() {
@@ -591,21 +606,49 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ============================================================
        SESIONES ACTIVAS
        ============================================================ */
+    let sessionsHash = '';        // hash de la última data renderizada
+    let sessionsFirstLoad = true; // solo el primer load muestra "Cargando..."
+
     async function loadActiveSessions() {
         const list = $('active-users-list');
         const noMsg = $('no-active-users');
         if (!list) return;
 
-        list.innerHTML = '<div class="text-muted" style="padding:1rem; text-align:center; grid-column:1/-1;">Cargando...</div>';
+        // Solo mostrar "Cargando..." la primera vez
+        if (sessionsFirstLoad) {
+            list.innerHTML = '<div class="text-muted" style="padding:1rem; text-align:center; grid-column:1/-1;">Cargando...</div>';
+        }
 
         const d = await fetchJSON(API_USERS + '/sesiones-activas');
 
+        // ¿Sin sesiones?
         if (!d.success || !d.data || !d.data.length) {
+            const hash = 'empty';
+            // Si ya estaba vacío, no re-renderizar
+            if (!sessionsFirstLoad && sessionsHash === hash) return;
+
+            sessionsHash = hash;
+            sessionsFirstLoad = false;
             list.innerHTML = '';
             if (noMsg) noMsg.style.display = 'block';
             setText('sessions-count', 0);
             return;
         }
+
+        // Construir un hash ligero con los campos que importan
+        // (session_id + status + nick). Si el hash no cambió, no se re-renderiza.
+        const hash = d.data.map(s =>
+            `${s.session_id}|${s.usuario_status}|${s.usuario_nick}`
+        ).join('##');
+
+        if (!sessionsFirstLoad && hash === sessionsHash) {
+            // Nada cambió → refresco silencioso, no toca el DOM
+            return;
+        }
+
+        sessionsHash = hash;
+        sessionsFirstLoad = false;
+
         if (noMsg) noMsg.style.display = 'none';
         setText('sessions-count', d.data.length);
 
@@ -614,12 +657,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 ? '<span class="badge badge-success">Activo</span>'
                 : '<span class="badge badge-danger">Inactivo</span>';
 
+            // Iniciales para fallback
+            const iniciales = (s.usuario_nick || '?')
+                .substring(0, 2)
+                .toUpperCase();
+
+            // Avatar: imagen si existe, si no → div con iniciales
+            const avatarHtml = s.imagen_url
+                ? `<img src="${s.imagen_url}" alt="${s.usuario_nick}"
+                        class="session-avatar"
+                        onerror="this.outerHTML='<div class=\\'session-avatar session-avatar-fallback\\'>${iniciales}</div>'">`
+                : `<div class="session-avatar session-avatar-fallback">${iniciales}</div>`;
+
             return `
                 <div style="padding:.85rem; border:1px solid #e2e8f0; border-radius:.55rem; background:#fff; display:flex; flex-direction:column; gap:.55rem;">
                     <div style="display:flex; align-items:center; gap:.6rem;">
-                        <div style="width:2.5rem; height:2.5rem; border-radius:50%; background:linear-gradient(135deg,#3b82f6,#1d4ed8); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.9rem; flex-shrink:0;">
-                            ${(s.usuario_nick || '?').substring(0, 2).toUpperCase()}
-                        </div>
+                        ${avatarHtml}
                         <div style="flex:1; min-width:0;">
                             <div style="font-weight:700; color:#0f172a; font-size:.85rem;">${s.usuario_nick}</div>
                             <div style="font-size:.72rem; color:#64748b;">
@@ -648,6 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         refreshIcons();
 
+        // Delegación de eventos (una sola vez por render)
         list.querySelectorAll('[data-force-logout]').forEach(btn => {
             btn.addEventListener('click', () => forceLogout(btn.dataset.forceLogout));
         });
@@ -761,6 +815,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (d.success) {
             toast(d.message || 'Sesión cerrada', 'success');
+            sessionsHash = '';
+            sessionsFirstLoad = true;
             loadActiveSessions();
         } else {
             toast(d.message || 'No se pudo cerrar', 'error');
@@ -771,28 +827,29 @@ document.addEventListener('DOMContentLoaded', () => {
        DESHABILITAR USUARIO
        ============================================================ */
     async function disableUser(userId) {
-        const confirmado = await sitgoConfirm({
-            title: 'Deshabilitar usuario',
-            message: 'El usuario no podrá iniciar sesión mientras esté deshabilitado. ¿Continuar?',
-            okText: 'Sí, deshabilitar',
-            cancelText: 'Cancelar',
-            type: 'warning',
-            icon: 'user-x',
-        });
-        if (!confirmado) return;
+            const confirmado = await sitgoConfirm({
+                title: 'Deshabilitar usuario',
+                message: 'El usuario no podrá iniciar sesión mientras esté deshabilitado. ¿Continuar?',
+                okText: 'Sí, deshabilitar',
+                cancelText: 'Cancelar',
+                type: 'warning',
+                icon: 'user-x',
+            });
+            if (!confirmado) return;
 
-        // Reutiliza el endpoint existente: /usuarios/cambiar-status/{id}
-        const d = await fetchJSON(API_USERS + '/cambiar-status/' + userId, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usuario_status: 0 })
-        });
+            const d = await fetchJSON(API_USERS + '/cambiar-status/' + userId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario_status: 0 })
+            });
 
-        if (d.ok || d.success) {
-            toast('Usuario deshabilitado', 'success');
-            loadActiveSessions();
-        } else {
-            toast(d.message || 'No se pudo deshabilitar', 'error');
-        }
+            if (d.ok || d.success) {
+                toast('Usuario deshabilitado', 'success');
+                sessionsHash = '';
+                sessionsFirstLoad = true;
+                loadActiveSessions();
+            } else {
+                toast(d.message || 'No se pudo deshabilitar', 'error');
+            }
     }
 });
