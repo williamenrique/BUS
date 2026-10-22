@@ -36,60 +36,59 @@
             <input type="hidden" name="id_personal" id="id_personal">
             <input type="hidden" name="personal_tag" id="personal_tag" value="0">
 
-           <div class="form-grid">
-    <div class="form-group">
-        <label>Cédula <span class="req">*</span></label>
-        <input type="text" name="personal_cedula" id="personal_cedula"
-               maxlength="15" autocomplete="off" data-uppercase>
-        <span class="error" data-error="personal_cedula"></span>
-    </div>
-    <div class="form-group">
-        <label>Nombre <span class="req">*</span></label>
-        <input type="text" name="personal_nombre" id="personal_nombre"
-               maxlength="45" autocomplete="off" data-uppercase>
-        <span class="error" data-error="personal_nombre"></span>
-    </div>
-    <div class="form-group">
-        <label>Apellido <span class="req">*</span></label>
-        <input type="text" name="personal_apellido" id="personal_apellido"
-               maxlength="45" autocomplete="off" data-uppercase>
-        <span class="error" data-error="personal_apellido"></span>
-    </div>
-    <div class="form-group">
-        <label>Teléfono</label>
-        <input type="text" name="personal_tlf" id="personal_tlf"
-               maxlength="45" autocomplete="off" data-uppercase>
-    </div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Cédula <span class="req">*</span></label>
+                    <input type="text" name="personal_cedula" id="personal_cedula"
+                           maxlength="15" autocomplete="off" data-uppercase>
+                    <span class="error" data-error="personal_cedula"></span>
+                </div>
+                <div class="form-group">
+                    <label>Nombre <span class="req">*</span></label>
+                    <input type="text" name="personal_nombre" id="personal_nombre"
+                           maxlength="45" autocomplete="off" data-uppercase>
+                    <span class="error" data-error="personal_nombre"></span>
+                </div>
+                <div class="form-group">
+                    <label>Apellido <span class="req">*</span></label>
+                    <input type="text" name="personal_apellido" id="personal_apellido"
+                           maxlength="45" autocomplete="off" data-uppercase>
+                    <span class="error" data-error="personal_apellido"></span>
+                </div>
+                <div class="form-group">
+                    <label>Teléfono</label>
+                    <input type="text" name="personal_tlf" id="personal_tlf"
+                           maxlength="45" autocomplete="off" data-uppercase>
+                </div>
 
-    <div class="form-group">
-        <label>Cargo <span class="req">*</span></label>
-        <select name="personal_cargo" id="personal_cargo"></select>
-        <span class="error" data-error="personal_cargo"></span>
-    </div>
-    <div class="form-group">
-        <label>Departamento</label>
-        <select name="personal_departamento" id="personal_departamento"></select>
-    </div>
-    <div class="form-group">
-        <label>Estatus</label>
-        <select name="personal_status" id="personal_status">
-            <option value="1">Activo</option>
-            <option value="0">Inactivo</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label>Email</label>
-        <!-- SIN data-uppercase: el email va tal cual -->
-        <input type="email" name="personal_email" id="personal_email" autocomplete="off">
-        <span class="error" data-error="personal_email"></span>
-    </div>
+                <div class="form-group">
+                    <label>Cargo <span class="req">*</span></label>
+                    <select name="personal_cargo" id="personal_cargo"></select>
+                    <span class="error" data-error="personal_cargo"></span>
+                </div>
+                <div class="form-group">
+                    <label>Departamento</label>
+                    <select name="personal_departamento" id="personal_departamento"></select>
+                </div>
+                <div class="form-group">
+                    <label>Estatus</label>
+                    <select name="personal_status" id="personal_status">
+                        <option value="1">Activo</option>
+                        <option value="0">Inactivo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="personal_email" id="personal_email" autocomplete="off">
+                    <span class="error" data-error="personal_email"></span>
+                </div>
 
-    <div class="form-group full">
-        <label>Dirección</label>
-        <textarea name="personal_direccion" id="personal_direccion"
-                  rows="1" data-uppercase></textarea>
-    </div>
-</div>
+                <div class="form-group full">
+                    <label>Dirección</label>
+                    <textarea name="personal_direccion" id="personal_direccion"
+                              rows="1" data-uppercase></textarea>
+                </div>
+            </div>
 
             <div class="form-actions">
                 <button type="button" id="btnCancelar" class="btn btn-ghost">
@@ -105,29 +104,9 @@
     </div>
 </section>
 
-<!-- Filtros -->
-<div class="card mb-4">
-    <div class="card-body filters-row">
-        <div class="filter-search">
-            <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
-            <input type="text" id="filtroBuscar" placeholder="Buscar por nombre, cédula o email...">
-        </div>
-        <select id="filtroStatus" class="filter-select">
-            <option value="">Todos los estatus</option>
-            <option value="1">Activos</option>
-            <option value="0">Inactivos</option>
-        </select>
-        <select id="filtroDepartamento" class="filter-select">
-            <option value="">Todos los departamentos</option>
-        </select>
-        <button id="btnLimpiarFiltros" class="btn btn-ghost">
-            <?= icon_tag('x', 'x', 'w-4 h-4') ?>
-            <span>Limpiar</span>
-        </button>
-    </div>
-</div>
-
-<!-- Tabla con DataTable -->
+<!-- ============================================ -->
+<!-- Tabla con DataTable (toolbar con filtros)    -->
+<!-- ============================================ -->
 <div class="card">
     <!-- Toolbar (arriba) -->
     <div class="dt-toolbar">
@@ -156,7 +135,7 @@
 
             <div class="filter-search" style="min-width:240px;">
                 <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
-                <input type="text" id="filtroBuscar" placeholder="Buscar...">
+                <input type="text" id="filtroBuscar" placeholder="Buscar por nombre, cédula o email...">
             </div>
         </div>
     </div>

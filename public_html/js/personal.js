@@ -1,7 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'personal';
-    // console.log('📡 API Personal =', API);
-
     const $ = id => document.getElementById(id);
 
     let dt = null;   // instancia del DataTable
@@ -286,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             form.reset();
             $('id_personal').value = '';
             cerrarFormulario();
-            dt?.refresh();           // 👈 recarga forzada sin caché
+            dt?.refresh();
         } catch (err) {
             console.error(err);
             toast('Error de conexión', 'error');
