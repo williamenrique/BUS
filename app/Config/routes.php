@@ -62,7 +62,14 @@ return [
     ['path' => '/usuarios/eliminar-imagen/{id}',  'method' => 'POST', 'handler' => 'ControllerUsuario@eliminarImagen'],
     ['path' => '/usuarios/sesiones-activas',  'method' => 'GET',  'handler' => 'ControllerUsuario@sesionesActivas'],
     ['path' => '/usuarios/forzar-logout',     'method' => 'POST', 'handler' => 'ControllerUsuario@forzarLogout'],
-
+    // ============================================================
+    // Perfil de usuario (mi perfil)
+    // ============================================================
+    ['path' => '/perfil',                    'method' => 'GET',  'handler' => 'ControllerUsuario@perfil'],
+    ['path' => '/perfil/actualizar',         'method' => 'POST', 'handler' => 'ControllerUsuario@actualizarPerfil'],
+    ['path' => '/perfil/imagen',             'method' => 'POST', 'handler' => 'ControllerUsuario@subirImagenPerfil'],
+    ['path' => '/perfil/imagen/eliminar',    'method' => 'POST', 'handler' => 'ControllerUsuario@eliminarImagenPerfil'],
+    ['path' => '/perfil/password',           'method' => 'POST', 'handler' => 'ControllerUsuario@cambiarPasswordPerfil'],
     // ============================================================
     // Recuperar
     // ============================================================

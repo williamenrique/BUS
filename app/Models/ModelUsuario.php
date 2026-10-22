@@ -496,4 +496,28 @@ class ModelUsuario extends Model{
             ['hash' => $newHash, 'id' => $userId]
         );
     }
+        /* ============================================================
+       PERFIL · Actualizar datos del personal vinculado
+       ============================================================ */
+
+    /**
+     * Actualiza los campos editables del personal asociado al usuario
+     * (nombre, apellido, email, teléfono). No toca cédula, cargo,
+     * dirección ni estatus (esos los maneja el módulo Personal).
+     */
+    public function actualizarPersonal(int $personalId, array $d): bool{
+        $sql = "UPDATE table_personal SET
+                    personal_nombre   = :nombre,
+                    personal_apellido = :apellido,
+                    personal_email    = :email,
+                    personal_tlf      = :tlf
+                WHERE id_personal = :id";
+        return $this->execute($sql, [
+            'nombre'   => $d['personal_nombre']   ?? '',
+            'apellido' => $d['personal_apellido'] ?? '',
+            'email'    => $d['personal_email']    ?? '',
+            'tlf'      => $d['personal_tlf']      ?? '',
+            'id'       => $personalId,
+        ]);
+    }
 }
