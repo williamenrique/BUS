@@ -135,8 +135,29 @@ HTML;
         return '#^' . $path . '$#';
     }
 
+    /**
+     * Muestra la vista 404.
+     * - Si el usuario está logueado → se renderiza con layout (header + footer).
+     * - Si no está logueado → se renderiza standalone (sin sidebar).
+     */
     private function abort404(): void{
         http_response_code(404);
+
+        // Si es AJAX, devolvemos JSON (no HTML)
+        if ($this->esAjax()){
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'ok'      => false,
+                'message' => 'Recurso no encontrado.',
+                'type'    => 'not_found',
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // Vista normal: con layout si está logueado, standalone si no
+        $withLayout = is_logged_in();
+        $pageTitle  = 'Página no encontrada';
+
         require VIEWS_PATH . 'errores/404.php';
     }
 }
