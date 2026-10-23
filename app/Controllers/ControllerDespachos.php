@@ -6,14 +6,17 @@ use App\Core\Validator;
 use App\Models\ModelDespachos;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerDespachos extends Controller{
 
     /* ============================================================
        VISTA
+       Protegido con menu_id = 1202 (patrón: despachos/i)
        ============================================================ */
     public function index(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -32,6 +35,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function listar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -57,6 +61,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function combos(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $this->safe(function() use ($instId){
@@ -77,6 +82,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function obtener(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
 
         $this->safe(function() use ($id){
@@ -96,6 +102,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function articulos(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
 
         $this->safe(function() use ($id){
@@ -108,6 +115,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function stats(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $this->safe(function() use ($instId){
@@ -120,6 +128,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function guardar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
 
@@ -159,6 +168,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function actualizar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -198,6 +208,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function eliminar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
         $user = auth_user();
@@ -230,11 +241,13 @@ class ControllerDespachos extends Controller{
         }
         return $d;
     }
-        /* ============================================================
+
+    /* ============================================================
        VISTA · Historial de productos
        ============================================================ */
     public function historialProductos(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -253,6 +266,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function historialListar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -275,6 +289,7 @@ class ControllerDespachos extends Controller{
        ============================================================ */
     public function historialDetalle(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 

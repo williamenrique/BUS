@@ -1,0 +1,295 @@
+# GUÍA COMPLETA · Seguridad por Menú (MenuGuard) · ACTUALIZADA 2026-10-23
+# ============================================================================
+
+## ✅ Lo que YA está hecho (producción)
+
+| Módulo | Estado | Detalle |
+|--------|--------|---------|
+| ModelUsuario | ✅ | menuIdPorRuta() + tieneMenuAsignado() |
+| MenuGuard.php | ✅ | Middleware completo con check() y denegar() público |
+| DataVenta | ✅ | Vista + 15 endpoints protegidos (menu_id = 1601) |
+| Estación Registrar | ✅ | 403 bonito con MenuGuard::denegar() (sin guard de menú) |
+| Personal | ✅ | Vista + 8 endpoints protegidos (menu_id = 1502) |
+| Usuarios | ✅ | Vista + 13 endpoints protegidos (menu_id = 1501) — perfil y sesiones exentos |
+| Flota | ✅ | Vista + 10 endpoints protegidos (menu_id = 1101) |
+| Cambio Aceite | ✅ | Vista + 5 endpoints protegidos (menu_id = 1102) |
+| Historial Flota | ✅ | Vista + 3 endpoints protegidos (menu_id = 1103) |
+| Productos | ✅ | Vista + 8 endpoints protegidos (menu_id = 1201) |
+| Despachos | ✅ | Vista + 12 endpoints protegidos (menu_id = 1202) |
+| routes.php | ✅ | Bloque Dashboard duplicado eliminado |
+| Reconstrucción de menús | ✅ | 17 menús + 14 rutas nuevas, IDs desde 1000, respaldo en backup_men_*_20261022 |
+| Asignación a WILL | ✅ | 17 menús asignados (depto Sistema pasa siempre) |
+| Asignar/restringir/reasignar desde UI | ✅ | Probado y funcionando |
+| MenuGuard en cada request | ✅ | Sin caché, lee BD fresco |
+| Conflicto despachos/i (1104 vs 1202) | ✅ Resuelto | Patrón de 1104 eliminado. Historial Despachos hereda permiso de 1202 |
+
+
+## 🔧 Lo que FALTA por hacer
+
+| # | Módulo | Menu ID | Patrón en table_men_rutas | Riesgo | Prioridad |
+|---|--------|---------|---------------------------|--------|-----------|
+| 1 | Compras | 1301 | compras/i | Medio | 🟡 Media |
+| 2 | Bienes | 1400 | bienes/i | Medio | 🟡 Media |
+| 3 | Recuperar | 1503 | recuperar | Bajo | 🟢 Baja |
+| 4 | Dashboard | 1000 | dashboard | Alto | 🟢 Baja (cuidado) |
+| 5 | Menú admin | 1700 | menu | Muy Alto | ⚪ NO PROTEGER |
+| 6 | Perfil | — | — | Bajo | ⚪ NO PROTEGER |
+
+### ⚠️ Notas críticas
+- /menu NO se protege → si se bloquea por error, nadie puede reparar permisos desde la UI.
+- /perfil NO se protege → es del propio usuario.
+- Dashboard → protegerlo es opcional. Recomiendo dejarlo sin guard.
+- Recuperar → proteger con cuidado. El admin Sistema pasa siempre, así que es seguro.
+
+
+## 🎯 Metodología para cada módulo (sin cambios)
+
+### Paso A · Confirmar datos con SELECT
+
+-- 1) Confirmar menu_id, ruta y estado
+SELECT menu_id, menu_nombre, menu_ruta, menu_estado
+FROM table_men_menu
+WHERE menu_id = ID_DEL_MENU
+   OR menu_ruta LIKE '%NOMBRE_MODULO%'
+   OR menu_nombre LIKE '%NOMBRE_MODULO%';
+
+-- 2) Confirmar patrón de ruta
+SELECT ruta_id, menu_id, patron, activa
+FROM table_men_rutas
+WHERE menu_id = ID_DEL_MENU
+   OR patron LIKE '%NOMBRE_MODULO%';
+
+-- 3) Herencia por departamento
+SELECT d.departamento_id, d.departamento_nombre, dm.menu_id
+FROM table_men_departamento_menu dm
+INNER JOIN table_departamentos d ON d.departamento_id = dm.departamento_id
+WHERE dm.menu_id = ID_DEL_MENU;
+
+-- 4) Usuarios con el menú asignado
+SELECT usuario_id, menu_id
+FROM table_men_usuario_menu
+WHERE menu_id = ID_DEL_MENU
+ORDER BY usuario_id;
+
+
+### Paso B · Verificar acceso actual del "usuario sin permiso"
+
+// Con JZ-10 o PB-24 logueado
+fetch('/MODULO', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+  .then(async r => {
+    console.log('Status HOY:', r.status);  // Esperado: 200 (antes del guard)
+    console.log((await r.text()).substring(0, 200));
+  });
+
+
+### Paso C · Aplicar MenuGuard::check()
+
+use App\Middleware\MenuGuard;
+
+public function index(): void {
+    AuthGuard::check();
+    MenuGuard::check();   // ← NUEVA LÍNEA
+    ...
+}
+
+
+### Paso D · Probar con los 3 usuarios
+
+| Usuario | Esperado |
+|---------|----------|
+| WILL (depto Sistema 1) | ✅ Pasa siempre |
+| Usuario con menu_id = X | ✅ Pasa |
+| JZ-10 / PB-24 (sin menu_id = X) | ❌ 403 JSON o HTML |
+
+
+### Paso E · Verificar CRUD completo con WILL
+Crear, editar, eliminar. Todo debe funcionar.
+
+### Paso F · Verificar el resto del sistema
+Dashboard, Estación, DataVenta, Personal, Usuarios, Flota, etc. → todo normal.
+
+
+## 📊 IDs nuevos de menú (referencia oficial)
+
+| Menú | ID | Patrón | Ruta |
+|------|-----|--------|------|
+| Dashboard | 1000 | dashboard | /dashboard |
+| Operaciones (padre) | 1100 | — | (agrupador) |
+| Flota | 1101 | flota/i | /flota/i/{inst} |
+| Cambio Aceite | 1102 | flota/aceite | /flota/aceite/i/{inst} |
+| Historial Flota | 1103 | flota/status | /flota/status/i/{inst} |
+| Historial Despachos | 1104 | (sin patrón — hereda de 1202) | /despachos/i/{inst}/historial |
+| Almacén (padre) | 1200 | — | (agrupador) |
+| Producto | 1201 | productos/i | /productos/i/{inst} |
+| Despacho | 1202 | despachos/i | /despachos/i/{inst} |
+| Compras (padre) | 1300 | — | (agrupador) |
+| Reporte Compra | 1301 | compras/i | /compras/i/{inst}/costeadas |
+| Bienes | 1400 | bienes/i | /bienes/i/{inst} |
+| Usuarios (padre) | 1500 | — | (agrupador) |
+| Gestión de Usuarios | 1501 | usuarios | /usuarios |
+| Personal | 1502 | personal | /personal |
+| Recuperar | 1503 | recuperar | /recuperar |
+| Estación (padre) | 1600 | — | (agrupador) |
+| Data Venta | 1601 | estacion/dataventa | /estacion/dataventa |
+| Menú (admin) | 1700 | menu | /menu |
+
+Los IDs viejos (1, 4, 5, 7, 9, 10, 1001, 1002, 1003, 1005, 1006, 1010, 1011,
+1013, 1016, 1018–1025) ya NO EXISTEN. Fueron eliminados en la reconstrucción.
+
+### ⚠️ Consecuencia importante
+Los MenuGuard que ya aplicaste en Personal y Usuarios ahora apuntan a los nuevos IDs:
+- ControllerPersonal → busca patrón "personal" → encuentra menu_id = 1502 ✅
+- ControllerUsuario → busca patrón "usuarios" → encuentra menu_id = 1501 ✅
+
+Funciona sin tocar código porque el guard lee BD en cada request.
+Pero si quieres dar acceso a un usuario:
+- Antes: le asignabas menu_id = 1010 (Personal) o 1006 (Usuarios).
+- Ahora: le asignas menu_id = 1502 (Personal) o 1501 (Usuarios).
+Ya no uses los IDs viejos.
+
+
+## 🚨 Advertencias actualizadas
+
+### ⚠️ Módulo Menú (/menu) — NO PROTEGER
+Motivo: si bloqueas /menu y por error nadie tiene el menú asignado, no se puede
+reparar desde la UI. El admin Sistema (depto 1) sigue pasando, así que en teoría
+está protegido, pero ante cualquier cambio de depto del admin quedarías encerrado.
+Dejarlo sin guard.
+
+### ⚠️ Módulo Perfil (/perfil) — NO PROTEGER
+Es del propio usuario. Ya no tiene guard.
+
+### ⚠️ Dashboard (/dashboard) — OPCIONAL, con cuidado
+Si lo proteges y un usuario pierde menu_id = 1000, no puede ver nada.
+Recomiendo dejarlo sin guard. El dashboard ya filtra contenido por departamento.
+
+### ⚠️ Recuperar (/recuperar) — PROTEGER CON CUIDADO
+Es donde caen los admins para resetear contraseñas. El admin Sistema pasa siempre.
+Si lo proteges, verifica que el admin Sistema tenga depto 1 (lo tiene).
+
+### ⚠️ Flota con /i/{inst}
+El patrón flota/i matchea con /flota/i/1/listar, /flota/i/2, etc.
+Funciona bien para multi-institución.
+
+### ⚠️ Conflicto despachos/i (1104 y 1202) — YA RESUELTO
+Estado actual (post-resolución):
+- menu_id = 1104 (Historial Despachos): SIN patrón en table_men_rutas.
+- menu_id = 1202 (Despacho): patrón 'despachos/i'.
+
+Consecuencia:
+- /despachos/i/1 → matchea 'despachos/i' → 1202 ✅
+- /despachos/i/1/historial → matchea 'despachos/i' → 1202 (mismo menú) ✅
+- El menú "Historial Despachos" (1104) sigue apareciendo en el sidebar,
+  pero hereda permisos de 1202 para las URLs.
+
+
+## 📄 Checklist por módulo (actualizado)
+
+[ ] 1. SELECT menu_id en table_men_menu
+[ ] 2. SELECT patron en table_men_rutas
+[ ] 3. SELECT herencia en table_men_departamento_menu
+[ ] 4. SELECT usuarios en table_men_usuario_menu
+[ ] 5. Verificar acceso actual con usuario "sin permiso" (fetch)
+[ ] 6. Aplicar MenuGuard::check() en el controlador (vista + endpoints)
+[ ] 7. Probar WILL (admin depto 1) → debe pasar
+[ ] 8. Probar usuario con menu_id → debe pasar
+[ ] 9. Probar usuario sin menu_id → debe recibir 403 (vista y endpoints)
+[ ] 10. Probar CRUD completo con WILL
+[ ] 11. Verificar resto del sistema
+
+
+## 📦 Preguntas frecuentes (actualizadas)
+
+¿Qué pasa si el menú no está en table_men_rutas?
+El guard hace menuIdPorRuta() → null → deja pasar. Sin patrón registrado, no hay
+protección. Después de la reconstrucción, todos los patrones están registrados.
+Si agregas un módulo nuevo, tienes que registrar su patrón desde la UI de Menús
+o por SQL.
+
+¿Qué pasa si el usuario es del depto Sistema?
+Pasa siempre, sin importar si tiene o no el menu_id.
+Es una excepción para que el admin nunca se quede fuera.
+
+¿Qué pasa si quito el menu_id a un usuario?
+En la siguiente petición, el guard lo bloquea. No hay que reiniciar sesión ni
+tocar código.
+
+¿Qué pasa si agrego el menu_id a un usuario?
+En la siguiente petición, ya puede entrar. Sin tocar código.
+
+¿Los IDs viejos (1010, 1006, etc.) siguen sirviendo?
+NO. Fueron eliminados en la reconstrucción. Ahora los IDs son 1502 (Personal),
+1501 (Usuarios), 1601 (DataVenta), etc. Cualquier código que asigne los IDs
+viejos fallará silenciosamente.
+
+¿Puedo revertir el guard?
+Sí. Quita la línea MenuGuard::check(); del controlador. No hay que tocar BD.
+
+¿Cómo se administra el acceso desde la UI?
+Menú /menu → abrir el módulo → pestaña "Usuarios" o "Departamentos" → asignar/quitar.
+
+¿Qué hago si el guard bloquea a alguien que SÍ debía pasar?
+1. Verificar que el menu_id del módulo esté en table_men_rutas con activa = 1.
+2. Verificar que el usuario tenga el menu_id en table_men_usuario_menu o que su
+   depto lo tenga.
+3. Verificar que el usuario esté activo.
+4. Si todo eso está OK y sigue bloqueado → revisar MenuGuard::check()
+   (log en db-errors.log).
+
+¿Cómo restauro los menús si algo sale mal?
+El respaldo está en:
+- backup_men_menu_20261022
+- backup_men_rutas_20261022
+- backup_men_usuario_menu_20261022
+- backup_men_departamento_menu_20261022
+
+Restaurar:
+DELETE FROM table_men_usuario_menu;
+DELETE FROM table_men_departamento_menu;
+DELETE FROM table_men_rutas;
+DELETE FROM table_men_menu;
+
+INSERT INTO table_men_menu SELECT * FROM backup_men_menu_20261022;
+INSERT INTO table_men_rutas SELECT * FROM backup_men_rutas_20261022;
+INSERT INTO table_men_usuario_menu SELECT * FROM backup_men_usuario_menu_20261022;
+INSERT INTO table_men_departamento_menu SELECT * FROM backup_men_departamento_menu_20261022;
+
+
+## 🎯 Resumen ejecutivo
+
+| Lo que falta | Cómo se hace |
+|--------------|--------------|
+| Proteger módulo X | 1) 4 SELECT · 2) Verificar acceso · 3) Agregar MenuGuard::check() · 4) Probar 3 usuarios · 5) Probar CRUD |
+| Dar acceso a usuario | Menú /menu → módulo → pestaña "Usuarios" → asignar |
+| Quitar acceso | Menú /menu → módulo → pestaña "Usuarios" → quitar |
+| Dar acceso a depto | Menú /menu → módulo → pestaña "Departamentos" → asignar |
+| Forzar paso de admin | El depto Sistema (1) pasa siempre |
+| Debug si bloquea mal | Revisar menu_id en table_men_rutas, table_men_usuario_menu, table_men_departamento_menu y db-errors.log |
+| Revertir el guard | Quitar la línea MenuGuard::check(); del controlador |
+
+
+## 📊 Estado de table_men_rutas (oficial, post-reconstrucción)
+
+| Patrón | menu_id | Nombre | Activo |
+|--------|---------|--------|--------|
+| dashboard | 1000 | Dashboard | ✅ |
+| flota/i | 1101 | Flota | ✅ |
+| flota/aceite | 1102 | Cambio Aceite | ✅ |
+| flota/status | 1103 | Historial Flota | ✅ |
+| productos/i | 1201 | Producto | ✅ |
+| despachos/i | 1202 | Despacho (cubre también Historial Despachos) | ✅ |
+| compras/i | 1301 | Reporte Compra | ✅ |
+| bienes/i | 1400 | Bienes | ✅ |
+| usuarios | 1501 | Gestión de Usuarios | ✅ |
+| personal | 1502 | Personal | ✅ |
+| recuperar | 1503 | Recuperar | ✅ |
+| estacion/dataventa | 1601 | Data Venta | ✅ |
+| menu | 1700 | Menú | ✅ |
+
+Nota: el patrón 'despachos/i' de menu_id = 1104 (Historial Despachos) fue
+eliminado para resolver el conflicto. Ahora /despachos/i/{inst}/historial
+hereda el permiso de 1202.
+
+
+Fin de la guía actualizada.
+Con esto puedes continuar en cualquier momento sin depender de mí.
