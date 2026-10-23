@@ -5,14 +5,17 @@ use App\Core\Controller;
 use App\Models\ModelCompras;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerCompras extends Controller{
 
     /* ============================================================
        VISTA
+       Protegido con menu_id = 1301 (patrón: compras/i)
        ============================================================ */
     public function index(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -31,6 +34,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function pendientes(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -53,6 +57,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function costeadas(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -80,6 +85,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function articulosDespacho(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -103,6 +109,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function asignarCosto(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
 
@@ -135,6 +142,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function detalleCosteado(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -169,6 +177,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function anularCosto(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -187,6 +196,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function flota(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $this->safe(function() use ($instId){
@@ -199,6 +209,7 @@ class ControllerCompras extends Controller{
        ============================================================ */
     public function conteoOrdenes(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $d = $this->input();
