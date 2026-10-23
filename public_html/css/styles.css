@@ -5785,3 +5785,78 @@ body{
 .badge-link:hover .badge-link-icon{
     opacity: 1;
 }
+/* Animación de salida del modal de recuperar */
+.login-modal-backdrop.closing{
+    animation: loginModalFadeOut .3s ease forwards;
+}
+
+.login-modal-backdrop.closing .login-modal-content{
+    animation: loginModalScaleOut .3s ease forwards;
+}
+
+@keyframes loginModalFadeOut{
+    from{ opacity: 1; }
+    to  { opacity: 0; }
+}
+
+@keyframes loginModalScaleOut{
+    from{ transform: scale(1); opacity: 1; }
+    to  { transform: scale(.96); opacity: 0; }
+}
+
+/* ============================================
+   38 · SIDEBAR COLAPSADO · HOVER EXPAND
+   ============================================ */
+
+/* Cuando el sidebar está colapsado y el mouse entra,
+   se expande temporalmente (sin cambiar el layout del contenido) */
+@media (min-width: 768px){
+    body.sidebar-collapsed #sidebar:hover{
+        width: 16rem;
+        box-shadow: 4px 0 20px rgba(15,23,42,.25);
+        z-index: 50;
+    }
+
+    /* Mostrar los textos e iconos que estaban ocultos */
+    body.sidebar-collapsed #sidebar:hover .sidebar-brand-text,
+    body.sidebar-collapsed #sidebar:hover .sidebar-text,
+    body.sidebar-collapsed #sidebar:hover .sidebar-chevron,
+    body.sidebar-collapsed #sidebar:hover .sidebar-section-title,
+    body.sidebar-collapsed #sidebar:hover .sidebar-user-info{
+        display: initial;
+    }
+
+    /* Restaurar el layout del usuario */
+    body.sidebar-collapsed #sidebar:hover .sidebar-user{
+        padding: 1.25rem 1rem;
+    }
+
+    body.sidebar-collapsed #sidebar:hover .sidebar-user-card{
+        flex-direction: column;
+        align-items: center;
+    }
+
+    body.sidebar-collapsed #sidebar:hover .sidebar-avatar,
+    body.sidebar-collapsed #sidebar:hover .sidebar-avatar-fallback{
+        width: 4rem;
+        height: 4rem;
+        font-size: 1.25rem;
+    }
+
+    /* Los links vuelven a mostrar el texto */
+    body.sidebar-collapsed #sidebar:hover .sidebar-link{
+        justify-content: flex-start;
+        padding: .65rem .75rem;
+    }
+
+    /* El submenú vuelve a estar disponible (aunque colapsado) */
+    body.sidebar-collapsed #sidebar:hover .sidebar-submenu{
+        display: block;
+    }
+
+    /* Desactivar el tooltip que aparece al hover cuando está colapsado
+       (porque ahora se expande de verdad) */
+    body.sidebar-collapsed #sidebar:hover .sidebar-link:hover::after{
+        display: none;
+    }
+}

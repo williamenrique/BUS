@@ -5,6 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ============================================================
        SIDEBAR · Toggle de grupos (menús desplegables)
+       ------------------------------------------------------------
+       - Si el sidebar está colapsado (desktop) y el usuario hace
+         clic en un grupo, primero se expande el sidebar y luego se
+         despliega el submenú del grupo.
+       - Si ya está expandido, solo se despliega/colapsa el grupo.
        ============================================================ */
     document.querySelectorAll('.sidebar-toggle').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -14,6 +19,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const submenu = parent.querySelector('.sidebar-submenu');
             if (!submenu) return;
 
+            // Si el sidebar está colapsado (solo en desktop), expandirlo primero
+            const estaColapsado = document.body.classList.contains('sidebar-collapsed');
+            if (estaColapsado && window.innerWidth > 767) {
+                document.body.classList.remove('sidebar-collapsed');
+                sessionStorage.setItem('sidebar_collapsed', '0');
+
+                // Abrir el grupo después de expandir
+                parent.classList.add('open');
+                submenu.style.maxHeight = 'none';
+                const alto = submenu.scrollHeight;
+                submenu.style.maxHeight = alto + 'px';
+                return;
+            }
+
+            // Comportamiento normal de toggle
             const isOpen = parent.classList.contains('open');
 
             if (isOpen) {

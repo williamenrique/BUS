@@ -37,23 +37,53 @@ document.addEventListener('DOMContentLoaded', () => {
         errBox.classList.add('hidden');
     }
 
+    /* ============================================================
+       MODAL · Abrir con transición suave
+       ============================================================ */
     function abrirModal(){
         if (!modal) return;
-        modal.style.display = 'flex';
-        modal.classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
 
-    function cerrarModal(){
-        if (!modal) return;
-        modal.style.display = 'none';
-        modal.classList.remove('open');
-        document.body.style.overflow = '';
+        // Limpiar mensajes previos
         if (msgF){
             msgF.textContent = '';
             msgF.style.display = 'none';
             msgF.className = 'login-alert';
         }
+
+        // Quitar clase closing si quedó de un cierre previo
+        modal.classList.remove('closing');
+
+        // Mostrar
+        modal.style.display = 'flex';
+        void modal.offsetWidth; // forzar reflow
+        modal.classList.add('open');
+
+        document.body.style.overflow = 'hidden';
+    }
+
+    /* ============================================================
+       MODAL · Cerrar con animación de salida
+       ============================================================ */
+    function cerrarModal(){
+        if (!modal || !modal.classList.contains('open')) return;
+
+        // Si ya está cerrando, no repetir
+        if (modal.classList.contains('closing')) return;
+
+        modal.classList.add('closing');
+        modal.classList.remove('open');
+
+        setTimeout(() => {
+            modal.style.display = 'none';
+            modal.classList.remove('closing');
+            document.body.style.overflow = '';
+
+            if (msgF){
+                msgF.textContent = '';
+                msgF.style.display = 'none';
+                msgF.className = 'login-alert';
+            }
+        }, 300);
     }
 
     /* ============================================================
@@ -105,7 +135,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Errores de validación o credenciales
             const primerError =
                 data.message ||
                 (data.errors && Object.values(data.errors)[0]) ||
@@ -122,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     /* ============================================================
-       MODAL
+       MODAL · Eventos
        ============================================================ */
     btnForgot?.addEventListener('click', (e) => {
         e.preventDefault();
@@ -137,13 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && modal.style.display === 'flex'){
+        if (e.key === 'Escape' && modal && modal.classList.contains('open')){
             cerrarModal();
         }
     });
 
     /* ============================================================
        RECUPERAR CONTRASEÑA
+       ------------------------------------------------------------
+       - Si la solicitud es exitosa:
+         · Se muestra el mensaje verde.
+         · Se espera 2.5 s (para que el usuario lo lea).
+         · Se cierra el modal con animación suave.
+       - Si falla: el modal queda abierto para reintentar.
        ============================================================ */
     formF?.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -181,12 +216,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await r.json();
 
+            // Mostrar el mensaje (éxito o error)
             msgF.textContent = data.message || (data.ok ? 'Solicitud enviada.' : 'No se pudo procesar.');
             msgF.className = 'login-alert ' + (data.ok ? 'login-alert-success' : 'login-alert-error');
             msgF.style.display = '';
 
             if (data.ok){
                 formF.reset();
+
+                // Cerrar el modal después de 2.5 s con animación suave
+                setTimeout(cerrarModal, 2500);
             }
 
         } catch (err){
