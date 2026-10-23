@@ -562,6 +562,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!motivo){ toast('Escribe un motivo.', 'error'); return; }
 
+            const ok = await sitgoConfirm({
+                title: 'Eliminar despacho',
+                message: `Se eliminará la orden #${id}. Motivo: "${motivo}". Esta acción no se puede deshacer.`,
+                okText: 'Sí, eliminar',
+                cancelText: 'Cancelar',
+                type: 'danger',
+                icon: 'trash-2',
+            });
+            if (!ok) return;
+
             try{
                 const d = await fetchJSON(`${API}/eliminar/${id}`, {
                     method: 'POST',

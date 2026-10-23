@@ -124,11 +124,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const { action, id } = btn.dataset;
 
         if (action === 'reset'){
-            if (!confirm('¿Restablecer la contraseña a 123456?')) return;
+            const ok = await sitgoConfirm({
+                title: 'Restablecer contraseña',
+                message: '¿Restablecer la contraseña a "123456"? El usuario deberá cambiarla al iniciar sesión.',
+                okText: 'Sí, restablecer',
+                cancelText: 'Cancelar',
+                type: 'warning',
+                icon: 'key-round',
+            });
+            if (!ok) return;
             await accion(`/resetear/${id}`, 'Contraseña restablecida.');
         }
+
         if (action === 'resolver'){
-            if (!confirm('¿Marcar esta solicitud como atendida?')) return;
+            const ok = await sitgoConfirm({
+                title: 'Marcar como atendida',
+                message: '¿Marcar esta solicitud como atendida?',
+                okText: 'Sí, marcar',
+                cancelText: 'Cancelar',
+                type: 'success',
+                icon: 'check-circle',
+            });
+            if (!ok) return;
             await accion(`/resolver/${id}`, 'Solicitud marcada como atendida.');
         }
     });

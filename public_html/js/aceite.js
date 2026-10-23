@@ -175,7 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', async () => {
             const tipo = btn.dataset.del;
             const id   = $('del_id_flota').value;
-            if (!confirm(`¿Eliminar el último registro de ${tipo}?`)) return;
+
+            const ok = await sitgoConfirm({
+                title: 'Eliminar registro',
+                message: `¿Eliminar el último registro de ${tipo}? Esta acción no se puede deshacer.`,
+                okText: 'Sí, eliminar',
+                cancelText: 'Cancelar',
+                type: 'danger',
+                icon: 'trash-2',
+            });
+            if (!ok) return;
+
             await post(`${API}/eliminar`, { id_flota: id, tipo }, 'modalEliminar');
         });
     });

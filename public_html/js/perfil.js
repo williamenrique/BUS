@@ -109,7 +109,15 @@ document.addEventListener('DOMContentLoaded', () => {
        ELIMINAR IMAGEN DE PERFIL
        ============================================ */
     $('btnEliminarImagen')?.addEventListener('click', async () => {
-        if (!confirm('¿Quitar tu imagen? Se restaurará la predeterminada.')) return;
+        const ok = await sitgoConfirm({
+            title: 'Quitar imagen de perfil',
+            message: '¿Quitar tu imagen? Se restaurará la predeterminada.',
+            okText: 'Sí, quitar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'image-off',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/imagen/eliminar', { method: 'POST' });

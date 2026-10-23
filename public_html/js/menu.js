@@ -658,8 +658,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const hijos = getHijos(id);
         const msg = hijos.length
             ? `¿Eliminar "${m?.menu_nombre}"? Se eliminarán también ${hijos.length} submenú(s).`
-            : `¿Eliminar "${m?.menu_nombre}"?`;
-        if (!confirm(msg)) return;
+            : `¿Eliminar "${m?.menu_nombre}"? Esta acción no se puede deshacer.`;
+
+        const ok = await sitgoConfirm({
+            title: 'Eliminar menú',
+            message: msg,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/eliminar/' + id, { method: 'POST' });
@@ -820,7 +829,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function eliminarSubmenu(id){
-        if (!confirm('¿Eliminar este submenú?')) return;
+        const ok = await sitgoConfirm({
+            title: 'Eliminar submenú',
+            message: '¿Eliminar este submenú? Esta acción no se puede deshacer.',
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
+
         try{
             const d = await fetchJSON(API + '/eliminar/' + id, { method: 'POST' });
             if (!d.ok) throw new Error(d.message);
@@ -838,7 +856,6 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('Error: ' + e.message, 'error');
         }
     }
-
     /* ============================================================
        USUARIOS ASIGNADOS
        ============================================================ */

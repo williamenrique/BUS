@@ -358,7 +358,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function eliminar(id){
         const p = dt?.getData().find(x => Number(x.id_producto) === Number(id));
         const nombre = p?.producto || 'este producto';
-        if (!confirm(`¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`)) return;
+
+        const ok = await sitgoConfirm({
+            title: 'Eliminar producto',
+            message: `¿Eliminar "${nombre}"? Esta acción no se puede deshacer.`,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/eliminar/' + id, { method: 'POST' });

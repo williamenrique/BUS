@@ -383,7 +383,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function eliminar(id){
         const b = dt?.getData().find(x => Number(x.id_bien) === Number(id));
         const desc = b?.descripcion_bien || 'este bien';
-        if (!confirm(`¿Eliminar "${desc.substring(0, 50)}..."? Esta acción no se puede deshacer.`)) return;
+
+        const ok = await sitgoConfirm({
+            title: 'Eliminar bien',
+            message: `¿Eliminar "${desc.substring(0, 60)}${desc.length > 60 ? '…' : ''}"? Esta acción no se puede deshacer.`,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/eliminar/' + id, { method: 'POST' });

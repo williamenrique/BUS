@@ -455,7 +455,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function anularCosto(){
         if (!detalleActual) return;
-        if (!confirm('¿Anular el costeo? La orden volverá a "Pendientes".')) return;
+
+        const ok = await sitgoConfirm({
+            title: 'Anular costeo',
+            message: '¿Anular el costeo? La orden volverá a "Pendientes".',
+            okText: 'Sí, anular',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'rotate-ccw',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/anular/' + detalleActual.id, { method: 'POST' });

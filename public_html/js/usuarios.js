@@ -425,7 +425,16 @@ document.addEventListener('DOMContentLoaded', () => {
     async function eliminar(id){
         const u = dt?.getData().find(x => Number(x.usuario_id) === Number(id));
         const nick = u?.usuario_nick || 'este usuario';
-        if (!confirm(`¿Eliminar a "${nick}"? Esta acción no se puede deshacer.`)) return;
+
+        const ok = await sitgoConfirm({
+            title: 'Eliminar usuario',
+            message: `¿Eliminar a "${nick}"? Esta acción no se puede deshacer.`,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'trash-2',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/eliminar/' + id, { method: 'POST' });
@@ -489,7 +498,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const u = dt?.getData().find(x => Number(x.usuario_id) === Number(id));
         const nick = u?.usuario_nick || 'usuario';
 
-        if (!confirm(`¿Eliminar la imagen de "${nick}"? Se restaurará la predeterminada.`)) return;
+        const ok = await sitgoConfirm({
+            title: 'Eliminar imagen',
+            message: `¿Eliminar la imagen de "${nick}"? Se restaurará la predeterminada.`,
+            okText: 'Sí, eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger',
+            icon: 'image-off',
+        });
+        if (!ok) return;
 
         try{
             const d = await fetchJSON(API + '/eliminar-imagen/' + id, { method: 'POST' });

@@ -380,3 +380,4 @@ window.sitgoChoice = function(options = {}){
         setTimeout(() => optBtns[0]?.focus(), 50);
     });
 };
+
