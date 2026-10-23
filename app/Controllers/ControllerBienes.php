@@ -6,14 +6,17 @@ use App\Core\Validator;
 use App\Models\ModelBienes;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerBienes extends Controller{
 
     /* ============================================================
        VISTA
+       Protegido con menu_id = 1400 (patrón: bienes/i)
        ============================================================ */
     public function index(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -23,7 +26,7 @@ class ControllerBienes extends Controller{
             'menu'      => $mUser->getMenuJerarquico((int)$user['id'], (int)$user['departamento_id']),
             'pageTitle' => 'Bienes',
             'instId'    => $instId,
-            'scripts'   => ['bienes.js'],   // 👈 ESTO FALTABA
+            'scripts'   => ['bienes.js'],
         ]);
     }
 
@@ -32,6 +35,7 @@ class ControllerBienes extends Controller{
        ============================================================ */
     public function listar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -61,6 +65,7 @@ class ControllerBienes extends Controller{
        ============================================================ */
     public function combos(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
 
         $this->safe(function(){
@@ -80,6 +85,7 @@ class ControllerBienes extends Controller{
        ============================================================ */
     public function obtener(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
 
         $this->safe(function() use ($id){
@@ -97,6 +103,7 @@ class ControllerBienes extends Controller{
        ============================================================ */
     public function guardar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
 
@@ -128,6 +135,7 @@ class ControllerBienes extends Controller{
        ============================================================ */
     public function actualizar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -159,6 +167,7 @@ class ControllerBienes extends Controller{
        ============================================================ */
     public function eliminar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
