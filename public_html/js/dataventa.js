@@ -139,6 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="action-btn" data-action="ver" data-id="${c.id_cierre}" data-user="${c.id_user}" data-fecha="${c.fecha_cierre}" title="Ver ventas">
                                 <i data-lucide="eye" class="w-4 h-4"></i>
                             </button>
+                            <button class="action-btn edit" data-action="pdf-cierre" data-id="${c.id_cierre}" data-user="${c.id_user}" data-fecha="${c.fecha_cierre}" title="Generar PDF">
+                                <i data-lucide="file-text" class="w-4 h-4"></i>
+                            </button>
                             <button class="action-btn delete" data-action="del-cierre" data-id="${c.id_cierre}" data-user="${c.id_user}" data-fecha="${c.fecha_cierre}" title="Eliminar cierre">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </button>
@@ -204,6 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const { action, id, user, fecha } = b.dataset;
             if (action === 'ver')        verCierre(id, user, fecha);
             if (action === 'del-cierre') eliminarCierre(id, user, fecha);
+            if (action === 'pdf-cierre') abrirPdfCierreDesdeFila(id, user, fecha);
         });
     }
 
@@ -234,7 +238,36 @@ document.addEventListener('DOMContentLoaded', () => {
             if (action === 'eliminar-ticket') await eliminarTicket(id, user, fecha, b);
         });
     }
+        /* ============================================================
+       PDF DESDE LA FILA DEL CIERRE
+       ------------------------------------------------------------
+       Setea el cierre actual y abre el modal selector (resumen /
+       ventas / gasolina / diésel). Al elegir sección, se ejecuta
+       generarPdfCierre(seccion) con el cierre ya cargado.
+       ============================================================ */
+    async function abrirPdfCierreDesdeFila(idCierre, idUser, fecha){
+        // Cargar los datos del cierre ANTES de abrir el modal
+        const dataCierre = await fetchJSON(API + '/data-cierre', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_cierre: idCierre })
+        });
 
+        if (!dataCierre.ok || !dataCierre.cierreData){
+            toast(dataCierre.message || 'No se pudo cargar el cierre.', 'error');
+            return;
+        }
+
+        // Guardar contexto para que generarPdfCierre() sepa qué cierre usar
+        ventasCierreActual = Object.assign({}, dataCierre.cierreData, {
+            usuario_id: idUser,
+            id_cierre:  parseInt(idCierre),
+        });
+        tablaVentasCtx = { tipo: 'cierre', id_user: idUser, fecha, id_cierre: idCierre };
+
+        // Abrir el MISMO modal de PDF (tipo='cierre')
+        abrirModalPdf('cierre');
+    }
     /* ============================================================
        REIMPRIMIR TICKET (tolerante: solo id_venta)
        ------------------------------------------------------------

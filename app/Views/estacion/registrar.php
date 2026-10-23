@@ -43,6 +43,36 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
                 <span>Actualizar tasa</span>
             </button>
         </div>
+                <!-- ============================================ -->
+        <!-- PDF POR FECHA · Reporte de un día específico -->
+        <!-- ============================================ -->
+        <div class="estacion-pdf-fecha" style="margin-top:1rem; padding-top:1rem; border-top:1px solid #e2e8f0;">
+            <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.75rem;">
+                <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+                <span style="font-size:.8rem; font-weight:700; color:#334155; text-transform:uppercase; letter-spacing:.03em;">
+                    Reporte PDF por fecha
+                </span>
+                <span style="font-size:.72rem; color:#94a3b8; margin-left:auto;">
+                    Solo tu estación · <?= e($user['estacion'] ?? '—') ?>
+                </span>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1.5fr auto; gap:.5rem; align-items:end;">
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:.7rem; color:#64748b; font-weight:600;">Fecha</label>
+                    <input type="date" id="pdfFecha" class="form-control" max="<?= date('Y-m-d') ?>" value="<?= date('Y-m-d') ?>">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label style="font-size:.7rem; color:#64748b; font-weight:600;">Usuario</label>
+                    <select id="pdfUsuario" class="form-control">
+                        <option value="0">Todos los usuarios de la estación</option>
+                    </select>
+                </div>
+                <button type="button" id="btnPdfPorFecha" class="btn btn-primary">
+                    <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+                    <span>Generar PDF</span>
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 

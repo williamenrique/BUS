@@ -249,7 +249,8 @@ return [
     ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
     ['path' => '/estacion/ventas-cierre/listar',  'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasCierre'],
     ['path' => '/estacion/ticket-by-venta/{id}',  'method' => 'POST', 'handler' => 'ControllerEstacion@getTicketByVenta'],
-
+    ['path' => '/estacion/usuarios-por-estacion', 'method' => 'GET',  'handler' => 'ControllerEstacion@usuariosPorEstacion'],
+    ['path' => '/estacion/ventas-por-fecha',      'method' => 'POST', 'handler' => 'ControllerEstacion@getVentasPorFecha'],
     // ============================================================
     // PDF (centralizado)
     // ============================================================

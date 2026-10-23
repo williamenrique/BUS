@@ -231,7 +231,13 @@ window.sitgoConfirm = function(options = {}){
 
         modal.classList.add('open');
 
+        // ⬇️ Bandera para que el cleanup solo se ejecute UNA VEZ
+        let resuelto = false;
+
         const cleanup = (result) => {
+            if (resuelto) return;
+            resuelto = true;
+
             modal.classList.remove('open');
             okBtn.removeEventListener('click', onOk);
             cancelBtn.removeEventListener('click', onCancel);
@@ -243,9 +249,33 @@ window.sitgoConfirm = function(options = {}){
         const onOk       = () => cleanup(true);
         const onCancel   = () => cleanup(false);
         const onBackdrop = (e) => { if (e.target === modal) cleanup(false); };
-        const onKey      = (e) => {
-            if (e.key === 'Escape') cleanup(false);
-            if (e.key === 'Enter')  cleanup(true);
+
+        // ⬇️ Enter SOLO confirma si el foco NO está en Cancelar
+        const onKey = (e) => {
+            if (e.key === 'Escape'){
+                e.preventDefault();
+                cleanup(false);
+                return;
+            }
+            if (e.key === 'Enter'){
+                // Si el foco está en el botón Cancelar, Enter = cancelar
+                if (document.activeElement === cancelBtn){
+                    e.preventDefault();
+                    cleanup(false);
+                    return;
+                }
+                // Si el foco está en un botón distinto a OK, no hacer nada
+                // (dejamos que el navegador maneje el Enter nativo en ese botón)
+                if (document.activeElement === okBtn){
+                    e.preventDefault();
+                    cleanup(true);
+                }
+                // Si el foco está en cualquier otro lado → confirmar
+                else {
+                    e.preventDefault();
+                    cleanup(true);
+                }
+            }
         };
 
         okBtn.addEventListener('click', onOk);
@@ -253,7 +283,10 @@ window.sitgoConfirm = function(options = {}){
         modal.addEventListener('click', onBackdrop);
         document.addEventListener('keydown', onKey);
 
-        setTimeout(() => cancelBtn.focus(), 50);
+        // Enfocar Cancelar (no OK) para que Enter por defecto cancele de forma segura
+        setTimeout(() => {
+            try { cancelBtn.focus(); } catch(_) {}
+        }, 50);
     });
 };
 

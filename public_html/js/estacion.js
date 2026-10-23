@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderTickets(d.ultimosTickets || []);
         renderResumen(d.resumen);
         renderPendientes(d.ventasPendientes || []);
+        cargarUsuariosEstacion();
     }
 
     function llenar(sel, items, ph){
@@ -233,6 +234,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!state.idEstacion){ toast('Sin estación asignada.', 'error'); return; }
             abrirModalPdf('hoy');
         });
+                // PDF por fecha
+        $('btnPdfPorFecha')?.addEventListener('click', generarPdfPorFecha);
     }
 
     /* ============================================================
@@ -260,16 +263,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $('ticketPreview').textContent = `====== ESTACIÓN DE SERVICIO ======
 
-TICKET DE VENTA
-Fecha: ${new Date().toLocaleString('es-VE')}
-----------------------------------
-Tipo Pago: ${pago}
-Tipo Vehículo: ${veh}
-Combustible: ${comb}
-Cantidad: ${lts} Litros
-Precio Total: ${mt} ${simbolo}
-=============================
-¡Gracias por su compra!`;
+        TICKET DE VENTA
+        Fecha: ${new Date().toLocaleString('es-VE')}
+        ----------------------------------
+        Tipo Pago: ${pago}
+        Tipo Vehículo: ${veh}
+        Combustible: ${comb}
+        Cantidad: ${lts} Litros
+        Precio Total: ${mt} ${simbolo}
+        =============================
+        ¡Gracias por su compra!`;
     }
 
     /* ============================================================
@@ -380,7 +383,7 @@ Precio Total: ${mt} ${simbolo}
     }
 
     /* ============================================================
-       CERRAR DÍA (con protección anti doble clic)
+       CERRAR DÍA (sin preguntar modo del detallado → siempre 'unificado')
        ============================================================ */
     async function cerrarDia(){
         if (state.cerrando) return;
@@ -402,17 +405,16 @@ Precio Total: ${mt} ${simbolo}
         try {
             const fecha = fechaHoy();
 
-            if (typeof fntPreguntarModoDetallado === 'function'){
-                const modo = await fntPreguntarModoDetallado();
-                if (modo){
-                    const detalle = await fetchJSON(API + '/detalle-ventas', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fecha, id_user: state.userId })
-                    });
-                    if (detalle.ok && typeof fntImprimirDetallado === 'function'){
-                        try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
-                    }
+            // Detallado impreso siempre en modo 'unificado'
+            if (typeof fntImprimirDetallado === 'function'){
+                const detalle = await fetchJSON(API + '/detalle-ventas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, id_user: state.userId })
+                });
+                if (detalle.ok && Array.isArray(detalle.data) && detalle.data.length){
+                    try{ await fntImprimirDetallado(detalle.data, 'unificado'); }
+                    catch(e){ console.warn('Detallado:', e); }
                 }
             }
 
@@ -437,6 +439,9 @@ Precio Total: ${mt} ${simbolo}
         }
     }
 
+    /* ============================================================
+       CERRAR DÍA PENDIENTE (sin preguntar modo → siempre 'unificado')
+       ============================================================ */
     async function cerrarPendiente(fecha, idUser){
         if (state.cerrando) return;
 
@@ -453,17 +458,15 @@ Precio Total: ${mt} ${simbolo}
         state.cerrando = true;
 
         try {
-            if (typeof fntPreguntarModoDetallado === 'function'){
-                const modo = await fntPreguntarModoDetallado();
-                if (modo){
-                    const detalle = await fetchJSON(API + '/detalle-ventas', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ fecha, id_user: idUser })
-                    });
-                    if (detalle.ok && typeof fntImprimirDetallado === 'function'){
-                        try{ await fntImprimirDetallado(detalle.data, modo); } catch(e){ console.warn(e); }
-                    }
+            if (typeof fntImprimirDetallado === 'function'){
+                const detalle = await fetchJSON(API + '/detalle-ventas', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha, id_user: idUser })
+                });
+                if (detalle.ok && Array.isArray(detalle.data) && detalle.data.length){
+                    try{ await fntImprimirDetallado(detalle.data, 'unificado'); }
+                    catch(e){ console.warn('Detallado:', e); }
                 }
             }
 
@@ -526,9 +529,87 @@ Precio Total: ${mt} ${simbolo}
     }
 
     /* ============================================================
-       GENERAR PDF
+       GENERAR PDF · unificado para:
+         - tipo='hoy'       → cierre/detalle del día del usuario
+         - tipo='pendiente' → cierre de un día pendiente
+         - tipo='fecha'     → ventas de la estación + fecha (+ usuario)
+       El `seccion` viene del modal (gasolina | diesel).
        ============================================================ */
     async function generarPdfCierre(seccion, tipo = 'hoy'){
+        // ---------- CASO A: PDF por fecha (estación + fecha + usuario) ----------
+        if (tipo === 'fecha'){
+            const ctx = state._pdfFechaCtx;
+            if (!ctx){ toast('No hay contexto de fecha.', 'error'); return; }
+
+            const btn = $('btnPdfPorFecha');
+            if (btn){ btn.disabled = true; btn.style.opacity = '.6'; }
+
+            try {
+                const d = await fetchJSON(API + '/ventas-por-fecha', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ fecha: ctx.fecha, id_user: ctx.id_user })
+                });
+
+                if (!d.ok){ toast(d.message || 'No se pudo generar el PDF.', 'error'); return; }
+
+                const cierreData = d.cierreData;
+                const ventas     = d.ventas || [];
+
+                // Filtrar por combustible según la sección elegida
+                const ventasFiltradas = filtrarVentasPorSeccion(ventas, seccion);
+                if (!ventasFiltradas.length){
+                    toast(`No hay ventas de ${seccion === 'gasolina' ? 'gasolina' : 'diésel'} para esa fecha.`, 'error');
+                    return;
+                }
+
+                // Recalcular resumen con las ventas filtradas
+                const resumenFiltrado = calcularResumenDesdeVentas(ventasFiltradas);
+                const cierreFiltrado = {
+                    ...cierreData,
+                    total_ventas:     resumenFiltrado.totalVentas,
+                    total_litros:     resumenFiltrado.totalLitros,
+                    total_divisa:     resumenFiltrado.totalDivisa,
+                    total_efectivo:   resumenFiltrado.totalEfectivo,
+                    total_debito:     resumenFiltrado.totalDebito,
+                    total_general_bs: resumenFiltrado.totalGeneralBs,
+                    cant_auto:        resumenFiltrado.cantAuto,
+                    cant_moto:        resumenFiltrado.cantMoto,
+                    cant_camion:      resumenFiltrado.cantCamion,
+                    cant_gasolina:    resumenFiltrado.cantGasolina,
+                    cant_diesel:      resumenFiltrado.cantDiesel,
+                    litros_gasolina:  resumenFiltrado.litrosGasolina,
+                    litros_diesel:    resumenFiltrado.litrosDiesel,
+                };
+
+                const usuarioTxt = ctx.id_user > 0
+                    ? (cierreData.usuario_nombres || 'Usuario')
+                    : 'Todos los usuarios';
+
+                await SITGO_PDF.generar(
+                    'estacion_reporte_dia',
+                    { cierre: cierreFiltrado, ventas: ventasFiltradas, seccion },
+                    `reporte_${state.idEstacion}_${ctx.fecha}_${ctx.id_user || 'todos'}_${seccion}.pdf`,
+                    {
+                        titulo_documento: 'REPORTE DE VENTAS',
+                        doc_color:        '#1e40af',
+                        mostrar_header:   false,
+                        subtitulo:        `Estación: ${cierreData.estacion || '—'} · Fecha: ${formatFecha(ctx.fecha)} · ${usuarioTxt}`,
+                    }
+                );
+
+                toast('PDF generado.', 'success');
+            } catch (e){
+                console.error(e);
+                toast('Error al generar el PDF: ' + e.message, 'error');
+            } finally {
+                if (btn){ btn.disabled = false; btn.style.opacity = ''; }
+                state._pdfFechaCtx = null;
+            }
+            return;
+        }
+
+        // ---------- CASO B: PDF del día / pendiente (lógica original) ----------
         let fecha = fechaHoy();
         let idUser = state.userId;
 
@@ -598,10 +679,35 @@ Precio Total: ${mt} ${simbolo}
             };
         }
 
+        // Filtrar por sección (gasolina | diesel) — igual que antes
+        const ventasFiltradas = filtrarVentasPorSeccion(ventas, seccion);
+        if (!ventasFiltradas.length){
+            toast(`No hay ventas de ${seccion === 'gasolina' ? 'gasolina' : 'diésel'}.`, 'error');
+            return;
+        }
+
+        const resumenFiltrado = calcularResumenDesdeVentas(ventasFiltradas);
+        const cierreFiltrado = {
+            ...cierreData,
+            total_ventas:     resumenFiltrado.totalVentas,
+            total_litros:     resumenFiltrado.totalLitros,
+            total_divisa:     resumenFiltrado.totalDivisa,
+            total_efectivo:   resumenFiltrado.totalEfectivo,
+            total_debito:     resumenFiltrado.totalDebito,
+            total_general_bs: resumenFiltrado.totalGeneralBs,
+            cant_auto:        resumenFiltrado.cantAuto,
+            cant_moto:        resumenFiltrado.cantMoto,
+            cant_camion:      resumenFiltrado.cantCamion,
+            cant_gasolina:    resumenFiltrado.cantGasolina,
+            cant_diesel:      resumenFiltrado.cantDiesel,
+            litros_gasolina:  resumenFiltrado.litrosGasolina,
+            litros_diesel:    resumenFiltrado.litrosDiesel,
+        };
+
         try {
             await SITGO_PDF.generar(
                 'estacion_reporte_dia',
-                { cierre: cierreData, ventas, seccion },
+                { cierre: cierreFiltrado, ventas: ventasFiltradas, seccion },
                 `cierre_${seccion}_${fecha}.pdf`,
                 {
                     titulo_documento: 'CIERRE DEL DÍA',
@@ -649,7 +755,20 @@ Precio Total: ${mt} ${simbolo}
             cantAuto, cantMoto, cantCamion, cantGasolina, cantDiesel, litrosGasolina, litrosDiesel,
         };
     }
+        /* ============================================================
+       FILTRAR VENTAS POR SECCIÓN (gasolina | diesel)
+       ============================================================ */
+    function filtrarVentasPorSeccion(ventas, seccion){
+        if (!Array.isArray(ventas)) return [];
+        if (!seccion) return ventas;
 
+        const objetivo = seccion === 'gasolina' ? 'gasolina' : 'diesel';
+        return ventas.filter(v => {
+            const tc = (v.tipo_combustible || '').toLowerCase();
+            if (objetivo === 'gasolina') return tc.includes('gasolina');
+            return tc.includes('diesel') || tc.includes('diésel');
+        });
+    }
     /* ============================================================
        HELPERS
        ============================================================ */
@@ -676,5 +795,43 @@ Precio Total: ${mt} ${simbolo}
         t.textContent = msg;
         c.appendChild(t);
         setTimeout(() => t.remove(), 3500);
+    }
+
+        /* ============================================================
+       PDF POR FECHA · Carga del <select> de usuarios de la estación
+       ============================================================ */
+    async function cargarUsuariosEstacion(){
+        const d = await fetchJSON(API + '/usuarios-por-estacion');
+        if (!d.ok) return;
+
+        const sel = $('pdfUsuario');
+        if (!sel) return;
+
+        sel.innerHTML = '<option value="0">Todos los usuarios de la estación</option>';
+        (d.data || []).forEach(u => {
+            const o = document.createElement('option');
+            o.value = u.id;
+            o.textContent = u.nombre || u.nick;
+            sel.appendChild(o);
+        });
+    }
+
+    /* ============================================================
+       PDF POR FECHA · Paso 1: validar y abrir el modal selector
+       El modal es el MISMO que el de "PDF del día".
+       ============================================================ */
+    function generarPdfPorFecha(){
+        const fecha  = $('pdfFecha')?.value || '';
+        const idUsr  = parseInt($('pdfUsuario')?.value || '0');
+
+        if (!fecha){ toast('Selecciona una fecha.', 'error'); return; }
+        if (fecha > fechaHoy()){ toast('No se pueden generar PDF de fechas futuras.', 'error'); return; }
+        if (!state.idEstacion){ toast('Sin estación asignada.', 'error'); return; }
+
+        // Guardar contexto para que el modal sepa qué generar
+        state._pdfFechaCtx = { fecha, id_user: idUsr };
+
+        // Abrir el mismo modal (tipo='fecha')
+        abrirModalPdf('fecha');
     }
 });

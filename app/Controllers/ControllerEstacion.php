@@ -602,4 +602,150 @@ class ControllerEstacion extends Controller{
             ]);
         });
     }
+
+        /* ============================================================
+       PDF POR FECHA · Usuarios de la estación de la sesión
+       Nunca acepta id_estacion por request.
+       ============================================================ */
+    public function usuariosPorEstacion(): void{
+        AuthGuard::check();
+        $idEst = $this->idEstacion();
+        if ($idEst <= 0){
+            $this->json(['ok' => false, 'message' => 'No tienes estación asignada.'], 422);
+            return;
+        }
+
+        $this->safe(function() use ($idEst){
+            $m = new ModelEstacion();
+            $this->json(['ok' => true, 'data' => $m->usuariosPorEstacion($idEst)]);
+        });
+    }
+
+    /* ============================================================
+       PDF POR FECHA · Ventas de la estación + fecha (+ usuario opcional)
+       - id_estacion SIEMPRE de la sesión
+       - id_user (si viene) se valida contra la estación de la sesión
+       - Devuelve { ok, cierreData, ventas } para que el front use SITGO_PDF
+       ============================================================ */
+    public function getVentasPorFecha(): void{
+        AuthGuard::check();
+
+        $d     = $this->input();
+        $fecha = trim((string)($d['fecha'] ?? ''));
+        $idUsr = (int)($d['id_user'] ?? 0);
+
+        if ($fecha === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)){
+            $this->json(['ok' => false, 'message' => 'Fecha inválida. Usa el formato YYYY-MM-DD.'], 422);
+            return;
+        }
+        if ($fecha > date('Y-m-d')){
+            $this->json(['ok' => false, 'message' => 'No se pueden generar reportes de fechas futuras.'], 422);
+            return;
+        }
+
+        $idEst = $this->idEstacion();
+        if ($idEst <= 0){
+            $this->json(['ok' => false, 'message' => 'No tienes estación asignada.'], 422);
+            return;
+        }
+
+        $this->safe(function() use ($idEst, $fecha, $idUsr){
+            $m = new ModelEstacion();
+
+            // Si viene id_user, debe pertenecer a la estación de la sesión
+            if ($idUsr > 0){
+                $uInfo = $m->usuarioInfo($idUsr);
+                if (!$uInfo || (int)($uInfo['usuario_estacion_id'] ?? 0) !== $idEst){
+                    $this->json(['ok' => false, 'message' => 'El usuario no pertenece a tu estación.'], 403);
+                    return;
+                }
+            }
+
+            $ventas = $m->ventasPorEstacionFecha($idEst, $fecha, $idUsr > 0 ? $idUsr : null);
+
+            if (empty($ventas)){
+                $this->json(['ok' => false, 'message' => 'No hay ventas para esa fecha.'], 422);
+                return;
+            }
+
+            // Nombre del vendedor (individual) o "Todos" si no se filtró por usuario
+            $estNom = '';
+            $est = $m->findEstacion($idEst);
+            if ($est) $estNom = $est['estacion'] ?? '';
+
+            $nombreVendedor = '';
+            if ($idUsr > 0){
+                $nombreVendedor = $ventas[0]['operador'] ?? '';
+            }
+
+            // Resumen calculado en PHP (a partir de las ventas) — igual que el JS hace hoy
+            $resumen = $this->calcularResumenVentas($ventas);
+
+            $cierreData = [
+                'id_cierre'        => null,
+                'fecha_cierre'     => $fecha,
+                'estacion'         => $estNom,
+                'usuario_nombres'  => $nombreVendedor !== '' ? $nombreVendedor : 'Todos los usuarios',
+                'usuario_apellidos'=> '',
+                'tasa_dia'         => $ventas[0]['tasa_dia'] ?? 0,
+                'total_ventas'     => $resumen['totalVentas'],
+                'total_litros'     => $resumen['totalLitros'],
+                'total_divisa'     => $resumen['totalDivisa'],
+                'total_efectivo'   => $resumen['totalEfectivo'],
+                'total_debito'     => $resumen['totalDebito'],
+                'total_general_bs' => $resumen['totalGeneralBs'],
+                'cant_auto'        => $resumen['cantAuto'],
+                'cant_moto'        => $resumen['cantMoto'],
+                'cant_camion'      => $resumen['cantCamion'],
+                'cant_gasolina'    => $resumen['cantGasolina'],
+                'cant_diesel'      => $resumen['cantDiesel'],
+                'litros_gasolina'  => $resumen['litrosGasolina'],
+                'litros_diesel'    => $resumen['litrosDiesel'],
+            ];
+
+            $this->json([
+                'ok'         => true,
+                'cierreData' => $cierreData,
+                'ventas'     => $ventas,
+            ]);
+        });
+    }
+
+    /* ============================================================
+       HELPER · Resumen de ventas (mismo cálculo que el JS actual)
+       ============================================================ */
+    private function calcularResumenVentas(array $ventas): array{
+        $totalVentas = count($ventas);
+        $totalLitros = 0; $totalDivisa = 0; $totalEfectivo = 0; $totalDebito = 0; $totalGeneralBs = 0;
+        $cantAuto = 0; $cantMoto = 0; $cantCamion = 0;
+        $cantGasolina = 0; $cantDiesel = 0;
+        $litrosGasolina = 0; $litrosDiesel = 0;
+
+        foreach ($ventas as $v){
+            $litros    = (float)($v['cantidad_litros'] ?? 0);
+            $efectivob = (float)($v['efectivob'] ?? 0);
+            $debito    = (float)($v['tarjeta_debito'] ?? 0);
+            $divisa    = (float)($v['monto_divisa'] ?? 0);
+
+            $totalLitros    += $litros;
+            $totalDivisa    += $divisa;
+            $totalEfectivo  += $efectivob;
+            $totalDebito    += $debito;
+            $totalGeneralBs += $efectivob + $debito;
+
+            $tv = strtolower((string)($v['tipo_vehiculo'] ?? ''));
+            if (str_contains($tv, 'moto')) $cantMoto++;
+            elseif (str_contains($tv, 'camion') || str_contains($tv, 'camión')) $cantCamion++;
+            elseif (str_contains($tv, 'auto') || str_contains($tv, 'carro')) $cantAuto++;
+
+            $tc = strtolower((string)($v['tipo_combustible'] ?? ''));
+            if (str_contains($tc, 'gasolina')) { $cantGasolina++; $litrosGasolina += $litros; }
+            elseif (str_contains($tc, 'diesel') || str_contains($tc, 'diésel')) { $cantDiesel++; $litrosDiesel += $litros; }
+        }
+
+        return compact(
+            'totalVentas','totalLitros','totalDivisa','totalEfectivo','totalDebito','totalGeneralBs',
+            'cantAuto','cantMoto','cantCamion','cantGasolina','cantDiesel','litrosGasolina','litrosDiesel'
+        );
+    }
 }

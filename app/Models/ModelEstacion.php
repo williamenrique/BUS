@@ -892,4 +892,56 @@ class ModelEstacion extends Model{
                 LIMIT 1";
         return $this->fetchOne($sql, ['v' => $idVenta]);
     }
+            /* ============================================================
+       PDF POR FECHA · Usuarios de la estación (para el <select>)
+       ============================================================ */
+    public function usuariosPorEstacion(int $idEstacion): array{
+        return $this->fetchAll(
+            "SELECT u.usuario_id AS id,
+                    u.usuario_nick AS nick,
+                    COALESCE(CONCAT(p.personal_nombre, ' ', p.personal_apellido), u.usuario_nick) AS nombre
+             FROM table_usuarios u
+             LEFT JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+             WHERE u.usuario_estacion_id = :est
+               AND (u.usuario_status = 1 OR u.usuario_status IS NULL)
+             ORDER BY p.personal_nombre ASC, p.personal_apellido ASC",
+            ['est' => $idEstacion]
+        );
+    }
+
+    /* ============================================================
+       PDF POR FECHA · Ventas de una estación + fecha (+ usuario opcional)
+       Devuelve los mismos campos que `getDetallado` para reutilizar
+       el template `estacion_reporte_dia`.
+       ============================================================ */
+    public function ventasPorEstacionFecha(int $idEstacion, string $fecha, ?int $idUser = null): array{
+        $sql = "SELECT v.id_venta AS numero_venta, v.fecha_venta, v.hora_venta,
+                       tv.nombre AS tipo_vehiculo,
+                       tc.nombre AS tipo_combustible,
+                       v.litros AS cantidad_litros, v.monto, v.tasa_dia,
+                       tp.nombre AS tipo_pago,
+                       CASE WHEN tp.id_tipo_pago = 1 THEN v.monto ELSE 0 END AS monto_divisa,
+                       CASE WHEN tp.id_tipo_pago = 1 THEN v.monto * v.tasa_dia
+                            WHEN tp.id_tipo_pago = 2 THEN v.monto ELSE 0 END AS efectivob,
+                       CASE WHEN tp.id_tipo_pago = 3 THEN v.monto ELSE 0 END AS tarjeta_debito,
+                       CONCAT(p.personal_nombre, ' ', p.personal_apellido) AS operador,
+                       e.estacion
+                FROM table_es_venta v
+                INNER JOIN table_es_tipos_vehiculo tv ON tv.id_tipo_vehiculo = v.id_tipo_vehiculo
+                INNER JOIN table_es_tipos_combustible tc ON tc.id_tipo_combustible = v.id_tipo_combustible
+                INNER JOIN table_es_tipos_pago tp ON tp.id_tipo_pago = v.id_tipo_pago
+                INNER JOIN table_usuarios u ON u.usuario_id = v.id_user
+                INNER JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+                LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
+                WHERE v.fecha_venta = :f AND v.id_estacion = :est";
+        $params = ['f' => $fecha, 'est' => $idEstacion];
+
+        if ($idUser !== null && $idUser > 0){
+            $sql .= " AND v.id_user = :uid";
+            $params['uid'] = $idUser;
+        }
+
+        $sql .= " ORDER BY v.id_venta ASC";
+        return $this->fetchAll($sql, $params);
+    }
 }
