@@ -10,10 +10,12 @@ class ControllerPublico extends Controller{
        VISTA PÚBLICA
        ============================================================ */
     public function index(): void{
-        // Vista pública SIN AuthGuard
         $this->view('publico.movimientos', [
-            'pageTitle' => 'Movimientos Públicos',
-        ], false);  // false = sin layout de sesión
+            'pageTitle'    => 'Movimientos Públicos',
+            'cargarPdf'    => true,
+            'pageScript'   => 'movimientos.js',
+            'mostrarNav'   => true,   // Movimientos sí lleva nav de secciones
+        ], false);
     }
 
     /* ============================================================
@@ -567,5 +569,219 @@ class ControllerPublico extends Controller{
             echo 'Error al generar el PDF: ' . $e->getMessage();
             exit;
         }
+    }
+        /* ============================================================
+       BIENES · Vista pública por departamento (sin login)
+       ============================================================ */
+
+    /**
+     * Renderiza la vista pública de bienes.
+     * URL: /bienes-publico/i/{inst}?depto={id_opcional}
+     */
+    public function bienesIndex(string $inst): void{
+        $idInst = (int)$inst;
+        if ($idInst <= 0) {
+            http_response_code(404);
+            header('Content-Type: text/plain; charset=UTF-8');
+            echo 'Institución no válida.';
+            exit;
+        }
+
+        $mPub   = new \App\Models\ModelPublico();
+        $mBien  = new \App\Models\ModelBienes();
+
+        $nombreInst = $mPub->getNombreInstitucion($idInst);
+
+        $depto = isset($_GET['depto']) ? trim((string)$_GET['depto']) : '';
+
+        $nombreDepto = '';
+        if ($depto !== '') {
+            $rowDep = $mBien->departamentoPorId($depto);
+            if ($rowDep) $nombreDepto = $rowDep['nombre'] ?? '';
+        }
+
+        $this->view('publico.bienes', [
+            'pageTitle'          => 'Bienes Públicos',
+            'id_institucion'     => $idInst,
+            'nombre_institucion' => $nombreInst,
+            'depto_inicial'      => $depto,
+            'nombre_depto'       => $nombreDepto,
+            'mostrarNav'         => false,      // Bienes no lleva nav
+            'cargarDataTable'    => true,       // ← necesita el componente
+            'cargarPdf'          => true,       // ← necesita SITGO_PDF para el botón
+            'pageScript'         => 'publico-bienes.js',  // ← su JS propio
+        ], false);
+    }
+
+    /**
+     * JSON con todos los bienes de la institución (opcional ?depto=).
+     * Formato compatible con el componente DataTable:
+     *   { ok:true, data:[...], total:N, totalFiltrados:N }
+     */
+    public function bienesData(string $inst): void{
+        $idInst = (int)$inst;
+        if ($idInst <= 0) {
+            $this->json(['ok' => false, 'message' => 'Institución no válida', 'data' => []], 422);
+            return;
+        }
+
+        $this->safe(function() use ($idInst){
+            $q       = trim((string)($_GET['q'] ?? ''));
+            $limit   = max(1, min(9999, (int)($_GET['limit'] ?? 10)));
+            $offset  = max(0, (int)($_GET['offset'] ?? 0));
+            $depto   = trim((string)($_GET['depto'] ?? ''));
+            $status  = trim((string)($_GET['status'] ?? ''));
+
+            $filtros = [];
+            if ($depto !== '')  $filtros['departamento'] = $depto;
+            if ($status !== '') $filtros['status']       = $status;
+
+            $mBien = new \App\Models\ModelBienes();
+            $res   = $mBien->listarPaginado($q, $limit, $offset, $filtros, $idInst);
+
+            // Normalizar status_bien para el front
+            $mapStatus = [
+                'EN USO'        => 'En uso',
+                'DAÑADO'        => 'Dañado',
+                'EXTRAVIADO'    => 'Extraviado',
+                'EN REPARACION' => 'En reparación',
+                'EN REPARACIÓN' => 'En reparación',
+                '1'             => 'Activo',
+                '2'             => 'Inactivo',
+                '3'             => 'En reparación',
+                '4'             => 'Dado de baja',
+            ];
+
+            foreach ($res['data'] as &$r){
+                $raw = (string)($r['status_bien'] ?? '');
+                $r['status_bien_texto']     = $mapStatus[$raw] ?? ($raw !== '' ? $raw : '—');
+                $r['fecha_adquisicion_fmt'] = !empty($r['fecha_adquisicion'])
+                    ? date('d/m/Y', strtotime($r['fecha_adquisicion']))
+                    : '—';
+            }
+            unset($r);
+
+            $this->json([
+                'ok'             => true,
+                'data'           => $res['data'],
+                'total'          => $res['total'],
+                'totalFiltrados' => $res['totalFiltrados'],
+            ]);
+        });
+    }
+
+    /**
+     * JSON con los departamentos que tienen bienes en la institución.
+     */
+    public function bienesDepartamentos(string $inst): void{
+        $idInst = (int)$inst;
+        if ($idInst <= 0) {
+            $this->json(['ok' => false, 'message' => 'Institución no válida', 'data' => []], 422);
+            return;
+        }
+
+        $this->safe(function() use ($idInst){
+            $mBien = new \App\Models\ModelBienes();
+            $this->json([
+                'ok'   => true,
+                'data' => $mBien->departamentosConBienes($idInst),
+            ]);
+        });
+    }
+
+    /**
+     * Genera el PDF de bienes.
+     * Body JSON: { depto: "01" | "" }   (vacío = PDF completo agrupado)
+     * Devuelve: { ok:true, url:"...", filename:"..." }
+     */
+    public function bienesPdf(string $inst): void{
+        $idInst = (int)$inst;
+        if ($idInst <= 0) {
+            $this->json(['ok' => false, 'message' => 'Institución no válida.'], 422);
+            return;
+        }
+
+        $d     = $this->inputJSON();
+        $depto = isset($d['depto']) ? trim((string)$d['depto']) : '';
+
+        $this->safe(function() use ($idInst, $depto){
+            $mPub   = new \App\Models\ModelPublico();
+            $mBien  = new \App\Models\ModelBienes();
+
+            $nombreInst = $mPub->getNombreInstitucion($idInst);
+
+            $filtros = [];
+            if ($depto !== '') $filtros['departamento'] = $depto;
+
+            // Traer TODOS los bienes (sin paginar)
+            $res    = $mBien->listarPaginado('', 9999, 0, $filtros, $idInst);
+            $bienes = $res['data'] ?? [];
+
+            if (empty($bienes)) {
+                $this->json(['ok' => false, 'message' => 'No hay bienes para generar el PDF.'], 422);
+                return;
+            }
+
+            // Normalizar status_bien
+            $mapStatus = [
+                'EN USO'        => 'En uso',
+                'DAÑADO'        => 'Dañado',
+                'EXTRAVIADO'    => 'Extraviado',
+                'EN REPARACION' => 'En reparación',
+                'EN REPARACIÓN' => 'En reparación',
+            ];
+            foreach ($bienes as &$b){
+                $raw = (string)($b['status_bien'] ?? '');
+                $b['status_bien'] = $mapStatus[$raw] ?? $raw;
+            }
+            unset($b);
+
+            $subtitulo = 'Inventario general';
+            if ($depto !== '') {
+                $rowDep = $mBien->departamentoPorId($depto);
+                $subtitulo = 'Departamento: ' . ($rowDep['nombre'] ?? $depto);
+            }
+
+            $meta = [
+                'institucion' => [
+                    'nombre' => $nombreInst,
+                    'rif'    => '',
+                ],
+                'titulo_documento' => 'REPORTE DE BIENES',
+                'doc_color'        => '#1e40af',
+                'subtitulo'        => $subtitulo,
+                'agrupar_por_departamento' => ($depto === ''),
+            ];
+
+            $filename = $depto !== ''
+                ? 'bienes_depto_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $depto) . '_' . date('Ymd_His') . '.pdf'
+                : 'bienes_completo_' . date('Ymd_His') . '.pdf';
+
+            $token = bin2hex(random_bytes(16));
+            $dir = dirname(__DIR__, 2) . '/storage/pdf_tokens/';
+            if (!is_dir($dir)) @mkdir($dir, 0755, true);
+
+            $tokenData = [
+                'view'     => 'bienes_reporte',
+                'data'     => ['items' => $bienes],
+                'meta'     => $meta,
+                'filename' => $filename,
+                'expira'   => time() + 1800,
+                'publico'  => true,
+            ];
+
+            file_put_contents($dir . $token . '.json', json_encode($tokenData, JSON_UNESCAPED_UNICODE));
+
+            foreach (glob($dir . '*.json') ?: [] as $f){
+                $t = @json_decode(@file_get_contents($f), true);
+                if (!is_array($t) || ($t['expira'] ?? 0) < time()) @unlink($f);
+            }
+
+            $this->json([
+                'ok'       => true,
+                'url'      => base_url('movimientos/pdf-ver?t=' . $token),
+                'filename' => $filename,
+            ]);
+        });
     }
 }

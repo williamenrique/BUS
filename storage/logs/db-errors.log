@@ -53,3 +53,13 @@
   Mensaje: Too few arguments to function App\Controllers\ControllerFlota::historial(), 1 passed and exactly 2 expected
   Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerFlota.php:231
 ------------------------------------------------------------
+[2026-10-23 14:31:07] [APP] Call to undefined method App\Models\ModelBienes::departamentoPorId()
+  SQLSTATE: 0
+  Mensaje: Call to undefined method App\Models\ModelBienes::departamentoPorId()
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerPublico.php:597
+------------------------------------------------------------
+[2026-10-23 14:33:22] [APP] Call to undefined method App\Models\ModelBienes::departamentoPorId()
+  SQLSTATE: 0
+  Mensaje: Call to undefined method App\Models\ModelBienes::departamentoPorId()
+  Archivo: C:\xampp\htdocs\BUS\app\Controllers\ControllerPublico.php:597
+------------------------------------------------------------

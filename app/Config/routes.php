@@ -273,4 +273,14 @@ return [
     ['path' => '/dashboard/estacion/meses',                'method' => 'GET',  'handler' => 'ControllerDashboard@getAvailableMonths'],
     ['path' => '/dashboard/estacion/litros-mensuales',     'method' => 'POST', 'handler' => 'ControllerDashboard@getMonthlyLiters'],
     ['path' => '/dashboard/estacion/ventas-dia',           'method' => 'POST', 'handler' => 'ControllerDashboard@getDailySales'],
+
+    // ============================================================
+    // Público · Bienes por Departamento (sin login)
+    // ============================================================
+    ['path' => '/bienes-publico/i/{inst}',                'method' => 'GET',  'handler' => 'ControllerPublico@bienesIndex'],
+    ['path' => '/bienes-publico/i/{inst}/data',           'method' => 'GET',  'handler' => 'ControllerPublico@bienesData'],
+    ['path' => '/bienes-publico/i/{inst}/departamentos',  'method' => 'GET',  'handler' => 'ControllerPublico@bienesDepartamentos'],
+    ['path' => '/bienes-publico/i/{inst}/pdf',            'method' => 'POST', 'handler' => 'ControllerPublico@bienesPdf'],
+
+    
 ];

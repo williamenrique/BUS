@@ -166,14 +166,69 @@ $pageTitle = $pageTitle ?? 'Movimientos Públicos';
             0%, 100% { box-shadow: 0 0 0 3px rgba(245,158,11,.25); }
             50%      { box-shadow: 0 0 0 6px rgba(245,158,11,.15); }
         }
+                /* ============================================
+           BIENES PÚBLICO · Hero centrado
+           ============================================ */
+        .bn-hero {
+            text-align: center;
+            padding: 2rem 1rem 1.25rem;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            border: 1px solid #e2e8f0;
+            border-radius: .75rem;
+            margin-bottom: 1.25rem;
+        }
+        .bn-hero-inst {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -.01em;
+            line-height: 1.3;
+            max-width: 820px;
+            margin: 0 auto .85rem;
+            text-transform: uppercase;
+        }
+        .bn-hero-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            background: #eff6ff;
+            color: #1e40af;
+            margin-bottom: .5rem;
+        }
+        .bn-hero-icon svg { width: 1.5rem; height: 1.5rem; }
+        .bn-hero-label {
+            font-size: .7rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            margin: 0 0 .25rem;
+        }
+        .bn-hero-depto {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #1e40af;
+            line-height: 1.2;
+            margin: 0;
+            text-transform: uppercase;
+        }
+        .bn-hero-meta {
+            font-size: .78rem;
+            color: #94a3b8;
+            margin: .65rem 0 0;
+        }
     </style>
 </head>
 <body>
     <nav class="publico-nav">
-        <a href="<?= base_url('movimientos') ?>" class="publico-brand">
+        <a href="#" class="publico-brand">
             <img src="<?= asset('img/logo.png') ?>" alt="SITGO">
-            <span>SITGO · Movimientos Públicos</span>
+            <span>SITGO · <?= htmlspecialchars($pageTitle ?? 'Público') ?></span>
         </a>
+        <?php if (!isset($mostrarNav) || $mostrarNav !== false): ?>
         <div class="publico-nav-links">
             <a href="#sec-flota" class="active">Flota</a>
             <a href="#sec-aceite">Aceite</a>
@@ -181,6 +236,7 @@ $pageTitle = $pageTitle ?? 'Movimientos Públicos';
             <a href="#sec-movimientos">Movimientos</a>
             <a href="#sec-estacion">Estación</a>
         </div>
+        <?php endif; ?>
         <a href="<?= base_url('login') ?>" class="btn btn-ghost btn-sm">
             <i data-lucide="log-in" class="w-4 h-4"></i>
             <span>Ir al sistema</span>

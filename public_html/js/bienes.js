@@ -154,6 +154,11 @@ document.addEventListener('DOMContentLoaded', () => {
         $('filtroStatus')?.addEventListener('change',       () => dt?.changePage(1) || dt?.reload());
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarFormulario(); });
+        $('btnQrBienes')?.addEventListener('click', generarQrBienes);
+        $('qrCerrar')?.addEventListener('click', () => {
+            $('panelQr').style.display = 'none';
+            $('qrCanvas').innerHTML = '';
+        });
     }
     /**
      * Genera el PDF de bienes.
@@ -438,5 +443,89 @@ document.addEventListener('DOMContentLoaded', () => {
         t.textContent = msg;
         c.appendChild(t);
         setTimeout(() => t.remove(), 3500);
+    }
+
+        /* ============================================================
+       QR · Genera QR del departamento seleccionado
+       Reusa el mismo flujo del PDF por departamento:
+         - Exige departamento en el filtro
+         - Muestra QR en panel inline (sin modal)
+         - Descarga PNG + abre vista pública
+       ============================================================ */
+    function generarQrBienes() {
+        const deptoId = $('filtroDepartamento')?.value || '';
+
+        if (!deptoId) {
+            toast('Selecciona un departamento en el filtro para generar el QR.', 'error');
+            return;
+        }
+
+        // Verificar que la librería QRCode esté disponible
+        if (typeof QRCode === 'undefined') {
+            toast('La librería QRCode no está cargada. Revisa footer.php.', 'error');
+            return;
+        }
+
+        const opt    = $('filtroDepartamento').selectedOptions[0];
+        const nombre = opt?.textContent || 'Departamento';
+
+        // URL pública: /bienes-publico/i/{INST}?depto={deptoId}
+        const url = (window.SITGO_BASE || '/')
+                  + 'bienes-publico/i/' + INST
+                  + '?depto=' + encodeURIComponent(deptoId);
+
+        // Limpiar y generar
+        const canvasWrap = $('qrCanvas');
+        canvasWrap.innerHTML = '';
+
+        try {
+            new QRCode(canvasWrap, {
+                text: url,
+                width: 200,
+                height: 200,
+                colorDark: '#0f172a',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            // El QR se renderiza como <canvas> o <img> según el navegador
+            setTimeout(() => {
+                const img = canvasWrap.querySelector('img') || canvasWrap.querySelector('canvas');
+                let dataUrl = '';
+
+                if (img) {
+                    if (img.tagName === 'IMG') {
+                        dataUrl = img.src;
+                    } else if (img.tagName === 'CANVAS') {
+                        dataUrl = img.toDataURL('image/png');
+                    }
+                }
+
+                // Actualizar panel
+                $('qrDeptoNombre').textContent = nombre;
+                $('qrUrl').textContent = url;
+
+                const aDesc = $('qrDescargar');
+                if (aDesc) {
+                    aDesc.href = dataUrl || '#';
+                    const safe = nombre.replace(/[^A-Za-z0-9_\-]/g, '_');
+                    aDesc.download = `QR_${safe}.png`;
+                    aDesc.style.display = dataUrl ? '' : 'none';
+                }
+
+                const aAbrir = $('qrAbrir');
+                if (aAbrir) aAbrir.href = url;
+
+                $('panelQr').style.display = '';
+                $('panelQr').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+                if (window.lucide) lucide.createIcons();
+            }, 120);
+
+            toast('QR generado correctamente.', 'success');
+        } catch (e) {
+            console.error(e);
+            toast('No se pudo generar el QR: ' + e.message, 'error');
+        }
     }
 });

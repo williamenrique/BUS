@@ -193,4 +193,38 @@ class ModelBienes extends Model{
              ORDER BY seccion ASC"
         );
     }
-}
+
+    /* ============================================================
+       PÚBLICO · Departamentos con conteo de bienes (para vista pública)
+       ============================================================ */
+    public function departamentosConBienes(int $inst): array{
+        return $this->fetchAll(
+            "SELECT d.depatamento_bien_id AS id,
+                    d.departamento_bien    AS nombre,
+                    COUNT(b.id_bien)       AS total
+             FROM table_bienes_departamentos d
+             INNER JOIN table_bienes_inventario b
+                     ON b.bien_depatamento_id = d.depatamento_bien_id
+             WHERE b.id_institucion = :inst
+               AND (b.status = 1 OR b.status IS NULL)
+             GROUP BY d.depatamento_bien_id, d.departamento_bien
+             HAVING total > 0
+             ORDER BY d.departamento_bien ASC",
+            ['inst' => $inst]
+        );
+    }
+
+    /* ============================================================
+       PÚBLICO · Datos de un departamento por ID
+       ============================================================ */
+    public function departamentoPorId(string $idDepto): ?array{
+        return $this->fetchOne(
+            "SELECT depatamento_bien_id AS id,
+                    departamento_bien    AS nombre
+             FROM table_bienes_departamentos
+             WHERE depatamento_bien_id = :id
+             LIMIT 1",
+            ['id' => $idDepto]
+        );
+    }
+}   // ← ESTE es el último cierre de la clase. Los 2 métodos van ANTES de este }

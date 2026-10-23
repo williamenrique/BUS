@@ -23,6 +23,10 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         <p class="page-subtitle">Inventario de bienes de la institución</p>
     </div>
     <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button id="btnQrBienes" class="btn btn-secondary" title="Generar QR del departamento seleccionado en el filtro">
+            <?= icon_tag('qr-code', 'qr-code', 'w-4 h-4') ?>
+            <span>Generar QR</span>
+        </button>
         <button id="btnPdfBienes" class="btn btn-secondary" title="Generar PDF con los filtros actuales">
             <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
             <span>PDF General</span>
@@ -35,6 +39,7 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <?= icon_tag('plus', 'plus', 'w-4 h-4') ?>
             <span id="btnNuevoText">Nuevo Bien</span>
         </button>
+
     </div>
 </div>
 
@@ -125,7 +130,42 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </form>
     </div>
 </section>
-
+<!-- ============================================ -->
+<!-- PANEL QR (oculto por defecto)                 -->
+<!-- ============================================ -->
+<section id="panelQr" class="card" style="display:none; margin-top:1rem;">
+    <div class="card-body" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+        <div id="qrCanvasWrap" style="background:#fff; padding:.75rem; border:1px solid #e2e8f0; border-radius:.5rem;">
+            <div id="qrCanvas"></div>
+        </div>
+        <div style="flex:1; min-width:220px;">
+            <h4 style="margin:0 0 .35rem; font-size:.95rem; color:#0f172a;">
+                QR · <span id="qrDeptoNombre">—</span>
+            </h4>
+            <p style="margin:0 0 .75rem; font-size:.8rem; color:#64748b; line-height:1.5;">
+                Escanea este código para abrir la vista pública de bienes
+                del departamento seleccionado.
+            </p>
+            <code id="qrUrl" style="display:block; font-size:.7rem; color:#475569; background:#f8fafc;
+                  border:1px solid #e2e8f0; border-radius:.35rem; padding:.5rem .65rem;
+                  word-break:break-all; margin-bottom:.75rem;">—</code>
+            <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+                <a id="qrDescargar" class="btn btn-primary btn-sm" download>
+                    <?= icon_tag('download', 'download', 'w-4 h-4') ?>
+                    <span>Descargar PNG</span>
+                </a>
+                <a id="qrAbrir" class="btn btn-ghost btn-sm" target="_blank" rel="noopener">
+                    <?= icon_tag('external-link', 'external-link', 'w-4 h-4') ?>
+                    <span>Abrir vista pública</span>
+                </a>
+                <button type="button" id="qrCerrar" class="btn btn-ghost btn-sm">
+                    <?= icon_tag('x', 'x', 'w-4 h-4') ?>
+                    <span>Cerrar</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</section>
 <!-- ============================================ -->
 <!-- TABLA                                        -->
 <!-- ============================================ -->
@@ -197,3 +237,4 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         <div class="dt-pagination" id="paginationBienes"></div>
     </div>
 </div>
+

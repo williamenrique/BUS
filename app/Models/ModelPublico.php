@@ -478,4 +478,143 @@ class ModelPublico extends Model{
              WHERE status_estacion = 1 ORDER BY estacion"
         );
     }
+
+        /* ============================================================
+       BIENES · Vista pública por departamento (multi-institución)
+       ============================================================ */
+
+    /**
+     * Departamentos que tienen al menos 1 bien en la institución dada.
+     * Devuelve id, nombre y conteo, ordenados por nombre.
+     */
+    public function getDepartamentosConBienes(int $idInst): array{
+        return $this->fetchAll(
+            "SELECT d.depatamento_bien_id AS id,
+                    d.departamento_bien    AS nombre,
+                    COUNT(b.id_bien)       AS total
+             FROM table_bienes_departamentos d
+             INNER JOIN table_bienes_inventario b
+                     ON b.bien_depatamento_id = d.depatamento_bien_id
+             WHERE b.id_institucion = :inst
+               AND b.status = 1
+             GROUP BY d.depatamento_bien_id, d.departamento_bien
+             HAVING total > 0
+             ORDER BY d.departamento_bien ASC",
+            ['inst' => $idInst]
+        );
+    }
+
+    /**
+     * Bienes de una institución, opcionalmente filtrados por departamento.
+     * Devuelve todos los campos necesarios para la tabla + el modal de detalle.
+     */
+    public function getBienesPorInstitucion(int $idInst, ?string $depto = null): array{
+        $sql = "SELECT
+                    b.id_bien,
+                    b.descripcion_bien,
+                    b.bien_depatamento_id,
+                    d.departamento_bien,
+                    b.grupo_id,
+                    g.grupo,
+                    b.subgrupo_id,
+                    sg.subgrupo,
+                    b.seccion_id,
+                    s.seccion,
+                    b.status_bien,
+                    b.fecha_adquisicion,
+                    b.status
+                FROM table_bienes_inventario b
+                LEFT JOIN table_bienes_departamentos d  ON b.bien_depatamento_id = d.depatamento_bien_id
+                LEFT JOIN table_bienes_grupo         g  ON b.grupo_id           = g.id_grupo
+                LEFT JOIN table_bienes_subgrupo      sg ON b.subgrupo_id        = sg.subgrupo_id
+                LEFT JOIN table_bienes_seccion       s  ON b.seccion_id         = s.seccion_id
+                WHERE b.id_institucion = :inst
+                  AND b.status = 1";
+
+        $params = ['inst' => $idInst];
+
+        if ($depto !== null && $depto !== '') {
+            $sql .= " AND b.bien_depatamento_id = :depto";
+            $params['depto'] = $depto;
+        }
+
+        $sql .= " ORDER BY d.departamento_bien ASC, b.id_bien ASC";
+
+        return $this->fetchAll($sql, $params);
+    }
+
+    /**
+     * Datos completos de un bien (para el modal de detalle).
+     * Valida que pertenezca a la institución.
+     */
+    public function getBienDetalle(int $idBien, int $idInst): ?array{
+        return $this->fetchOne(
+            "SELECT
+                b.id_bien,
+                b.descripcion_bien,
+                b.bien_depatamento_id,
+                d.departamento_bien,
+                b.grupo_id,   g.grupo,
+                b.subgrupo_id, sg.subgrupo,
+                b.seccion_id, s.seccion,
+                b.status_bien,
+                b.fecha_adquisicion,
+                b.fecha_creacion,
+                b.fecha_actualizacion,
+                b.status,
+                b.id_institucion
+             FROM table_bienes_inventario b
+             LEFT JOIN table_bienes_departamentos d  ON b.bien_depatamento_id = d.depatamento_bien_id
+             LEFT JOIN table_bienes_grupo         g  ON b.grupo_id           = g.id_grupo
+             LEFT JOIN table_bienes_subgrupo      sg ON b.subgrupo_id        = sg.subgrupo_id
+             LEFT JOIN table_bienes_seccion       s  ON b.seccion_id         = s.seccion_id
+             WHERE b.id_bien = :id
+               AND b.id_institucion = :inst
+               AND b.status = 1
+             LIMIT 1",
+            ['id' => $idBien, 'inst' => $idInst]
+        );
+    }
+    public function getDepartamentoPorId(string $idDepto): ?array{
+        return $this->fetchOne(
+            "SELECT depatamento_bien_id AS id, departamento_bien AS nombre
+             FROM table_bienes_departamentos
+             WHERE depatamento_bien_id = :id
+             LIMIT 1",
+            ['id' => $idDepto]
+        );
+    }
+        /* ============================================================
+       PÚBLICO · Departamentos con conteo de bienes (para vista pública)
+       ============================================================ */
+    public function departamentosConBienes(int $inst): array{
+        return $this->fetchAll(
+            "SELECT d.depatamento_bien_id AS id,
+                    d.departamento_bien    AS nombre,
+                    COUNT(b.id_bien)       AS total
+             FROM table_bienes_departamentos d
+             INNER JOIN table_bienes_inventario b
+                     ON b.bien_depatamento_id = d.depatamento_bien_id
+             WHERE b.id_institucion = :inst
+               AND (b.status = 1 OR b.status IS NULL)
+             GROUP BY d.depatamento_bien_id, d.departamento_bien
+             HAVING total > 0
+             ORDER BY d.departamento_bien ASC",
+            ['inst' => $inst]
+        );
+    }
+
+    /* ============================================================
+       PÚBLICO · Datos de un departamento por ID
+       ============================================================ */
+    public function departamentoPorId(string $idDepto): ?array{
+        return $this->fetchOne(
+            "SELECT depatamento_bien_id AS id,
+                    departamento_bien    AS nombre
+             FROM table_bienes_departamentos
+             WHERE depatamento_bien_id = :id
+             LIMIT 1",
+            ['id' => $idDepto]
+        );
+    }
 }
