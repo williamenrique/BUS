@@ -107,26 +107,26 @@ return [
     ['path' => '/flota/aceite/i/{inst}/eliminar',       'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
     ['path' => '/flota/aceite/i/{inst}',                'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
 
-    // ============================================================
-    // Flota (compat sin institución)
-    // ============================================================
-    ['path' => '/flota',                     'method' => 'GET',  'handler' => 'ControllerFlota@index'],
-    ['path' => '/flota/listar',              'method' => 'GET',  'handler' => 'ControllerFlota@listar'],
-    ['path' => '/flota/todas',               'method' => 'GET',  'handler' => 'ControllerFlota@todas'],
-    ['path' => '/flota/combos',              'method' => 'GET',  'handler' => 'ControllerFlota@combos'],
-    ['path' => '/flota/obtener/{id}',        'method' => 'GET',  'handler' => 'ControllerFlota@obtener'],
-    ['path' => '/flota/guardar',             'method' => 'POST', 'handler' => 'ControllerFlota@guardar'],
-    ['path' => '/flota/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerFlota@actualizar'],
-    ['path' => '/flota/cambiar-status/{id}', 'method' => 'POST', 'handler' => 'ControllerFlota@cambiarStatus'],
-    ['path' => '/flota/historial/{id}',      'method' => 'GET',  'handler' => 'ControllerFlota@historial'],
-    ['path' => '/flota/historial/{id}/data', 'method' => 'POST', 'handler' => 'ControllerFlota@historialData'],
+    // // ============================================================
+    // // Flota (compat sin institución)
+    // // ============================================================
+    // ['path' => '/flota',                     'method' => 'GET',  'handler' => 'ControllerFlota@index'],
+    // ['path' => '/flota/listar',              'method' => 'GET',  'handler' => 'ControllerFlota@listar'],
+    // ['path' => '/flota/todas',               'method' => 'GET',  'handler' => 'ControllerFlota@todas'],
+    // ['path' => '/flota/combos',              'method' => 'GET',  'handler' => 'ControllerFlota@combos'],
+    // ['path' => '/flota/obtener/{id}',        'method' => 'GET',  'handler' => 'ControllerFlota@obtener'],
+    // ['path' => '/flota/guardar',             'method' => 'POST', 'handler' => 'ControllerFlota@guardar'],
+    // ['path' => '/flota/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerFlota@actualizar'],
+    // ['path' => '/flota/cambiar-status/{id}', 'method' => 'POST', 'handler' => 'ControllerFlota@cambiarStatus'],
+    // ['path' => '/flota/historial/{id}',      'method' => 'GET',  'handler' => 'ControllerFlota@historial'],
+    // ['path' => '/flota/historial/{id}/data', 'method' => 'POST', 'handler' => 'ControllerFlota@historialData'],
 
-    // ---------- Cambio de Aceite (compat sin institución) ----------
-    ['path' => '/flota/aceite/status',       'method' => 'GET',  'handler' => 'ControllerFlota@aceiteStatus'],
-    ['path' => '/flota/aceite/km',           'method' => 'POST', 'handler' => 'ControllerFlota@setKilometraje'],
-    ['path' => '/flota/aceite/cambio',       'method' => 'POST', 'handler' => 'ControllerFlota@setCambioAceite'],
-    ['path' => '/flota/aceite/eliminar',     'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
-    ['path' => '/flota/aceite',              'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
+    // // ---------- Cambio de Aceite (compat sin institución) ----------
+    // ['path' => '/flota/aceite/status',       'method' => 'GET',  'handler' => 'ControllerFlota@aceiteStatus'],
+    // ['path' => '/flota/aceite/km',           'method' => 'POST', 'handler' => 'ControllerFlota@setKilometraje'],
+    // ['path' => '/flota/aceite/cambio',       'method' => 'POST', 'handler' => 'ControllerFlota@setCambioAceite'],
+    // ['path' => '/flota/aceite/eliminar',     'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
+    // ['path' => '/flota/aceite',              'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
 
     // ============================================================
     // Flota · Historial de cambios de estado

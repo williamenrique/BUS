@@ -6,14 +6,16 @@ use App\Core\Validator;
 use App\Models\ModelFlota;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerFlota extends Controller{
 
     /* ============================================================
-       VISTA PRINCIPAL
+       VISTA PRINCIPAL · FLOTA
        ============================================================ */
     public function index(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -32,6 +34,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function listar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -62,6 +65,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function todas(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         try{
             $m = new ModelFlota();
@@ -76,6 +80,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function combos(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $m = new ModelFlota();
         $this->json([
@@ -90,6 +95,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function obtener(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $row = (new ModelFlota())->find((int)$id);
         if (!$row){
@@ -104,6 +110,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function guardar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $d = $this->input();
         if (empty($d)) $d = $_POST;
@@ -142,6 +149,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function actualizar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
         $d = $this->input();
@@ -185,6 +193,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function cambiarStatus(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
         $d = $this->input();
@@ -230,6 +239,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function historial(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -260,6 +270,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function historialData(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -296,9 +307,12 @@ class ControllerFlota extends Controller{
 
     /* ============================================================
        VISTA · Cambio de Aceite
+       ------------------------------------------------------------
+       Protegido con menu_id = 1102 (patrón: flota/aceite)
        ============================================================ */
     public function aceite(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -317,6 +331,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function aceiteStatus(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -345,6 +360,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function setKilometraje(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $d = $this->input();
         if (empty($d)) $d = $_POST;
@@ -376,6 +392,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function setCambioAceite(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $d = $this->input();
         if (empty($d)) $d = $_POST;
@@ -409,6 +426,7 @@ class ControllerFlota extends Controller{
        ============================================================ */
     public function eliminarRegistroAceite(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $d = $this->input();
         if (empty($d)) $d = $_POST;

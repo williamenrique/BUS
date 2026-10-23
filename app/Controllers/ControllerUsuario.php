@@ -5,6 +5,7 @@ use App\Core\Controller;
 use App\Core\Validator;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerUsuario extends Controller{
 
@@ -13,6 +14,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function index(): void{
         AuthGuard::check();
+        MenuGuard::check();
         $user = auth_user();
         $mUser = new ModelUsuario();
 
@@ -29,6 +31,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function listar(): void{
         AuthGuard::check();
+        MenuGuard::check();
 
         $q      = trim((string)($_GET['q'] ?? ''));
         $limit  = max(1, min(100, (int)($_GET['limit'] ?? 10)));
@@ -62,6 +65,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function combos(): void{
         AuthGuard::check();
+        MenuGuard::check();
         $m = new ModelUsuario();
 
         $personalId = isset($_GET['personal_id']) ? (int)$_GET['personal_id'] : null;
@@ -80,6 +84,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function obtener(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $row = (new ModelUsuario())->find((int)$id);
         if (!$row) $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
 
@@ -92,6 +97,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function siguienteNick(): void{
         AuthGuard::check();
+        MenuGuard::check();
 
         $personalId = (int)($_GET['personal_id'] ?? 0);
         if ($personalId <= 0){
@@ -113,6 +119,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function guardar(): void{
         AuthGuard::check();
+        MenuGuard::check();
 
         $d = $this->input();
         if (empty($d)) $d = $_POST;
@@ -174,6 +181,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function actualizar(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
 
         $d = $this->input();
@@ -217,6 +225,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function eliminarImagen(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
 
         $m = new ModelUsuario();
@@ -247,6 +256,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function resetPassword(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
         $d = $this->input();
         $nueva = trim((string)($d['nueva_password'] ?? ''));
@@ -271,6 +281,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function eliminar(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
 
         $current = auth_user();
@@ -296,6 +307,7 @@ class ControllerUsuario extends Controller{
        ============================================================ */
     public function cambiarStatus(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
 
         $current = auth_user();
@@ -328,6 +340,7 @@ class ControllerUsuario extends Controller{
      */
     public function menusAsignados(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
 
         try{
@@ -382,6 +395,7 @@ class ControllerUsuario extends Controller{
      */
     public function guardarMenus(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
 
         $d = $this->input();
@@ -417,6 +431,286 @@ class ControllerUsuario extends Controller{
             ]);
         } catch (\Throwable $e){
             $db->rollBack();
+            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /* ============================================================
+       DASHBOARD · Sesiones activas y forzar logout
+       ------------------------------------------------------------
+       NOTA: SIN MenuGuard. Estos endpoints los usa el Dashboard
+       (no la vista Usuarios). Ya validan internamente que el
+       usuario sea del depto Sistema.
+       ============================================================ */
+    public function sesionesActivas(): void
+    {
+        AuthGuard::check();
+        $u = auth_user();
+        if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
+            $this->json(['success' => false, 'message' => 'No autorizado.'], 403);
+            return;
+        }
+
+        $this->safe(function () {
+            $db = \App\Core\Database::getConnection();
+            $sql = "SELECT s.id, s.session_id, s.usuario_id, s.ip_address,
+                           s.usuario_agent, s.created_at, s.last_activity,
+                           u.usuario_nick, u.usuario_status, u.usuario_imagen,
+                           p.personal_nombre AS nombres,
+                           p.personal_apellido AS apellidos
+                    FROM table_usuario_sessions s
+                    INNER JOIN table_usuarios u ON u.usuario_id = s.usuario_id
+                    LEFT JOIN table_personal p ON p.id_personal = u.usuario_id_personal
+                    WHERE s.last_activity >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
+                    ORDER BY s.last_activity DESC";
+            $rows = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
+
+            foreach ($rows as &$r) {
+                if (!empty($r['created_at'])) {
+                    $r['created_at'] = date('d/m/Y h:i A', strtotime($r['created_at']));
+                }
+                $r['imagen_url'] = !empty($r['usuario_imagen'])
+                    ? asset('uploads/storage/' . $r['usuario_imagen'])
+                    : null;
+            }
+            unset($r);
+
+            $this->json(['success' => true, 'data' => $rows]);
+        });
+    }
+
+    public function forzarLogout(): void {
+        AuthGuard::check();
+        $u = auth_user();
+        if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
+            $this->json(['success' => false, 'message' => 'No autorizado.'], 403);
+            return;
+        }
+
+        $d = $this->input();
+        $nick = trim((string)($d['nick'] ?? ''));
+        if ($nick === '') {
+            $this->json(['success' => false, 'message' => 'Usuario inválido.'], 422);
+            return;
+        }
+
+        $this->safe(function () use ($nick) {
+            $db = \App\Core\Database::getConnection();
+
+            $stmt = $db->prepare("SELECT usuario_id FROM table_usuarios WHERE usuario_nick = :n LIMIT 1");
+            $stmt->execute(['n' => $nick]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if (!$row) {
+                $this->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
+                return;
+            }
+            $uid = (int)$row['usuario_id'];
+
+            $del = $db->prepare("DELETE FROM table_usuario_sessions WHERE usuario_id = :u");
+            $del->execute(['u' => $uid]);
+
+            $this->json(['success' => true, 'message' => "Sesión de {$nick} cerrada."]);
+        });
+    }
+
+    /* ============================================================
+       PERFIL DEL USUARIO LOGUEADO (SIN MenuGuard — es del propio usuario)
+       ============================================================ */
+
+    public function perfil(): void{
+        AuthGuard::check();
+
+        $sessUser = auth_user();
+
+        $mUser = new ModelUsuario();
+        $u     = $mUser->find((int)$sessUser['id']);
+
+        if (!$u){
+            $this->redirect('logout');
+        }
+
+        $this->view('perfil.index', [
+            'user'      => $sessUser,
+            'perfil'    => $u,
+            'menu'      => $mUser->getMenuJerarquico((int)$sessUser['id'], (int)$sessUser['departamento_id']),
+            'pageTitle' => 'Mi Perfil',
+            'scripts'   => ['perfil.js'],
+        ]);
+    }
+
+    public function actualizarPerfil(): void{
+        AuthGuard::check();
+
+        $sessUser = auth_user();
+        $uid      = (int)$sessUser['id'];
+
+        $d = $this->input();
+        if (empty($d)) $d = $_POST;
+
+        $nombre   = trim((string)($d['personal_nombre']   ?? ''));
+        $apellido = trim((string)($d['personal_apellido'] ?? ''));
+        $email    = trim((string)($d['personal_email']    ?? ''));
+        $tlf      = trim((string)($d['personal_tlf']      ?? ''));
+
+        $errores = [];
+        if ($nombre === '')   $errores['personal_nombre']   = 'El nombre es obligatorio.';
+        if ($apellido === '') $errores['personal_apellido'] = 'El apellido es obligatorio.';
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)){
+            $errores['personal_email'] = 'El correo no es válido.';
+        }
+        if (!empty($errores)){
+            $this->json(['ok' => false, 'errors' => $errores], 422);
+        }
+
+        $mUser = new ModelUsuario();
+        $u     = $mUser->find($uid);
+        if (!$u){
+            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+        }
+
+        if (empty($u['usuario_id_personal'])){
+            $this->json(['ok' => false, 'message' => 'Tu usuario no tiene un personal vinculado.'], 422);
+        }
+
+        try{
+            $mUser->actualizarPersonal(
+                (int)$u['usuario_id_personal'],
+                [
+                    'personal_nombre'   => strtoupper($nombre),
+                    'personal_apellido' => strtoupper($apellido),
+                    'personal_email'    => normalizar_email($email),
+                    'personal_tlf'      => $tlf,
+                ]
+            );
+
+            $_SESSION['user']['nombre']   = strtoupper($nombre . ' ' . $apellido);
+            $_SESSION['user']['email']    = $email;
+            $_SESSION['user']['telefono'] = $tlf;
+
+            $this->json(['ok' => true, 'message' => 'Datos actualizados correctamente.']);
+        } catch (\Throwable $e){
+            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function subirImagenPerfil(): void{
+        AuthGuard::check();
+
+        $sessUser = auth_user();
+        $uid      = (int)$sessUser['id'];
+
+        if (empty($_FILES['imagen']['name'])){
+            $this->json(['ok' => false, 'message' => 'No se recibió ninguna imagen.'], 422);
+        }
+
+        $mUser = new ModelUsuario();
+        $u     = $mUser->find($uid);
+        if (!$u){
+            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+        }
+
+        $img = $this->subirImagen($_FILES['imagen'], $u['usuario_nick']);
+        if (!$img['ok']){
+            $this->json(['ok' => false, 'message' => $img['msg']], 422);
+        }
+
+        $anterior = $u['usuario_imagen'] ?? '';
+
+        try{
+            $mUser->updateImagen($uid, $img['file']);
+
+            if ($anterior !== '' && strpos($anterior, '_default.png') === false){
+                $this->borrarArchivo($anterior);
+            }
+
+            $_SESSION['user']['imagen'] = $img['file'];
+
+            $this->json([
+                'ok'      => true,
+                'message' => 'Imagen actualizada correctamente.',
+                'imagen'  => $img['file'],
+                'url'     => asset('uploads/storage/' . $img['file']),
+            ]);
+        } catch (\Throwable $e){
+            if (!empty($img['file'])){
+                $this->borrarArchivo($img['file']);
+            }
+            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function eliminarImagenPerfil(): void{
+        AuthGuard::check();
+
+        $sessUser = auth_user();
+        $uid      = (int)$sessUser['id'];
+
+        $mUser = new ModelUsuario();
+        $u     = $mUser->find($uid);
+        if (!$u){
+            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+        }
+
+        $actual = $u['usuario_imagen'] ?? '';
+
+        try{
+            if ($actual !== '' && strpos($actual, '_default.png') === false){
+                $this->borrarArchivo($actual);
+            }
+
+            $default = $this->copiarDefault($u['usuario_nick']);
+
+            $mUser->updateImagen($uid, $default);
+
+            $_SESSION['user']['imagen'] = $default;
+
+            $this->json([
+                'ok'      => true,
+                'message' => 'Imagen eliminada. Se restauró la predeterminada.',
+                'imagen'  => $default,
+                'url'     => $default !== '' ? asset('uploads/storage/' . $default) : asset('img/default.png'),
+            ]);
+        } catch (\Throwable $e){
+            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function cambiarPasswordPerfil(): void{
+        AuthGuard::check();
+
+        $sessUser = auth_user();
+        $uid      = (int)$sessUser['id'];
+
+        $d = $this->input();
+        if (empty($d)) $d = $_POST;
+
+        $actual    = (string)($d['password_actual']    ?? '');
+        $nueva     = (string)($d['password_nueva']     ?? '');
+        $confirmar = (string)($d['password_confirmar'] ?? '');
+
+        $errores = [];
+        if ($actual === '')             $errores['password_actual']    = 'Ingresa tu contraseña actual.';
+        if (strlen($nueva) < 6)         $errores['password_nueva']     = 'Mínimo 6 caracteres.';
+        if ($nueva !== $confirmar)      $errores['password_confirmar'] = 'No coincide con la nueva.';
+        if (!empty($errores)){
+            $this->json(['ok' => false, 'errors' => $errores], 422);
+        }
+
+        $mUser = new ModelUsuario();
+        $u     = $mUser->find($uid);
+        if (!$u){
+            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+        }
+
+        $check = verify_password($actual, (string)$u['usuario_password']);
+        if (!$check['ok']){
+            $this->json(['ok' => false, 'errors' => ['password_actual' => 'La contraseña actual es incorrecta.']], 422);
+        }
+
+        try{
+            $mUser->updatePassword($uid, hash_password($nueva));
+            $this->json(['ok' => true, 'message' => 'Contraseña actualizada correctamente.']);
+        } catch (\Throwable $e){
             $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
@@ -533,327 +827,5 @@ class ControllerUsuario extends Controller{
             'file' => $carpeta . '/' . $nombre,
             'path' => $carpeta . '/' . $nombre,
         ];
-    }
-    /* ============================================================
-    DASHBOARD · Sesiones activas y forzar logout
-    ============================================================ */
-    public function sesionesActivas(): void {
-        AuthGuard::check();
-        $u = auth_user();
-        if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
-            $this->json(['success' => false, 'message' => 'No autorizado.'], 403);
-            return;
-        }
-
-        $this->safe(function () {
-            $db = \App\Core\Database::getConnection();
-            $sql = "SELECT s.id, s.session_id, s.usuario_id, s.ip_address,
-                           s.usuario_agent, s.created_at, s.last_activity,
-                           u.usuario_nick, u.usuario_status, u.usuario_imagen,
-                           p.personal_nombre AS nombres,
-                           p.personal_apellido AS apellidos
-                    FROM table_usuario_sessions s
-                    INNER JOIN table_usuarios u ON u.usuario_id = s.usuario_id
-                    LEFT JOIN table_personal p ON p.id_personal = u.usuario_id_personal
-                    WHERE s.last_activity >= DATE_SUB(NOW(), INTERVAL 2 HOUR)
-                    ORDER BY s.last_activity DESC";
-            $rows = $db->query($sql)->fetchAll(\PDO::FETCH_ASSOC);
-
-            // Formatear fecha y construir URL de imagen
-            foreach ($rows as &$r) {
-                if (!empty($r['created_at'])) {
-                    $r['created_at'] = date('d/m/Y h:i A', strtotime($r['created_at']));
-                }
-                // URL absoluta de la imagen (o null si no tiene)
-                $r['imagen_url'] = !empty($r['usuario_imagen'])
-                    ? asset('uploads/storage/' . $r['usuario_imagen'])
-                    : null;
-            }
-            unset($r);
-
-            $this->json(['success' => true, 'data' => $rows]);
-        });
-    }
-
-    public function forzarLogout(): void {
-        AuthGuard::check();
-        $u = auth_user();
-        if ((int)($u['departamento_id'] ?? 0) !== DEPARTAMENTO_SISTEMA) {
-            $this->json(['success' => false, 'message' => 'No autorizado.'], 403);
-            return;
-        }
-
-        $d = $this->input();
-        $nick = trim((string)($d['nick'] ?? ''));
-        if ($nick === '') {
-            $this->json(['success' => false, 'message' => 'Usuario inválido.'], 422);
-            return;
-        }
-
-        $this->safe(function () use ($nick) {
-            $db = \App\Core\Database::getConnection();
-
-            // Buscar usuario
-            $stmt = $db->prepare("SELECT usuario_id FROM table_usuarios WHERE usuario_nick = :n LIMIT 1");
-            $stmt->execute(['n' => $nick]);
-            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
-            if (!$row) {
-                $this->json(['success' => false, 'message' => 'Usuario no encontrado.'], 404);
-                return;
-            }
-            $uid = (int)$row['usuario_id'];
-
-            // Borrar todas sus sesiones activas
-            $del = $db->prepare("DELETE FROM table_usuario_sessions WHERE usuario_id = :u");
-            $del->execute(['u' => $uid]);
-
-            $this->json(['success' => true, 'message' => "Sesión de {$nick} cerrada."]);
-        });
-    }
-        /* ============================================================
-       PERFIL DEL USUARIO LOGUEADO
-       ============================================================ */
-
-    /**
-     * Muestra la vista de "Mi Perfil".
-     * Carga el usuario desde la BD usando el ID de sesión.
-     */
-    public function perfil(): void{
-        // Verifica que haya sesión activa
-        AuthGuard::check();
-
-        // Usuario de sesión
-        $sessUser = auth_user();
-
-        // Recargar desde BD para tener datos frescos (imagen, nombre, etc.)
-        $mUser = new ModelUsuario();
-        $u     = $mUser->find((int)$sessUser['id']);
-
-        // Si por alguna razón no existe, cerramos sesión
-        if (!$u){
-            $this->redirect('logout');
-        }
-
-        // Renderizar la vista dentro del layout
-        $this->view('perfil.index', [
-            'user'      => $sessUser,
-            'perfil'    => $u,
-            'menu'      => $mUser->getMenuJerarquico((int)$sessUser['id'], (int)$sessUser['departamento_id']),
-            'pageTitle' => 'Mi Perfil',
-            'scripts'   => ['perfil.js'],
-        ]);
-    }
-
-    /**
-     * Actualiza los datos personales del perfil (nombre, apellido, email, teléfono).
-     * Solo afecta la tabla `table_personal` vinculada al usuario.
-     */
-    public function actualizarPerfil(): void{
-        AuthGuard::check();
-
-        $sessUser = auth_user();
-        $uid      = (int)$sessUser['id'];
-
-        // Obtener datos (JSON o POST)
-        $d = $this->input();
-        if (empty($d)) $d = $_POST;
-
-        // Normalizar
-        $nombre   = trim((string)($d['personal_nombre']   ?? ''));
-        $apellido = trim((string)($d['personal_apellido'] ?? ''));
-        $email    = trim((string)($d['personal_email']    ?? ''));
-        $tlf      = trim((string)($d['personal_tlf']      ?? ''));
-
-        // Validaciones mínimas
-        $errores = [];
-        if ($nombre === '')   $errores['personal_nombre']   = 'El nombre es obligatorio.';
-        if ($apellido === '') $errores['personal_apellido'] = 'El apellido es obligatorio.';
-        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)){
-            $errores['personal_email'] = 'El correo no es válido.';
-        }
-        if (!empty($errores)){
-            $this->json(['ok' => false, 'errors' => $errores], 422);
-        }
-
-        $mUser = new ModelUsuario();
-        $u     = $mUser->find($uid);
-        if (!$u){
-            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
-        }
-
-        // Si el usuario no tiene personal vinculado, no podemos actualizar
-        if (empty($u['usuario_id_personal'])){
-            $this->json(['ok' => false, 'message' => 'Tu usuario no tiene un personal vinculado.'], 422);
-        }
-
-        try{
-            // Actualizar tabla_personal con el método del modelo
-            $mUser->actualizarPersonal(
-                (int)$u['usuario_id_personal'],
-                [
-                    'personal_nombre'   => strtoupper($nombre),
-                    'personal_apellido' => strtoupper($apellido),
-                    'personal_email'    => normalizar_email($email),
-                    'personal_tlf'      => $tlf,
-                ]
-            );
-
-            // Refrescar datos en la sesión
-            $_SESSION['user']['nombre']   = strtoupper($nombre . ' ' . $apellido);
-            $_SESSION['user']['email']    = $email;
-            $_SESSION['user']['telefono'] = $tlf;
-
-            $this->json(['ok' => true, 'message' => 'Datos actualizados correctamente.']);
-        } catch (\Throwable $e){
-            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Sube (o reemplaza) la imagen del usuario logueado.
-     * - Elimina la imagen anterior del disco si NO es la default.
-     * - Guarda el nombre nuevo en la BD.
-     * - Devuelve la nueva URL para refrescar el avatar sin recargar.
-     */
-    public function subirImagenPerfil(): void{
-        AuthGuard::check();
-
-        $sessUser = auth_user();
-        $uid      = (int)$sessUser['id'];
-
-        // Verificar que venga archivo
-        if (empty($_FILES['imagen']['name'])){
-            $this->json(['ok' => false, 'message' => 'No se recibió ninguna imagen.'], 422);
-        }
-
-        $mUser = new ModelUsuario();
-        $u     = $mUser->find($uid);
-        if (!$u){
-            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
-        }
-
-        // Subir archivo (reutiliza el helper privado del controlador)
-        $img = $this->subirImagen($_FILES['imagen'], $u['usuario_nick']);
-        if (!$img['ok']){
-            $this->json(['ok' => false, 'message' => $img['msg']], 422);
-        }
-
-        // Guardar la anterior para borrarla si todo sale bien
-        $anterior = $u['usuario_imagen'] ?? '';
-
-        try{
-            // 1) Primero actualizamos la BD (si falla, no tocamos el disco)
-            $mUser->updateImagen($uid, $img['file']);
-
-            // 2) Ahora sí: borrar la imagen anterior si no era default
-            if ($anterior !== '' && strpos($anterior, '_default.png') === false){
-                $this->borrarArchivo($anterior);
-            }
-
-            // Refrescar sesión
-            $_SESSION['user']['imagen'] = $img['file'];
-
-            $this->json([
-                'ok'      => true,
-                'message' => 'Imagen actualizada correctamente.',
-                'imagen'  => $img['file'],
-                'url'     => asset('uploads/storage/' . $img['file']),
-            ]);
-        } catch (\Throwable $e){
-            // Si falló la BD, borrar el archivo recién subido para no dejar basura
-            if (!empty($img['file'])){
-                $this->borrarArchivo($img['file']);
-            }
-            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Elimina la imagen actual del usuario logueado y restaura la default.
-     * Respeta la regla: si es default, no se borra del disco.
-     */
-    public function eliminarImagenPerfil(): void{
-        AuthGuard::check();
-
-        $sessUser = auth_user();
-        $uid      = (int)$sessUser['id'];
-
-        $mUser = new ModelUsuario();
-        $u     = $mUser->find($uid);
-        if (!$u){
-            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
-        }
-
-        $actual = $u['usuario_imagen'] ?? '';
-
-        try{
-            // 1) Borrar archivo anterior si NO es default
-            if ($actual !== '' && strpos($actual, '_default.png') === false){
-                $this->borrarArchivo($actual);
-            }
-
-            // 2) Copiar/crear la default
-            $default = $this->copiarDefault($u['usuario_nick']);
-
-            // 3) Actualizar BD
-            $mUser->updateImagen($uid, $default);
-
-            // Refrescar sesión
-            $_SESSION['user']['imagen'] = $default;
-
-            $this->json([
-                'ok'      => true,
-                'message' => 'Imagen eliminada. Se restauró la predeterminada.',
-                'imagen'  => $default,
-                'url'     => $default !== '' ? asset('uploads/storage/' . $default) : asset('img/default.png'),
-            ]);
-        } catch (\Throwable $e){
-            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
-        }
-    }
-
-    /**
-     * Cambia la contraseña del usuario logueado.
-     * Requiere: password_actual + password_nueva + password_confirmar.
-     */
-    public function cambiarPasswordPerfil(): void{
-        AuthGuard::check();
-
-        $sessUser = auth_user();
-        $uid      = (int)$sessUser['id'];
-
-        $d = $this->input();
-        if (empty($d)) $d = $_POST;
-
-        $actual    = (string)($d['password_actual']    ?? '');
-        $nueva     = (string)($d['password_nueva']     ?? '');
-        $confirmar = (string)($d['password_confirmar'] ?? '');
-
-        $errores = [];
-        if ($actual === '')             $errores['password_actual']    = 'Ingresa tu contraseña actual.';
-        if (strlen($nueva) < 6)         $errores['password_nueva']     = 'Mínimo 6 caracteres.';
-        if ($nueva !== $confirmar)      $errores['password_confirmar'] = 'No coincide con la nueva.';
-        if (!empty($errores)){
-            $this->json(['ok' => false, 'errors' => $errores], 422);
-        }
-
-        $mUser = new ModelUsuario();
-        $u     = $mUser->find($uid);
-        if (!$u){
-            $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
-        }
-
-        // Verificar contraseña actual (soporta legacy + bcrypt)
-        $check = verify_password($actual, (string)$u['usuario_password']);
-        if (!$check['ok']){
-            $this->json(['ok' => false, 'errors' => ['password_actual' => 'La contraseña actual es incorrecta.']], 422);
-        }
-
-        try{
-            $mUser->updatePassword($uid, hash_password($nueva));
-            $this->json(['ok' => true, 'message' => 'Contraseña actualizada correctamente.']);
-        } catch (\Throwable $e){
-            $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
-        }
     }
 }
