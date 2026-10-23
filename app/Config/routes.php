@@ -19,6 +19,7 @@ return [
     ['path' => '/movimientos/ventas-estacion',                  'method' => 'POST', 'handler' => 'ControllerPublico@getVentasEstacionData'],
     ['path' => '/movimientos/pdf',     'method' => 'POST', 'handler' => 'ControllerPublico@pdfGenerar'],
     ['path' => '/movimientos/pdf-ver', 'method' => 'GET',  'handler' => 'ControllerPublico@pdfVer'],
+
     // ============================================================
     // Auth
     // ============================================================
@@ -60,8 +61,9 @@ return [
     ['path' => '/usuarios/cambiar-status/{id}',   'method' => 'POST', 'handler' => 'ControllerUsuario@cambiarStatus'],
     ['path' => '/usuarios/reset-password/{id}',   'method' => 'POST', 'handler' => 'ControllerUsuario@resetPassword'],
     ['path' => '/usuarios/eliminar-imagen/{id}',  'method' => 'POST', 'handler' => 'ControllerUsuario@eliminarImagen'],
-    ['path' => '/usuarios/sesiones-activas',  'method' => 'GET',  'handler' => 'ControllerUsuario@sesionesActivas'],
-    ['path' => '/usuarios/forzar-logout',     'method' => 'POST', 'handler' => 'ControllerUsuario@forzarLogout'],
+    ['path' => '/usuarios/sesiones-activas',      'method' => 'GET',  'handler' => 'ControllerUsuario@sesionesActivas'],
+    ['path' => '/usuarios/forzar-logout',         'method' => 'POST', 'handler' => 'ControllerUsuario@forzarLogout'],
+
     // ============================================================
     // Perfil de usuario (mi perfil)
     // ============================================================
@@ -70,6 +72,7 @@ return [
     ['path' => '/perfil/imagen',             'method' => 'POST', 'handler' => 'ControllerUsuario@subirImagenPerfil'],
     ['path' => '/perfil/imagen/eliminar',    'method' => 'POST', 'handler' => 'ControllerUsuario@eliminarImagenPerfil'],
     ['path' => '/perfil/password',           'method' => 'POST', 'handler' => 'ControllerUsuario@cambiarPasswordPerfil'],
+
     // ============================================================
     // Recuperar
     // ============================================================
@@ -80,7 +83,6 @@ return [
     ['path' => '/recuperar/resetear/{id}',      'method' => 'POST', 'handler' => 'ControllerRecuperar@resetear'],
     ['path' => '/recuperar/resolver/{id}',      'method' => 'POST', 'handler' => 'ControllerRecuperar@resolver'],
     ['path' => '/recuperar/debug',              'method' => 'GET',  'handler' => 'ControllerRecuperar@debug'],
-    ['path' => '/recuperar/contador', 'method' => 'GET', 'handler' => 'ControllerRecuperar@contador'],
 
     // ============================================================
     // Flota (multi-institución)
@@ -125,12 +127,14 @@ return [
     ['path' => '/flota/aceite/cambio',       'method' => 'POST', 'handler' => 'ControllerFlota@setCambioAceite'],
     ['path' => '/flota/aceite/eliminar',     'method' => 'POST', 'handler' => 'ControllerFlota@eliminarRegistroAceite'],
     ['path' => '/flota/aceite',              'method' => 'GET',  'handler' => 'ControllerFlota@aceite'],
+
     // ============================================================
     // Flota · Historial de cambios de estado
     // ============================================================
     ['path' => '/flota/status/i/{inst}',         'method' => 'GET',  'handler' => 'ControllerFlotaStatus@index'],
     ['path' => '/flota/status/i/{inst}/listar',  'method' => 'GET',  'handler' => 'ControllerFlotaStatus@listar'],
     ['path' => '/flota/status/i/{inst}/combos',  'method' => 'GET',  'handler' => 'ControllerFlotaStatus@combos'],
+
     // ============================================================
     // Menú (admin)
     // ============================================================
@@ -204,7 +208,6 @@ return [
     ['path' => '/compras/i/{inst}/flota',                 'method' => 'GET',  'handler' => 'ControllerCompras@flota'],
     ['path' => '/compras/i/{inst}/conteo-ordenes',        'method' => 'POST', 'handler' => 'ControllerCompras@conteoOrdenes'],
 
-    
     // ============================================================
     // Estación de Servicio
     // ============================================================
@@ -225,7 +228,7 @@ return [
     ['path' => '/estacion/tasa-actual',           'method' => 'GET',  'handler' => 'ControllerEstacion@getTasaCurrent'],
     ['path' => '/estacion/litros-reporte',        'method' => 'POST', 'handler' => 'ControllerEstacion@getLitrosReporte'],
 
-    // DataVenta (departamento Sistema)
+    // DataVenta (por asignación de menú, no por departamento)
     ['path' => '/estacion/dataventa',             'method' => 'GET',  'handler' => 'ControllerEstacion@dataventa'],
     ['path' => '/estacion/litros-totales',        'method' => 'GET',  'handler' => 'ControllerEstacion@getLitrosTotales'],
     ['path' => '/estacion/litros-por-fecha',      'method' => 'POST', 'handler' => 'ControllerEstacion@getLitrosPorFecha'],
@@ -246,32 +249,17 @@ return [
     ['path' => '/estacion/open-sales/listar',     'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasAbiertasPaginado'],
     ['path' => '/estacion/ventas-cierre/listar',  'method' => 'GET',  'handler' => 'ControllerEstacion@listarVentasCierre'],
     ['path' => '/estacion/ticket-by-venta/{id}',  'method' => 'POST', 'handler' => 'ControllerEstacion@getTicketByVenta'],
+
     // ============================================================
     // PDF (centralizado)
     // ============================================================
     ['path' => '/pdf/generar', 'method' => 'POST', 'handler' => 'ControllerPdf@generar'],
     ['path' => '/pdf/ver',     'method' => 'GET',  'handler' => 'ControllerPdf@ver'],
-    
-     // ============================================================
-    // DASHBOARD
+
     // ============================================================
-    ['path' => '/dashboard/instituciones',              'method' => 'GET',  'handler' => 'ControllerDashboard@getInstituciones'],
-    ['path' => '/dashboard/almacen',                    'method' => 'GET',  'handler' => 'ControllerDashboard@getAlmacenData'],
-    ['path' => '/dashboard/almacen/top-productos',      'method' => 'GET',  'handler' => 'ControllerDashboard@getTopProductosAlmacen'],
-    ['path' => '/dashboard/almacen/ultimas-ordenes',    'method' => 'GET',  'handler' => 'ControllerDashboard@getUltimasOrdenesAlmacen'],
-    ['path' => '/dashboard/operaciones',                'method' => 'GET',  'handler' => 'ControllerDashboard@getOperacionesData'],
-    ['path' => '/dashboard/compras',                    'method' => 'GET',  'handler' => 'ControllerDashboard@getComprasData'],
-    ['path' => '/dashboard/compras/top-productos',      'method' => 'GET',  'handler' => 'ControllerDashboard@getTopProductosCosteados'],
-    ['path' => '/dashboard/compras/ultimas-requisiciones','method' => 'GET',  'handler' => 'ControllerDashboard@getUltimasRequisiciones'],
-    ['path' => '/dashboard/compras/ultimas-costeadas',  'method' => 'GET',  'handler' => 'ControllerDashboard@getUltimasComprasCosteadas'],
-    ['path' => '/dashboard/bienes',                     'method' => 'GET',  'handler' => 'ControllerDashboard@getBienesData'],
-    ['path' => '/dashboard/estacion',                   'method' => 'GET',  'handler' => 'ControllerDashboard@getEstacionData'],
-    ['path' => '/dashboard/estacion/meses',             'method' => 'GET',  'handler' => 'ControllerDashboard@getAvailableMonths'],
-    ['path' => '/dashboard/estacion/litros-mensuales',  'method' => 'POST', 'handler' => 'ControllerDashboard@getMonthlyLiters'],
-    ['path' => '/dashboard/estacion/ventas-dia',        'method' => 'POST', 'handler' => 'ControllerDashboard@getDailySales'],
-        // ============================================================
-    // Dashboard (Sistema)
+    // DASHBOARD (una sola vez, sin duplicados)
     // ============================================================
+    ['path' => '/dashboard/instituciones',                 'method' => 'GET',  'handler' => 'ControllerDashboard@getInstituciones'],
     ['path' => '/dashboard/almacen',                       'method' => 'GET',  'handler' => 'ControllerDashboard@getAlmacenData'],
     ['path' => '/dashboard/almacen/top-productos',         'method' => 'GET',  'handler' => 'ControllerDashboard@getTopProductosAlmacen'],
     ['path' => '/dashboard/almacen/ultimas-ordenes',       'method' => 'GET',  'handler' => 'ControllerDashboard@getUltimasOrdenesAlmacen'],

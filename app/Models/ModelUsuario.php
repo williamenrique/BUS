@@ -41,13 +41,11 @@ class ModelUsuario extends Model{
                 LIMIT 1";
         return $this->fetchOne($sql, ['email' => $email]);
     }
+
     /**
      * Busca un usuario por cédula del personal vinculado.
-     * Acepta cualquier formato: "19423408", "V-19423408", "V19423408", "v-19423408".
-     * Compara solo los dígitos (ignora prefijo V-, E-, J-, G-, P-).
      */
     public function findByCedula(string $cedula): ?array{
-        // Extraer solo dígitos de la entrada
         $soloDigitos = preg_replace('/\D/', '', $cedula);
         if ($soloDigitos === '') return null;
 
@@ -77,9 +75,6 @@ class ModelUsuario extends Model{
         return $this->fetchOne($sql, ['id' => $id]);
     }
 
-    /**
-     * Consulta completa para el formulario de edición.
-     */
     public function find(int $id): ?array{
         $sql = "SELECT u.*, r.rol_nombre, d.departamento_nombre,
                        e.estacion AS estacion_nombre,
@@ -166,13 +161,6 @@ class ModelUsuario extends Model{
     /* ============================================================
        CRUD
        ============================================================ */
-
-    /**
-     * Crea un usuario.
-     * - Nick en MAYÚSCULAS
-     * - Estación opcional → 0
-     * - Imagen siempre string (default o subida)
-     */
     public function create(array $d): int{
         $sql = "INSERT INTO table_usuarios
                     (usuario_nick, usuario_password, usuario_rol_id,
@@ -197,10 +185,6 @@ class ModelUsuario extends Model{
         return (int)$this->lastInsertId();
     }
 
-    /**
-     * Actualiza un usuario. No toca nick ni contraseña.
-     * Estación → 0 si viene vacía.
-     */
     public function update(int $id, array $d): bool{
         $sql = "UPDATE table_usuarios SET
                     usuario_rol_id          = :rol,
@@ -230,9 +214,6 @@ class ModelUsuario extends Model{
         return $this->execute($sql, $params);
     }
 
-    /**
-     * Actualiza únicamente la imagen de un usuario.
-     */
     public function updateImagen(int $id, ?string $path): bool{
         return $this->execute(
             "UPDATE table_usuarios SET usuario_imagen = :img WHERE usuario_id = :id",
@@ -240,9 +221,6 @@ class ModelUsuario extends Model{
         );
     }
 
-    /**
-     * Actualiza la contraseña (ya hasheada).
-     */
     public function updatePassword(int $id, string $hash): bool{
         return $this->execute(
             "UPDATE table_usuarios SET usuario_password = :h WHERE usuario_id = :id",
@@ -261,9 +239,6 @@ class ModelUsuario extends Model{
         );
     }
 
-    /**
-     * Verifica existencia de nick (case-insensitive).
-     */
     public function existeNick(string $nick, ?int $excludeId = null): bool{
         $sql = "SELECT 1 FROM table_usuarios WHERE LOWER(usuario_nick) = LOWER(:n)";
         $params = ['n' => $nick];
@@ -299,9 +274,6 @@ class ModelUsuario extends Model{
         );
     }
 
-    /**
-     * Personal disponible (sin usuario asignado) + el actual si editamos.
-     */
     public function personalDisponible(?int $usuarioActualId = null): array{
         $sql = "SELECT p.id_personal, p.personal_nombre, p.personal_apellido, p.personal_cedula
                 FROM table_personal p
@@ -322,20 +294,9 @@ class ModelUsuario extends Model{
     /* ============================================================
        AUTOGENERACIÓN DE NICK (MAYÚSCULAS)
        ============================================================ */
-
-    /**
-     * Devuelve el siguiente nick en MAYÚSCULAS con secuencia GLOBAL.
-     * El sufijo es el máximo de TODOS los usuarios + 1.
-     *
-     * Ej (con máx existente en 23):
-     *   "MR" → "MR-24"
-     *   "A0" → "A0-25"
-     *   "JP" → "JP-26"
-     */
     public function siguienteNick(string $prefijo): string{
         $prefijo = strtoupper(trim($prefijo));
 
-        // Busca el número más alto considerando SOLO formatos PREFIX-NNN válidos
         $sql = "SELECT MAX(CAST(SUBSTRING_INDEX(usuario_nick, '-', -1) AS UNSIGNED)) AS maxnum
                 FROM table_usuarios
                 WHERE usuario_nick REGEXP '^[A-Za-z0-9]+-[0-9]+$'";
@@ -346,14 +307,9 @@ class ModelUsuario extends Model{
             $siguiente = (int)$row['maxnum'] + 1;
         }
 
-        // Padding a 2 dígitos (03, 24, 99, 100, 101...)
         return $prefijo . '-' . str_pad((string)$siguiente, 2, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * Genera el nick sugerido a partir de un personal (MAYÚSCULAS).
-     * Devuelve null si no existe.
-     */
     public function generarNickDesdePersonal(int $personalId): ?string{
         $sql = "SELECT personal_nombre, personal_apellido
                 FROM table_personal
@@ -487,24 +443,16 @@ class ModelUsuario extends Model{
         return $tree;
     }
 
-    /**
-     * Actualiza solo la contraseña (usada por el flujo legacy de rehash).
-     */
     public function actualizarPassword(int $userId, string $newHash): bool{
         return $this->execute(
             "UPDATE table_usuarios SET usuario_password = :hash WHERE usuario_id = :id",
             ['hash' => $newHash, 'id' => $userId]
         );
     }
-        /* ============================================================
+
+    /* ============================================================
        PERFIL · Actualizar datos del personal vinculado
        ============================================================ */
-
-    /**
-     * Actualiza los campos editables del personal asociado al usuario
-     * (nombre, apellido, email, teléfono). No toca cédula, cargo,
-     * dirección ni estatus (esos los maneja el módulo Personal).
-     */
     public function actualizarPersonal(int $personalId, array $d): bool{
         $sql = "UPDATE table_personal SET
                     personal_nombre   = :nombre,
@@ -518,6 +466,75 @@ class ModelUsuario extends Model{
             'email'    => $d['personal_email']    ?? '',
             'tlf'      => $d['personal_tlf']      ?? '',
             'id'       => $personalId,
+        ]);
+    }
+
+    /* ============================================================
+       NUEVOS · AUTORIZACIÓN POR MENÚ
+       ------------------------------------------------------------
+       Se usan para verificar si un usuario puede acceder a una
+       ruta protegida. NO se llaman todavía desde ningún controlador.
+       ============================================================ */
+
+    /**
+     * Devuelve el menu_id que corresponde a una ruta según
+     * table_men_rutas. Devuelve null si la ruta no está registrada
+     * (en cuyo caso el guard debe dejar pasar para no romper rutas
+     * internas como /perfil, /logout, etc.).
+     *
+     * Busca por patrón con LIKE, ordenando por longitud de patrón
+     * descendente para que gane el patrón más específico.
+     *
+     * Ej:
+     *   '/estacion/dataventa'     → coincide con 'estacion/dataventa' → menu_id 10
+     *   '/producto/historial'     → coincide con 'producto/historial' → menu_id 1005
+     *   '/producto'               → coincide con 'producto'           → menu_id 1001
+     */
+    public function menuIdPorRuta(string $ruta): ?int{
+        if ($ruta === '') return null;
+
+        $sql = "SELECT menu_id
+                FROM table_men_rutas
+                WHERE activa = 1
+                  AND :ruta LIKE CONCAT('%', patron, '%')
+                ORDER BY LENGTH(patron) DESC
+                LIMIT 1";
+        $row = $this->fetchOne($sql, ['ruta' => $ruta]);
+        return $row ? (int)$row['menu_id'] : null;
+    }
+
+    /**
+     * Verifica si un usuario tiene acceso a un menú específico.
+     * Devuelve true si:
+     *   - Tiene el menu_id asignado directamente en table_men_usuario_menu, O
+     *   - Su departamento tiene el menu_id en table_men_departamento_menu, O
+     *   - Es del departamento Sistema (admin absoluto).
+     *
+     * Nota: el departamento Sistema siempre pasa por seguridad
+     * (para que un admin nunca se quede fuera accidentalmente).
+     */
+    public function tieneMenuAsignado(int $userId, int $departamentoId, int $menuId): bool{
+        if ($menuId <= 0) return false;
+
+        // Admin Sistema → siempre pasa
+        if ($departamentoId === (int)DEPARTAMENTO_SISTEMA){
+            return true;
+        }
+
+        $sql = "SELECT 1
+                FROM table_men_menu m
+                LEFT JOIN table_men_usuario_menu um
+                       ON um.menu_id = m.menu_id AND um.usuario_id = :uid
+                LEFT JOIN table_men_departamento_menu dm
+                       ON dm.menu_id = m.menu_id AND dm.departamento_id = :dept
+                WHERE m.menu_id = :mid
+                  AND m.menu_estado = 1
+                  AND (um.usuario_id IS NOT NULL OR dm.departamento_id IS NOT NULL)
+                LIMIT 1";
+        return (bool)$this->fetchOne($sql, [
+            'uid'  => $userId,
+            'dept' => $departamentoId,
+            'mid'  => $menuId,
         ]);
     }
 }

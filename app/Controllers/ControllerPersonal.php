@@ -6,25 +6,28 @@ use App\Core\Validator;
 use App\Models\ModelPersonal;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerPersonal extends Controller
 {
     public function index(): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $user = auth_user();
         $mUser = new ModelUsuario();
         $this->view('personal.index', [
             'user'      => $user,
             'menu'      => $mUser->getMenuJerarquico((int)$user['id'], (int)$user['departamento_id']),
             'pageTitle' => 'Personal',
-            'scripts'   => ['personal.js'],   // 👈 AÑADIR ESTA LÍNEA
+            'scripts'   => ['personal.js'],
         ]);
     }
 
     public function listar(): void
     {
         AuthGuard::check();
+        MenuGuard::check();
 
         $q      = trim((string)($_GET['q'] ?? ''));
         $limit  = max(1, min(100, (int)($_GET['limit'] ?? 10)));
@@ -55,6 +58,7 @@ class ControllerPersonal extends Controller
     public function obtener(string $id): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $row = (new ModelPersonal())->find((int)$id);
         if (!$row) $this->json(['ok' => false, 'message' => 'Personal no encontrado.'], 404);
         $this->json(['ok' => true, 'data' => $row]);
@@ -63,6 +67,7 @@ class ControllerPersonal extends Controller
     public function combos(): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $m = new ModelPersonal();
         $this->json([
             'ok'            => true,
@@ -73,9 +78,10 @@ class ControllerPersonal extends Controller
 
     public function guardar(): void{
         AuthGuard::check();
+        MenuGuard::check();
         $d = $this->input();
 
-        // 👇 Añadir esta línea
+        // Normalizar (MAYÚSCULAS excepto email)
         $d = $this->normalizar($d);
 
         $v = new Validator();
@@ -102,10 +108,11 @@ class ControllerPersonal extends Controller
 
     public function actualizar(string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
         $d = $this->input();
 
-        // 👇 Añadir esta línea
+        // Normalizar (MAYÚSCULAS excepto email)
         $d = $this->normalizar($d);
 
         $v = new Validator();
@@ -131,6 +138,7 @@ class ControllerPersonal extends Controller
     public function eliminar(string $id): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
         $m = new ModelPersonal();
         if (!$m->find($id)) $this->json(['ok' => false, 'message' => 'Personal no encontrado.'], 404);
@@ -145,6 +153,7 @@ class ControllerPersonal extends Controller
     public function cambiarStatus(string $id): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $id = (int)$id;
         $d = $this->input();
         $status = (int)($d['personal_status'] ?? 1);
@@ -157,6 +166,7 @@ class ControllerPersonal extends Controller
             $this->json(['ok' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
+
     /**
      * Normaliza el payload del personal.
      * Todos los campos de texto van en MAYÚSCULAS excepto el email.
