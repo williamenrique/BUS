@@ -5,15 +5,18 @@ use App\Core\Controller;
 use App\Models\ModelFlotaStatus;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerFlotaStatus extends Controller
 {
     /* ============================================================
        VISTA PRINCIPAL
+       Protegido con menu_id = 1103 (patrón: flota/status)
        ============================================================ */
     public function index(string $inst = '1'): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user   = auth_user();
         $mUser  = new ModelUsuario();
@@ -33,6 +36,7 @@ class ControllerFlotaStatus extends Controller
     public function listar(string $inst = '1'): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -70,6 +74,7 @@ class ControllerFlotaStatus extends Controller
     public function combos(string $inst = '1'): void
     {
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         try {

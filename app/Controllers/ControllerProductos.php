@@ -6,14 +6,17 @@ use App\Core\Validator;
 use App\Models\ModelProductos;
 use App\Models\ModelUsuario;
 use App\Middleware\AuthGuard;
+use App\Middleware\MenuGuard;
 
 class ControllerProductos extends Controller{
 
     /* ============================================================
        VISTA
+       Protegido con menu_id = 1201 (patrón: productos/i)
        ============================================================ */
     public function index(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
         $user = auth_user();
         $mUser = new ModelUsuario();
@@ -32,6 +35,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function listar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $q      = trim((string)($_GET['q'] ?? ''));
@@ -61,6 +65,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function combos(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
 
         $this->safe(function(){
@@ -79,6 +84,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function obtener(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
 
         $this->safe(function() use ($id){
@@ -96,6 +102,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function guardar(string $inst = '1'): void{
         AuthGuard::check();
+        MenuGuard::check();
         $instId = inst_actual((int)$inst);
 
         $d = $this->input();
@@ -132,6 +139,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function actualizar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -168,6 +176,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function agregarStock(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
@@ -198,6 +207,7 @@ class ControllerProductos extends Controller{
        ============================================================ */
     public function eliminar(string $inst, string $id): void{
         AuthGuard::check();
+        MenuGuard::check();
         inst_actual((int)$inst);
         $id = (int)$id;
 
