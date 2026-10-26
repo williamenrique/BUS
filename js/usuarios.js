@@ -471,13 +471,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const u = dt?.getData().find(x => Number(x.usuario_id) === Number(id));
         const nick = u?.usuario_nick || 'usuario';
 
-        const nueva = prompt(`Nueva contraseña para "${nick}" (mínimo 4 caracteres):`);
-        if (nueva === null) return;
+        const nueva = await sitgoPrompt({
+            title:       'Resetear contraseña',
+            message:     `Nueva contraseña para "${nick}". Debe tener al menos 4 caracteres.`,
+            placeholder: 'Nueva contraseña',
+            okText:      'Cambiar contraseña',
+            cancelText:  'Cancelar',
+            type:        'warning',
+            icon:        'key-round',
+            inputType:   'password',
+            minLength:   4,
+        });
 
-        if (nueva.trim().length < 4){
-            toast('La contraseña debe tener al menos 4 caracteres.', 'error');
-            return;
-        }
+        if (nueva === null) return;
 
         try{
             const d = await fetchJSON(API + '/reset-password/' + id, {

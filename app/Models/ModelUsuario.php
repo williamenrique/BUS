@@ -10,8 +10,9 @@ class ModelUsuario extends Model{
        ============================================================ */
 
     /**
-     * Busca un usuario por nick (case-insensitive para soportar
-     * usuarios viejos en minúscula y nuevos en MAYÚSCULA).
+     * Busca un usuario por nick (case-insensitive).
+     * NO filtra por usuario_status aquí: el controlador decide
+     * si un usuario inhabilitado puede o no entrar.
      */
     public function findByNick(string $nick): ?array{
         $sql = "SELECT u.usuario_id, u.usuario_nick, u.usuario_password,
@@ -26,7 +27,6 @@ class ModelUsuario extends Model{
                 INNER JOIN table_departamentos d ON d.departamento_id = u.usuario_departamento_id
                 LEFT JOIN table_personal p ON p.id_personal = u.usuario_id_personal
                 WHERE LOWER(u.usuario_nick) = LOWER(:nick)
-                  AND u.usuario_status = 1
                 LIMIT 1";
         return $this->fetchOne($sql, ['nick' => $nick]);
     }
@@ -42,9 +42,6 @@ class ModelUsuario extends Model{
         return $this->fetchOne($sql, ['email' => $email]);
     }
 
-    /**
-     * Busca un usuario por cédula del personal vinculado.
-     */
     public function findByCedula(string $cedula): ?array{
         $soloDigitos = preg_replace('/\D/', '', $cedula);
         if ($soloDigitos === '') return null;
@@ -471,25 +468,8 @@ class ModelUsuario extends Model{
 
     /* ============================================================
        NUEVOS · AUTORIZACIÓN POR MENÚ
-       ------------------------------------------------------------
-       Se usan para verificar si un usuario puede acceder a una
-       ruta protegida. NO se llaman todavía desde ningún controlador.
        ============================================================ */
 
-    /**
-     * Devuelve el menu_id que corresponde a una ruta según
-     * table_men_rutas. Devuelve null si la ruta no está registrada
-     * (en cuyo caso el guard debe dejar pasar para no romper rutas
-     * internas como /perfil, /logout, etc.).
-     *
-     * Busca por patrón con LIKE, ordenando por longitud de patrón
-     * descendente para que gane el patrón más específico.
-     *
-     * Ej:
-     *   '/estacion/dataventa'     → coincide con 'estacion/dataventa' → menu_id 10
-     *   '/producto/historial'     → coincide con 'producto/historial' → menu_id 1005
-     *   '/producto'               → coincide con 'producto'           → menu_id 1001
-     */
     public function menuIdPorRuta(string $ruta): ?int{
         if ($ruta === '') return null;
 
@@ -503,20 +483,9 @@ class ModelUsuario extends Model{
         return $row ? (int)$row['menu_id'] : null;
     }
 
-    /**
-     * Verifica si un usuario tiene acceso a un menú específico.
-     * Devuelve true si:
-     *   - Tiene el menu_id asignado directamente en table_men_usuario_menu, O
-     *   - Su departamento tiene el menu_id en table_men_departamento_menu, O
-     *   - Es del departamento Sistema (admin absoluto).
-     *
-     * Nota: el departamento Sistema siempre pasa por seguridad
-     * (para que un admin nunca se quede fuera accidentalmente).
-     */
     public function tieneMenuAsignado(int $userId, int $departamentoId, int $menuId): bool{
         if ($menuId <= 0) return false;
 
-        // Admin Sistema → siempre pasa
         if ($departamentoId === (int)DEPARTAMENTO_SISTEMA){
             return true;
         }

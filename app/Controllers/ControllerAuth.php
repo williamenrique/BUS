@@ -37,18 +37,29 @@ class ControllerAuth extends Controller
         $model = new ModelUsuario();
         $user  = $model->findByNick($nick);
 
+        // 1) ¿Existe el usuario?
         if (!$user) {
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
             return;
         }
 
+        // 2) ¿La contraseña es correcta?
         $check = verify_password($pass, (string)$user['usuario_password']);
         if (!$check['ok']) {
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
             return;
         }
 
-        // Rehash si es legacy
+        // 3) ¿Está habilitado?
+        if ((int)$user['usuario_status'] !== 1) {
+            $this->json([
+                'ok'      => false,
+                'message' => 'Tu usuario está inhabilitado. Contacta al administrador del sistema.'
+            ], 403);
+            return;
+        }
+
+        // 4) Rehash si es legacy (solo si está activo)
         if ($check['needs_rehash']) {
             try {
                 $model->actualizarPassword((int)$user['usuario_id'], hash_password($pass));

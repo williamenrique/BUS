@@ -5860,3 +5860,41 @@ body{
         display: none;
     }
 }
+/* ============================================
+   MODAL DE PROMPT (input) · SITGO
+   ============================================ */
+
+.confirm-input-wrap {
+    margin: 1rem 0 1.25rem;
+    text-align: left;
+}
+
+.confirm-input {
+    width: 100%;
+    padding: .65rem .85rem;
+    border: 1px solid #cbd5e1;
+    border-radius: .5rem;
+    font-family: inherit;
+    font-size: .95rem;
+    background: #fff;
+    color: #0f172a;
+    outline: none;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.confirm-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, .15);
+}
+
+.confirm-input.error {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, .15);
+}
+
+.confirm-input-error {
+    margin: .35rem 0 0;
+    font-size: .78rem;
+    color: #dc2626;
+    font-weight: 500;
+}

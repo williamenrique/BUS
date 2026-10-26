@@ -414,3 +414,178 @@ window.sitgoChoice = function(options = {}){
     });
 };
 
+
+/* ============================================================
+   MODAL DE PROMPT · SITGO (GLOBAL)
+   ------------------------------------------------------------
+   Muestra un modal propio con un <input>. Devuelve el valor
+   ingresado o `null` si el usuario cancela.
+
+   Uso:
+       const valor = await sitgoPrompt({
+           title:       'Resetear contraseña',
+           message:     'Nueva contraseña para "usuario":',
+           placeholder: 'Mínimo 4 caracteres',
+           okText:      'Cambiar contraseña',
+           cancelText:  'Cancelar',
+           type:        'warning',
+           icon:        'key-round',
+           inputType:   'text',
+           minLength:   4,
+       });
+       if (valor === null) return;
+   ============================================================ */
+window.sitgoPrompt = function(options = {}){
+    return new Promise((resolve) => {
+        const {
+            title        = 'Ingresa un valor',
+            message      = '',
+            placeholder  = '',
+            okText       = 'Aceptar',
+            cancelText   = 'Cancelar',
+            type         = 'info',
+            icon         = 'key-round',
+            inputType    = 'text',
+            minLength    = 0,
+            initialValue = '',
+        } = options;
+
+        const $ = id => document.getElementById(id);
+        const modal       = $('sitgoPromptModal');
+        const iconWrap    = $('sitgoPromptIconWrap');
+        const titleEl     = $('sitgoPromptTitle');
+        const msgEl       = $('sitgoPromptMessage');
+        const input       = $('sitgoPromptInput');
+        const errorEl     = $('sitgoPromptError');
+        const okBtn       = $('sitgoPromptOk');
+        const cancelBtn   = $('sitgoPromptCancel');
+        const okTextEl    = $('sitgoPromptOkText');
+        const cancelTextEl= $('sitgoPromptCancelText');
+
+        // Fallback si no está el modal en el DOM
+        if (!modal || !input || !okBtn || !cancelBtn){
+            const v = window.prompt(`${title}\n${message}`, initialValue);
+            resolve(v === null ? null : String(v));
+            return;
+        }
+
+        // Reset de estado
+        titleEl.textContent  = title;
+        msgEl.textContent    = message;
+        msgEl.style.display  = message ? '' : 'none';
+        okTextEl.textContent = okText;
+        cancelTextEl.textContent = cancelText;
+
+        input.type        = inputType;
+        input.value       = initialValue;
+        input.placeholder = placeholder;
+        input.classList.remove('error');
+        errorEl.textContent   = '';
+        errorEl.style.display = 'none';
+
+        // Icono + color
+        iconWrap.classList.remove('danger','info','success','warning');
+        if (type !== 'warning') iconWrap.classList.add(type);
+        iconWrap.innerHTML = `<i data-lucide="${icon}" class="w-6 h-6"></i>`;
+
+        // Botón OK: danger si type === 'danger'
+        okBtn.classList.toggle('btn-danger',  type === 'danger');
+        okBtn.classList.toggle('btn-primary', type !== 'danger');
+
+        // Mostrar
+        modal.classList.add('open');
+
+        if (window.lucide && typeof window.lucide.createIcons === 'function'){
+            try{ window.lucide.createIcons(); } catch(_) {}
+        }
+
+        // ---- Validación ----
+        const validar = () => {
+            const val = input.value.trim();
+
+            if (minLength > 0 && val.length < minLength){
+                input.classList.add('error');
+                errorEl.textContent = `Debe tener al menos ${minLength} caracteres.`;
+                errorEl.style.display = '';
+                return null;
+            }
+
+            if (inputType === 'number'){
+                const n = parseFloat(val);
+                if (!isFinite(n)){
+                    input.classList.add('error');
+                    errorEl.textContent = 'Ingresa un número válido.';
+                    errorEl.style.display = '';
+                    return null;
+                }
+                return String(n);
+            }
+
+            input.classList.remove('error');
+            errorEl.textContent = '';
+            errorEl.style.display = 'none';
+            return val;
+        };
+
+        // ---- Cleanup ----
+        let resuelto = false;
+        const cleanup = (result) => {
+            if (resuelto) return;
+            resuelto = true;
+
+            modal.classList.remove('open');
+            okBtn.removeEventListener('click', onOk);
+            cancelBtn.removeEventListener('click', onCancel);
+            modal.removeEventListener('click', onBackdrop);
+            input.removeEventListener('input', onInput);
+            input.removeEventListener('keydown', onKeyInput);
+            document.removeEventListener('keydown', onKey);
+            input.value = '';
+            resolve(result);
+        };
+
+        // ---- Handlers ----
+        const onOk = () => {
+            const v = validar();
+            if (v === null) return;
+            cleanup(v);
+        };
+
+        const onCancel   = () => cleanup(null);
+        const onBackdrop = (e) => { if (e.target === modal) cleanup(null); };
+
+        const onInput = () => {
+            if (input.classList.contains('error')){
+                input.classList.remove('error');
+                errorEl.textContent = '';
+                errorEl.style.display = 'none';
+            }
+        };
+
+        const onKeyInput = (e) => {
+            if (e.key === 'Enter'){
+                e.preventDefault();
+                onOk();
+            }
+            if (e.key === 'Escape'){
+                e.preventDefault();
+                cleanup(null);
+            }
+        };
+
+        const onKey = (e) => {
+            if (e.key === 'Escape') cleanup(null);
+        };
+
+        // ---- Listeners ----
+        okBtn.addEventListener('click', onOk);
+        cancelBtn.addEventListener('click', onCancel);
+        modal.addEventListener('click', onBackdrop);
+        input.addEventListener('input', onInput);
+        input.addEventListener('keydown', onKeyInput);
+        document.addEventListener('keydown', onKey);
+
+        // Enfocar el input tras abrir
+        setTimeout(() => { input.focus(); input.select(); }, 60);
+    });
+};

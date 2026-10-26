@@ -173,12 +173,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ============================================================
        RECUPERAR CONTRASEÑA
-       ------------------------------------------------------------
-       - Si la solicitud es exitosa:
-         · Se muestra el mensaje verde.
-         · Se espera 2.5 s (para que el usuario lo lea).
-         · Se cierra el modal con animación suave.
-       - Si falla: el modal queda abierto para reintentar.
        ============================================================ */
     formF?.addEventListener('submit', async (e) => {
         e.preventDefault();
