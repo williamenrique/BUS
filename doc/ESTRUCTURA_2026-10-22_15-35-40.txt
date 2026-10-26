@@ -1,0 +1,223 @@
+============================================
+ESTRUCTURA DE ARCHIVOS -
+============================================
+Fecha: 2026-10-22 15:35:40
+Raíz: C:\xampp\htdocs\BUS
+Total Items: 212
+Directorios: 67
+Archivos: 145
+Tamaño Total: 4 KB
+============================================
+
+📁 app
+  📁 Config
+    📄 config.php (3.4 KB)
+    📄 routes.php (26.3 KB)
+  📁 Controllers
+    📄 ControllerAuth.php (5.9 KB)
+    📄 ControllerBienes.php (6.5 KB)
+    📄 ControllerCompras.php (8 KB)
+    📄 ControllerDashboard.php (7.1 KB)
+    📄 ControllerDespachos.php (11.6 KB)
+    📄 ControllerEstacion.php (24.3 KB)
+    📄 ControllerFlota.php (16.3 KB)
+    📄 ControllerMenu.php (10.5 KB)
+    📄 ControllerPdf.php (5.8 KB)
+    📄 ControllerPersonal.php (6.6 KB)
+    📄 ControllerProductos.php (8.1 KB)
+    📄 ControllerPublico.php (25.3 KB)
+    📄 ControllerRecuperar.php (7 KB)
+    📄 ControllerUsuario.php (22.5 KB)
+  📁 Core
+    📄 App.php (5 KB)
+    📄 AppException.php (73 B)
+    📄 Controller.php (3.2 KB)
+    📄 Database.php (2 KB)
+    📄 DatabaseException.php (700 B)
+    📄 Model.php (3.4 KB)
+    📄 Validator.php (1 KB)
+  📁 Helpers
+    📄 helpers.php (15.1 KB)
+  📁 Middleware
+    📄 AuthGuard.php (3.5 KB)
+    📄 RoleGuard.php (714 B)
+  📁 Models
+    📄 ModelBienes.php (8.2 KB)
+    📄 ModelCompras.php (13.9 KB)
+    📄 ModelDashboard.php (24.1 KB)
+    📄 ModelDespachos.php (24.5 KB)
+    📄 ModelEstacion.php (38.1 KB)
+    📄 ModelFlota.php (22.5 KB)
+    📄 ModelMenu.php (10 KB)
+    📄 ModelPersonal.php (7.5 KB)
+    📄 ModelProductos.php (10.8 KB)
+    📄 ModelPublico.php (26.1 KB)
+    📄 ModelRecuperar.php (3.3 KB)
+    📄 ModelUsuario.php (20.6 KB)
+  📁 Services
+    📄 PdfService.php (5.2 KB)
+  📁 Views
+    📁 auth
+      📄 Login.php (6.1 KB)
+    📁 bienes
+      📄 index.php (8.4 KB)
+    📁 compras
+      📄 index.php (14.9 KB)
+    📁 dashboard
+      📄 index.php (26.7 KB)
+    📁 despachos
+      📄 historial.php (5.7 KB)
+      📄 index.php (13.1 KB)
+    📁 errores
+      📄 404.php (639 B)
+    📁 estacion
+      📄 dataventa.php (10.8 KB)
+      📄 registrar.php (11.7 KB)
+      📄 seleccionar.php (2.6 KB)
+    📁 flota
+      📄 aceite.php (9.5 KB)
+      📄 historial.php (8.4 KB)
+      📄 index.php (13.6 KB)
+    📁 inc
+      📄 footer.php (1.4 KB)
+      📄 header.php (15.3 KB)
+    📁 menu
+      📄 index.php (13.1 KB)
+    📁 pdf
+      📁 inc
+        📄 footer.php (218 B)
+        📄 header.php (2.3 KB)
+        📄 pdf.css.php (6.9 KB)
+      📁 templates
+        📄 bienes_reporte.php (4 KB)
+        📄 compras_costeadas_filtrado.php (6.1 KB)
+        📄 compras_orden_costeada.php (4.7 KB)
+        📄 despachos_orden.php (5.4 KB)
+        📄 estacion_litros.php (5.6 KB)
+        📄 estacion_reporte_dia.php (14.7 KB)
+        📄 flota_aceite.php (4.8 KB)
+        📄 flota_hoja_vida.php (7.8 KB)
+        📄 flota_operatividad.php (3.6 KB)
+        📄 productos_historial.php (2.8 KB)
+        📄 productos_inventario.php (2.9 KB)
+        📄 publico_aceite.php (6 KB)
+        📄 publico_movimientos.php (3.9 KB)
+        📄 publico_ventas_estacion.php (8.2 KB)
+    📁 personal
+      📄 index.php (7.6 KB)
+    📁 productos
+      📄 index.php (9.4 KB)
+    📁 publico
+      📁 inc
+        📄 footer.php (1.7 KB)
+        📄 header.php (9 KB)
+      📄 movimientos.php (26.4 KB)
+    📁 recuperar
+      📄 index.php (990 B)
+    📁 usuarios
+      📄 index.php (9.2 KB)
+📁 doc
+  📄 estructura_2026-10-16_22-25-04.txt (4 KB)
+📁 public_html
+  📁 css
+    📄 styles.css (99.8 KB)
+    📄 tailwind.min.css (64.6 KB)
+  📁 img
+    📄 default.png (941 B)
+    📄 logo.png (245.8 KB)
+  📁 js
+    📁 components
+      📄 DataTable.js (11.3 KB)
+      📄 IconPicker.js (16.1 KB)
+      📄 SearchSelect.js (9.1 KB)
+    📄 aceite.js (11.1 KB)
+    📄 app.js (11.1 KB)
+    📄 bienes.js (18 KB)
+    📄 compras.js (24.7 KB)
+    📄 dashboard.js (29.3 KB)
+    📄 dataventa.js (32.6 KB)
+    📄 despachos.js (27.2 KB)
+    📄 estacion-seleccionar.js (2.3 KB)
+    📄 estacion.js (25.3 KB)
+    📄 flota.js (21.6 KB)
+    📄 function.imprimir.js (3.4 KB)
+    📄 function.imprimirQZ.js (13.7 KB)
+    📄 historial-productos.js (24.1 KB)
+    📄 historial.js (13.1 KB)
+    📄 login.js (6.8 KB)
+    📄 menu.js (42.5 KB)
+    📄 movimientos.js (84.8 KB)
+    📄 notifications.js (3.2 KB)
+    📄 pdf.js (3.2 KB)
+    📄 personal.js (15.4 KB)
+    📄 productos.js (16.9 KB)
+    📄 recuperar.js (8.3 KB)
+    📄 usuarios.js (29.1 KB)
+    📄 utils.js (7.7 KB)
+  📁 uploads
+    📁 storage
+      📁 A0-25
+        📄 A0-25_default.png (941 B)
+      📁 ADMIN
+        📄 default.png (24.9 KB)
+      📁 AM-23
+        📄 default.png (245.8 KB)
+      📁 BM-19
+        📄 default.png (245.8 KB)
+      📁 DB-13
+        📄 profile_6a280cb17b91a2.24511689.jpeg (113.8 KB)
+      📁 DG-11
+        📄 profile_68eeae865b50e7.01552912.png (73.8 KB)
+      📁 DP-21
+        📄 default.png (245.8 KB)
+      📁 EL-08
+        📄 default.png (17.8 KB)
+      📁 FA-06
+        📄 default.png (17.8 KB)
+      📁 GR-05
+        📄 default.png (17.8 KB)
+      📁 HR-20
+        📄 default.png (245.8 KB)
+      📁 JG-22
+        📄 default.png (245.8 KB)
+      📁 JZ-10
+        📄 default.png (24.9 KB)
+      📁 KM-07
+        📄 default.png (17.8 KB)
+      📁 KM-15
+        📄 default.png (73.8 KB)
+      📁 MO-03
+        📄 default.png (17.8 KB)
+      📁 MR-24
+        📄 MR-24_default.png (941 B)
+      📁 NL-16
+        📄 profile_68ffeb47401ab3.36557297.jpeg (39.1 KB)
+      📁 OM-17
+        📄 default.png (245.8 KB)
+      📁 RD-09
+        📄 default.png (17.8 KB)
+      📁 SM-12
+        📄 profile_68e3b3a42c2c05.48317417.png (73.8 KB)
+      📁 WILL
+        📄 profile_6928711aca9b87.19854429.png (941 B)
+      📁 YA-11
+        📄 default.png (17.8 KB)
+      📁 YM-12
+        📄 default.png (17.8 KB)
+      📁 YR-04
+        📄 default.png (17.8 KB)
+      📁 YS-18
+        📄 default.png (245.8 KB)
+    📁 tmp_pdf
+  📄 estructura.php (31 KB)
+  📄 index.php (659 B)
+📁 sql
+  📄 ESTRUCTURA_BUSYARACUY_22-10-26.sql (36.9 KB)
+  📄 sql.zip (1.7 KB)
+📁 storage
+  📁 logs
+    📄 db-errors.log (3.1 KB)
+  📁 pdf_tokens
+📄 dd.html (2.6 KB)
+📄 ESTRUCTURA.MD (1.3 KB)
+📄 README.md (72 B)
