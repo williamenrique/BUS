@@ -58,9 +58,9 @@
         </div>
 
         <div class="dt-toolbar-right" style="flex-wrap:wrap; gap:.5rem;">
-            <select id="filtroUnidad" class="filter-select" style="min-width:180px;">
-                <option value="">Todas las unidades</option>
-            </select>
+            <div id="wrapFiltroUnidad" style="min-width:200px;"></div>
+            <input type="hidden" id="filtroUnidad">
+
             <select id="filtroStatus" class="filter-select" style="min-width:160px;">
                 <option value="">Todos los estados</option>
                 <option value="1">Activo</option>

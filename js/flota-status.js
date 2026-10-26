@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = id => document.getElementById(id);
 
     let dt = null;
+    let ssFiltroUnidad = null;   // SearchSelect de la unidad
 
     /* ============================================
        HELPERS
@@ -48,10 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ============================================
        Badge de estado
-       ------------------------------------------------------------
-       - Devuelve el badge con el color según el idstatus.
-       - Si la fila tiene id_flota, el badge es clickeable y abre
-         el historial de la unidad filtrado por tipo=status.
        ============================================ */
     function badgeStatus(idstatus, idFlota) {
         let label, clase;
@@ -64,12 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
             default: label = 'Desconocido';      clase = 'badge-info';    break;
         }
 
-        // Si no hay id_flota → devolvemos el badge estático
         if (!idFlota) {
             return `<span class="badge ${clase}">${label}</span>`;
         }
 
-        // Badge clickeable → abre el historial filtrado por tipo=status
         const inst = window.SITGO_INST || 1;
         const base = (window.SITGO_BASE || '/');
         const url  = `${base}flota/i/${inst}/historial/${idFlota}?tipo=status`;
@@ -129,6 +124,15 @@ document.addEventListener('DOMContentLoaded', () => {
        ============================================ */
     (async () => {
         try {
+            // SearchSelect de unidad
+            ssFiltroUnidad = new SearchSelect({
+                wrapperId: 'wrapFiltroUnidad',
+                hiddenInputId: 'filtroUnidad',
+                placeholder: 'Todas las unidades',
+                noResultsText: 'Sin unidades',
+                onChange: () => dt?.changePage(1) || dt?.reload()
+            });
+
             await cargarCombos();
 
             dt = new DataTable({
@@ -144,10 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 endId: 'endStatus',
                 noDataMessage: 'No hay cambios de estado registrados',
                 getExtraParams: () => ({
-                    status:   $('filtroStatus')?.value   || '',
-                    id_flota: $('filtroUnidad')?.value   || '',
-                    desde:    $('filtroDesde')?.value    || '',
-                    hasta:    $('filtroHasta')?.value    || '',
+                    status:   $('filtroStatus')?.value || '',
+                    id_flota: ssFiltroUnidad ? ssFiltroUnidad.getValue() : '',
+                    desde:    $('filtroDesde')?.value || '',
+                    hasta:    $('filtroHasta')?.value || '',
                 }),
                 onDataLoaded: (payload) => {
                     if (payload && payload.counts) {
@@ -179,30 +183,34 @@ document.addEventListener('DOMContentLoaded', () => {
     async function cargarCombos() {
         const d = await fetchJSON(API + '/combos');
         if (!d.ok) return;
+        if (!ssFiltroUnidad) return;
 
-        const sel = $('filtroUnidad');
-        if (!sel) return;
-
-        sel.innerHTML = `<option value="">Todas las unidades</option>` +
-            (d.unidades || []).map(u =>
-                `<option value="${u.id_flota}">${esc(u.id_unidad)}${u.vim_unidad ? ' · ' + esc(u.vim_unidad) : ''}</option>`
-            ).join('');
+        ssFiltroUnidad.setOptions((d.unidades || []).map(u => ({
+            value: u.id_flota,
+            label: `${u.id_unidad}${u.vim_unidad ? ' · ' + u.vim_unidad : ''}`,
+            search: `${u.id_unidad || ''} ${u.vim_unidad || ''} ${u.marca_unidad || ''} ${u.modelo_unidad || ''}`.toLowerCase(),
+            data: u
+        })));
     }
 
     /* ============================================
        EVENTOS
        ============================================ */
     function bindEvents() {
-        ['filtroStatus', 'filtroUnidad', 'filtroDesde', 'filtroHasta'].forEach(id => {
+        // filtroUnidad ya no se escucha por 'change' porque el SearchSelect llama onChange
+        ['filtroStatus', 'filtroDesde', 'filtroHasta'].forEach(id => {
             $(id)?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
         });
 
         $('btnLimpiar')?.addEventListener('click', () => {
             if ($('filtroBuscar'))  $('filtroBuscar').value  = '';
             if ($('filtroStatus'))  $('filtroStatus').value  = '';
-            if ($('filtroUnidad'))  $('filtroUnidad').value  = '';
             if ($('filtroDesde'))   $('filtroDesde').value   = '';
             if ($('filtroHasta'))   $('filtroHasta').value   = '';
+
+            // Limpiar el SearchSelect de unidades
+            ssFiltroUnidad?.clear();
+
             dt?.changePage(1) || dt?.reload();
         });
 
