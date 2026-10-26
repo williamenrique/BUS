@@ -84,8 +84,7 @@ class ControllerPdf extends Controller
         }
     }
 
-    public function ver(): void
-    {
+    public function ver(): void {
         AuthGuard::check();
 
         $token = (string)($_GET['t'] ?? '');
@@ -134,19 +133,30 @@ class ControllerPdf extends Controller
         try {
             @unlink($file);
 
-            // Pasar $data tal cual al PdfService. El template se encarga
-            // de normalizarlo. No tocamos nada aquí para no romper nada.
-            $dataToPass = $tokenData['data'] ?? [];
-
+            // Limpiar cualquier output previo
             while (ob_get_level() > 0) {
                 ob_end_clean();
             }
+            if (headers_sent($f, $l)) {
+                error_log("PDF: headers ya enviados en {$f}:{$l}");
+            }
+
+            // Forzar headers ANTES de generar
+            $filename = $tokenData['filename'] ?? 'documento.pdf';
+            if (!preg_match('/\.pdf$/i', $filename)) {
+                $filename .= '.pdf';
+            }
+
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="' . $filename . '"');
+            header('Cache-Control: private, max-age=0, must-revalidate');
+            header('Pragma: public');
 
             $pdf = new PdfService();
             $pdf->generarDocumento(
                 $tokenData['view'],
-                is_array($dataToPass) ? $dataToPass : [],
-                $tokenData['filename'] ?? 'documento.pdf',
+                is_array($tokenData['data'] ?? null) ? $tokenData['data'] : [],
+                $filename,
                 false,
                 is_array($tokenData['meta'] ?? null) ? $tokenData['meta'] : []
             );
