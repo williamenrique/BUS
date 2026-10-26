@@ -46,21 +46,22 @@
 
                 <div class="form-group">
                     <label>Rol <span class="req">*</span></label>
-                    <select name="usuario_rol_id" id="usuario_rol_id"></select>
+                    <div id="wrapRol"></div>
+                    <input type="hidden" name="usuario_rol_id" id="usuario_rol_id">
                     <span class="error" data-error="usuario_rol_id"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Departamento <span class="req">*</span></label>
-                    <select name="usuario_departamento_id" id="usuario_departamento_id"></select>
+                    <div id="wrapDepartamento"></div>
+                    <input type="hidden" name="usuario_departamento_id" id="usuario_departamento_id">
                     <span class="error" data-error="usuario_departamento_id"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Estación <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
-                    <select name="usuario_estacion_id" id="usuario_estacion_id">
-                        <option value="0">Sin estación (0)</option>
-                    </select>
+                    <div id="wrapEstacion"></div>
+                    <input type="hidden" name="usuario_estacion_id" id="usuario_estacion_id">
                     <span class="error" data-error="usuario_estacion_id"></span>
                 </div>
 
@@ -154,18 +155,16 @@
             <span class="dt-toolbar-label">registros</span>
         </div>
 
-        <div class="dt-toolbar-right">
+        <div class="dt-toolbar-right" style="gap:.5rem;">
             <select id="filtroStatus" class="filter-select">
                 <option value="">Todos los estatus</option>
                 <option value="1">Activos</option>
                 <option value="0">Inactivos</option>
             </select>
-            <select id="filtroRol" class="filter-select">
-                <option value="">Todos los roles</option>
-            </select>
-            <select id="filtroDepartamento" class="filter-select">
-                <option value="">Todos los departamentos</option>
-            </select>
+            <div id="wrapFiltroRol" style="min-width:180px;"></div>
+            <input type="hidden" id="filtroRol">
+            <div id="wrapFiltroDepartamento" style="min-width:200px;"></div>
+            <input type="hidden" id="filtroDepartamento">
             <div class="filter-search" style="min-width:240px;">
                 <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
                 <input type="text" id="filtroBuscar" placeholder="Buscar...">

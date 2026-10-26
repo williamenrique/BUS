@@ -1,12 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'usuarios';
-    // console.log('📡 API Usuarios =', API);
-
     const $ = id => document.getElementById(id);
+
     let dt = null;
-    let ssPersonal = null;   // instancia del SearchSelect de personal
-        let menusArbol = [];
+    let menusArbol = [];
     let menusSeleccionados = new Set();
+
+    // SearchSelects
+    let ssPersonal       = null;
+    let ssRol            = null;
+    let ssDepartamento   = null;
+    let ssEstacion       = null;
+    let ssFiltroRol      = null;
+    let ssFiltroDepto    = null;
 
     /* ============================================
        RENDER ROW (fila de tabla)
@@ -20,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `${u.personal_nombre || ''} ${u.personal_apellido || ''}`.trim()
             : '<span class="text-muted">Sin vincular</span>';
 
-        // Avatar: si hay imagen → usarla; si no → iniciales (fallback)
         const avatarUrl = u.usuario_imagen
             ? (window.SITGO_BASE || '/') + 'uploads/storage/' + esc(u.usuario_imagen)
             : null;
@@ -66,13 +71,10 @@ document.addEventListener('DOMContentLoaded', () => {
        ============================================ */
     (async () => {
         try{
-            // 1) Inicializar SearchSelect de personal ANTES de cargar datos
-            initSearchSelect();
+            initSearchSelects();
 
-            // 2) Cargar combos (roles, departamentos, estaciones)
             await cargarCombos();
 
-            // 3) Inicializar DataTable
             dt = new DataTable({
                 tbodyId: 'tbodyUsuarios',
                 endpoint: API + '/listar',
@@ -87,8 +89,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 noDataMessage: 'No hay usuarios registrados',
                 getExtraParams: () => ({
                     status: $('filtroStatus')?.value || '',
-                    rol: $('filtroRol')?.value || '',
-                    departamento: $('filtroDepartamento')?.value || ''
+                    rol: ssFiltroRol ? ssFiltroRol.getValue() : '',
+                    departamento: ssFiltroDepto ? ssFiltroDepto.getValue() : ''
                 }),
                 onDataLoaded: () => bindTableActions()
             });
@@ -102,24 +104,54 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
     /* ============================================
-       SEARCHSELECT · Personal
+       SEARCHSELECTs
        ============================================ */
-    function initSearchSelect(){
+    function initSearchSelects(){
         ssPersonal = new SearchSelect({
             wrapperId: 'wrapPersonal',
             hiddenInputId: 'usuario_id_personal',
             placeholder: 'Buscar por cédula o nombre...',
-            noResultsText: 'Sin coincidencias',
-            onChange: () => {
-                // El onChange no hace nada especial; solo guardamos el valor.
-                // El backend autogenera el nick al guardar.
-            }
+            noResultsText: 'Sin coincidencias'
+        });
+
+        ssRol = new SearchSelect({
+            wrapperId: 'wrapRol',
+            hiddenInputId: 'usuario_rol_id',
+            placeholder: 'Seleccione rol...',
+            noResultsText: 'Sin roles'
+        });
+
+        ssDepartamento = new SearchSelect({
+            wrapperId: 'wrapDepartamento',
+            hiddenInputId: 'usuario_departamento_id',
+            placeholder: 'Seleccione departamento...',
+            noResultsText: 'Sin departamentos'
+        });
+
+        ssEstacion = new SearchSelect({
+            wrapperId: 'wrapEstacion',
+            hiddenInputId: 'usuario_estacion_id',
+            placeholder: 'Sin estación (0)',
+            noResultsText: 'Sin estaciones'
+        });
+
+        ssFiltroRol = new SearchSelect({
+            wrapperId: 'wrapFiltroRol',
+            hiddenInputId: 'filtroRol',
+            placeholder: 'Todos los roles',
+            noResultsText: 'Sin roles',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+
+        ssFiltroDepto = new SearchSelect({
+            wrapperId: 'wrapFiltroDepartamento',
+            hiddenInputId: 'filtroDepartamento',
+            placeholder: 'Todos los departamentos',
+            noResultsText: 'Sin departamentos',
+            onChange: () => dt?.changePage(1) || dt?.reload()
         });
     }
 
-    /**
-     * Recarga las opciones del SearchSelect con el personal disponible.
-     */
     function actualizarOpcionesPersonal(items, seleccionado = null){
         const opts = (items || []).map(p => ({
             value: p.id_personal,
@@ -146,45 +178,37 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = await fetchJSON(url);
         if (!d.ok) throw new Error('combos');
 
-        fillSelect($('usuario_rol_id'), d.roles, 'rol_id', 'rol_nombre', 'Seleccione...');
-        fillSelect($('usuario_departamento_id'), d.departamentos, 'departamento_id', 'departamento_nombre', 'Seleccione...');
-        fillSelect($('filtroRol'), d.roles, 'rol_id', 'rol_nombre', 'Todos los roles');
-        fillSelect($('filtroDepartamento'), d.departamentos, 'departamento_id', 'departamento_nombre', 'Todos los departamentos');
+        // Roles
+        const rolesOpts = (d.roles || []).map(r => ({
+            value: r.rol_id,
+            label: r.rol_nombre,
+            search: r.rol_nombre.toLowerCase()
+        }));
+        ssRol.setOptions(rolesOpts);
+        ssFiltroRol.setOptions(rolesOpts);
 
-        // Estación: usa función especial que respeta el value 0
-        fillEstaciones(d.estaciones);
+        // Departamentos
+        const deptosOpts = (d.departamentos || []).map(dep => ({
+            value: dep.departamento_id,
+            label: dep.departamento_nombre,
+            search: dep.departamento_nombre.toLowerCase()
+        }));
+        ssDepartamento.setOptions(deptosOpts);
+        ssFiltroDepto.setOptions(deptosOpts);
 
-        // Personal → SearchSelect
+        // Estaciones (con opción 0 = Sin estación)
+        const estOpts = [
+            { value: '0', label: 'Sin estación (0)', search: 'sin estacion 0' },
+            ...(d.estaciones || []).map(e => ({
+                value: e.id_estacion,
+                label: e.estacion,
+                search: e.estacion.toLowerCase()
+            }))
+        ];
+        ssEstacion.setOptions(estOpts);
+
+        // Personal
         actualizarOpcionesPersonal(d.personal, personalId);
-    }
-
-    /**
-     * Llena el select de estaciones manteniendo la opción "Sin estación (0)".
-     */
-    function fillEstaciones(items){
-        const sel = $('usuario_estacion_id');
-        if (!sel) return;
-        sel.innerHTML = `<option value="0">Sin estación (0)</option>`;
-        items.forEach(it => {
-            const o = document.createElement('option');
-            o.value = it.id_estacion;
-            o.textContent = it.estacion;
-            sel.appendChild(o);
-        });
-    }
-
-    /**
-     * Rellena un <select> nativo con opciones.
-     */
-    function fillSelect(sel, items, vKey, lKey, placeholder){
-        if (!sel) return;
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        items.forEach(it => {
-            const o = document.createElement('option');
-            o.value = it[vKey];
-            o.textContent = typeof lKey === 'function' ? lKey(it) : it[lKey];
-            sel.appendChild(o);
-        });
     }
 
     /* ============================================
@@ -199,12 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleSeccion();
         });
 
-        // Filtros de la tabla
         $('filtroStatus')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
-        $('filtroRol')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
-        $('filtroDepartamento')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
 
-        // Preview de imagen
         $('usuario_imagen')?.addEventListener('change', (e) => {
             const f = e.target.files?.[0];
             if (!f) return;
@@ -234,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (action === 'eliminar') eliminar(id);
             if (action === 'toggle')   toggleStatus(id, status);
             if (action === 'reset')    resetPassword(id);
-            if (action === 'delimg')   eliminarImagen(id);   // 👈 NUEVA
+            if (action === 'delimg')   eliminarImagen(id);
         });
     }
 
@@ -269,14 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $('usuario_id').value = '';
         $('usuario_status').value = '1';
-        $('usuario_rol_id').value = '';
-        $('usuario_departamento_id').value = '';
-        $('usuario_estacion_id').value = '';
 
-        // Limpiar SearchSelect de personal
         ssPersonal?.clear();
+        ssRol?.clear();
+        ssDepartamento?.clear();
+        ssEstacion?.clear();
 
-        // Recargar combos actualizados
         await cargarCombos();
 
         $('wrapPreview').style.display = 'none';
@@ -303,14 +321,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!d.ok) throw new Error(d.message);
             const u = d.data;
 
-            // Cargar combos incluyendo el personal ya vinculado
             await cargarCombos(u.usuario_id_personal || null);
 
             $('usuario_id').value              = u.usuario_id;
-            $('usuario_rol_id').value          = u.usuario_rol_id || '';
-            $('usuario_departamento_id').value = u.usuario_departamento_id || '';
-            $('usuario_estacion_id').value     = u.usuario_estacion_id || '';
             $('usuario_status').value          = u.usuario_status ?? 1;
+
+            ssRol.setValue(u.usuario_rol_id);
+            ssDepartamento.setValue(u.usuario_departamento_id);
+            ssEstacion.setValue(u.usuario_estacion_id || 0);
 
             if (u.usuario_imagen){
                 $('previewImg').src = (window.SITGO_BASE || '/') + 'uploads/storage/' + u.usuario_imagen;
@@ -318,7 +336,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 $('wrapPreview').style.display = 'none';
             }
-                        // Cargar menús del usuario
+
             $('blockMenus').style.display = '';
             await cargarMenusUsuario(id);
 
@@ -353,12 +371,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const id = $('usuario_id').value;
 
         const fd = new FormData(form);
-                // Incluir menús asignados (solo en edición)
         if (id){
             fd.append('menus_json', JSON.stringify([...menusSeleccionados]));
         }
+
         const btn = $('btnGuardar');
-        
         btn.disabled = true;
         const btnText = btn.querySelector('.btn-text');
         const original = btnText.textContent;
@@ -387,12 +404,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Éxito
             let msg = d.message;
             if (!id && d.nick){
                 msg = `Usuario "${d.nick}" creado. Contraseña por defecto: 123456`;
             }
-                        // Guardar menús asignados (solo en edición)
+
             if (id && menusSeleccionados.size >= 0){
                 try{
                     await fetchJSON(API + '/menus/guardar/' + id, {
@@ -497,9 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('Error: ' + e.message, 'error');
         }
     }
-        /**
-     * Elimina la imagen del usuario y restaura la default.
-     */
+
     async function eliminarImagen(id){
         const u = dt?.getData().find(x => Number(x.usuario_id) === Number(id));
         const nick = u?.usuario_nick || 'usuario';
@@ -523,6 +537,7 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('Error: ' + e.message, 'error');
         }
     }
+
     /* ============================================
        HELPERS
        ============================================ */
@@ -538,10 +553,13 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         $('usuario_id').value = '';
         $('wrapPreview').style.display = 'none';
-                $('blockMenus').style.display = 'none';
+        $('blockMenus').style.display = 'none';
         menusArbol = [];
         menusSeleccionados.clear();
         ssPersonal?.clear();
+        ssRol?.clear();
+        ssDepartamento?.clear();
+        ssEstacion?.clear();
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nuevo Usuario';
@@ -576,7 +594,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => t.remove(), 3500);
     }
 
-        /* ============================================================
+    /* ============================================================
        MENÚS DEL USUARIO
        ============================================================ */
     async function cargarMenusUsuario(userId){
@@ -607,7 +625,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cont.innerHTML = `<ul class="menus-tree-list">${menusArbol.map(renderMenuNode).join('')}</ul>`;
         if (window.lucide) lucide.createIcons();
 
-        // Toggle de submenús
         cont.querySelectorAll('[data-toggle-sub]').forEach(btn => {
             btn.addEventListener('click', () => {
                 const li = btn.closest('.menus-tree-item');
@@ -616,7 +633,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
 
-        // Marcar/desmarcar menús
         cont.querySelectorAll('input[type="checkbox"][data-menu-id]').forEach(chk => {
             chk.addEventListener('change', (e) => {
                 const mid = Number(e.target.dataset.menuId);
@@ -625,7 +641,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     menusSeleccionados.delete(mid);
                 }
-                // Sincronizar hijos
                 sincronizarHijos(mid, e.target.checked);
             });
         });
@@ -661,9 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </li>`;
     }
 
-    /**
-     * Marca/desmarca recursivamente los hijos cuando se cambia el padre.
-     */
     function sincronizarHijos(parentId, checked){
         const nodo = buscarNodo(menusArbol, parentId);
         if (!nodo || !nodo.children) return;
@@ -680,13 +692,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         nodo.children.forEach(marcarRec);
-
-        // Sincronizar el padre con el estado de sus hijos (si algún hijo está marcado, marcar padre)
         sincronizarPadres(parentId);
     }
 
     function sincronizarPadres(nodoId){
-        // Buscar el padre de este nodo
         let padre = null;
         const buscar = (nodos) => {
             for (const n of nodos){
@@ -727,7 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return null;
     }
 
-    // Botones de acciones masivas
     $('btnMenuMarcarTodos')?.addEventListener('click', () => {
         menusSeleccionados = new Set();
         const marcarRec = (nodos) => {
