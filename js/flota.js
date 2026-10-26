@@ -1,5 +1,3 @@
-// console.log('✅ flota.js cargado. SITGO_BASE =', window.SITGO_BASE);
-
 document.addEventListener('DOMContentLoaded', () => {
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'flota/i/' + INST;
@@ -8,6 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let dt = null;
     let allUnidades = [];
+
+    // SearchSelects
+    let ssMarca        = null;
+    let ssModelo       = null;
+    let ssFiltroMarca  = null;
 
     const STATUS_MAP = {
         0: { text: 'Desincorporada',     color: 'badge-secondary' },
@@ -49,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
         try{
+            initSearchSelects();
             await cargarCombos();
             await cargarTodas();
 
@@ -66,7 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 noDataMessage: 'No hay unidades registradas',
                 getExtraParams: () => ({
                     status: $('filtroStatus')?.value || '',
-                    marca:  $('filtroMarca')?.value  || ''
+                    marca:  ssFiltroMarca ? ssFiltroMarca.getValue() : ''
                 }),
                 onDataLoaded: () => bindTableActions()
             });
@@ -80,6 +84,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
+    /* ============================================
+       SEARCHSELECTs
+       ============================================ */
+    function initSearchSelects(){
+        ssMarca = new SearchSelect({
+            wrapperId: 'wrapMarca',
+            hiddenInputId: 'id_marca',
+            placeholder: 'Seleccione marca...',
+            noResultsText: 'Sin marcas'
+        });
+
+        ssModelo = new SearchSelect({
+            wrapperId: 'wrapModelo',
+            hiddenInputId: 'id_modelo',
+            placeholder: 'Seleccione modelo...',
+            noResultsText: 'Sin modelos'
+        });
+
+        ssFiltroMarca = new SearchSelect({
+            wrapperId: 'wrapFiltroMarca',
+            hiddenInputId: 'filtroMarca',
+            placeholder: 'Todas las marcas',
+            noResultsText: 'Sin marcas',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+    }
+
     async function fetchJSON(url, opts = {}){
         const r = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, ...opts });
         return r.json();
@@ -89,25 +120,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = await fetchJSON(API + '/combos');
         if (!d.ok) throw new Error('combos');
 
-        fillSelect($('id_marca'), d.marcas, 'id_marca', 'marca_unidad', 'Seleccione...');
-        fillSelect($('id_modelo'), d.modelos, 'id_modelo', 'modelo_unidad', 'Seleccione...');
-        fillSelect($('filtroMarca'), d.marcas, 'id_marca', 'marca_unidad', 'Todas las marcas');
+        // Marcas
+        const marcasOpts = (d.marcas || []).map(m => ({
+            value: m.id_marca,
+            label: m.marca_unidad,
+            search: m.marca_unidad.toLowerCase()
+        }));
+        ssMarca.setOptions(marcasOpts);
+        ssFiltroMarca.setOptions(marcasOpts);
+
+        // Modelos
+        ssModelo.setOptions((d.modelos || []).map(m => ({
+            value: m.id_modelo,
+            label: m.modelo_unidad,
+            search: m.modelo_unidad.toLowerCase()
+        })));
     }
 
     async function cargarTodas(){
         const d = await fetchJSON(API + '/todas');
         if (d.ok) allUnidades = d.data || [];
-    }
-
-    function fillSelect(sel, items, vKey, lKey, placeholder){
-        if (!sel) return;
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        items.forEach(it => {
-            const o = document.createElement('option');
-            o.value = it[vKey];
-            o.textContent = it[lKey];
-            sel.appendChild(o);
-        });
     }
 
     function bindEvents(){
@@ -117,7 +149,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('btnToggleForm')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion('seccionForm', 'btnToggleForm'); });
 
         $('filtroStatus')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
-        $('filtroMarca')?.addEventListener('change',  () => dt?.changePage(1) || dt?.reload());
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarFormulario(); });
     }
@@ -157,8 +188,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const f = $('formFlota');
         f.reset();
         $('id_flota').value = '';
-        $('id_marca').value = '';
-        $('id_modelo').value = '';
+
+        ssMarca.clear();
+        ssModelo.clear();
 
         $('formSectionTitle').textContent = 'Nueva Unidad';
         $('formSectionSubtitle').textContent = 'Completa los datos de la unidad';
@@ -183,12 +215,13 @@ document.addEventListener('DOMContentLoaded', () => {
             $('id_flota').value        = u.id_flota;
             $('id_unidad').value       = u.id_unidad || '';
             $('vim_unidad').value      = u.vim_unidad || '';
-            $('id_marca').value        = u.id_marca || '';
-            $('id_modelo').value       = u.id_modelo || '';
             $('fecha_creacion').value  = u.fecha_creacion || '';
             $('cap_pasajero').value    = u.cap_pasajero || '';
             $('tipo_combustible').value = u.tipo_combustible || 'N/A';
             $('transmision').value     = u.transmision || 'N/A';
+
+            ssMarca.setValue(u.id_marca);
+            ssModelo.setValue(u.id_modelo);
 
             $('formSectionTitle').textContent = 'Editar Unidad';
             $('formSectionSubtitle').textContent = `Editando "${u.id_unidad}"`;
@@ -311,6 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = $('formFlota');
         form.reset();
         $('id_flota').value = '';
+        ssMarca?.clear();
+        ssModelo?.clear();
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nueva Unidad';
@@ -332,7 +367,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('filtroGrupos')?.addEventListener('input', filtrarGrupos);
         $('btnLimpiarReporte')?.addEventListener('click', limpiarReporte);
 
-        // Generar PDF
         $('btnGenerarPDF')?.addEventListener('click', generarPdfOperatividad);
 
         pintarGrupos();

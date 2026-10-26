@@ -73,12 +73,14 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 </div>
                 <div class="form-group">
                     <label>Marca <span class="req">*</span></label>
-                    <select name="id_marca" id="id_marca"></select>
+                    <div id="wrapMarca"></div>
+                    <input type="hidden" name="id_marca" id="id_marca">
                     <span class="error" data-error="id_marca"></span>
                 </div>
                 <div class="form-group">
                     <label>Modelo <span class="req">*</span></label>
-                    <select name="id_modelo" id="id_modelo"></select>
+                    <div id="wrapModelo"></div>
+                    <input type="hidden" name="id_modelo" id="id_modelo">
                     <span class="error" data-error="id_modelo"></span>
                 </div>
 
@@ -240,7 +242,7 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <span class="dt-toolbar-label">registros</span>
         </div>
 
-        <div class="dt-toolbar-right">
+        <div class="dt-toolbar-right" style="gap:.5rem;">
             <select id="filtroStatus" class="filter-select">
                 <option value="">Todos los estatus</option>
                 <option value="1">Operativas</option>
@@ -251,9 +253,8 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 <option value="0">Desincorporada</option>
             </select>
 
-            <select id="filtroMarca" class="filter-select">
-                <option value="">Todas las marcas</option>
-            </select>
+            <div id="wrapFiltroMarca" style="min-width:180px;"></div>
+            <input type="hidden" id="filtroMarca">
 
             <div class="filter-search" style="min-width:240px;">
                 <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
