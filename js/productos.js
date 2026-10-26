@@ -6,6 +6,13 @@ document.addEventListener('DOMContentLoaded', () => {
     let dt = null;
     let combos = { enlaces: [], proveedores: [], ubicaciones: [] };
 
+    // SearchSelects
+    let ssEnlace         = null;
+    let ssUbicacion      = null;
+    let ssProveedor      = null;
+    let ssFiltroEnlace   = null;
+    let ssFiltroUbicacion= null;
+
     /* ============================================================
        RENDER ROW
        ============================================================ */
@@ -54,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
        ============================================================ */
     (async () => {
         try{
+            initSearchSelects();
             await cargarCombos();
 
             dt = new DataTable({
@@ -69,9 +77,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 endId: 'endProductos',
                 noDataMessage: 'No hay productos registrados',
                 getExtraParams: () => ({
-                    enlace:    $('filtroEnlace')?.value    || '',
-                    ubicacion: $('filtroUbicacion')?.value || '',
-                    stock:     $('filtroStock')?.value     || ''
+                    enlace:    ssFiltroEnlace ? ssFiltroEnlace.getValue() : '',
+                    ubicacion: ssFiltroUbicacion ? ssFiltroUbicacion.getValue() : '',
+                    stock:     $('filtroStock')?.value || ''
                 }),
                 onDataLoaded: () => bindTableActions()
             });
@@ -84,6 +92,48 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('Error al inicializar: ' + e.message, 'error');
         }
     })();
+
+    /* ============================================================
+       SEARCHSELECTs
+       ============================================================ */
+    function initSearchSelects(){
+        ssEnlace = new SearchSelect({
+            wrapperId: 'wrapEnlace',
+            hiddenInputId: 'id_enlace_producto',
+            placeholder: 'Seleccione tipo...',
+            noResultsText: 'Sin tipos'
+        });
+
+        ssUbicacion = new SearchSelect({
+            wrapperId: 'wrapUbicacion',
+            hiddenInputId: 'id_ubicacion',
+            placeholder: 'Seleccione ubicación...',
+            noResultsText: 'Sin ubicaciones'
+        });
+
+        ssProveedor = new SearchSelect({
+            wrapperId: 'wrapProveedor',
+            hiddenInputId: 'id_proveedor',
+            placeholder: 'Seleccione proveedor...',
+            noResultsText: 'Sin proveedores'
+        });
+
+        ssFiltroEnlace = new SearchSelect({
+            wrapperId: 'wrapFiltroEnlace',
+            hiddenInputId: 'filtroEnlace',
+            placeholder: 'Todos los tipos',
+            noResultsText: 'Sin tipos',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+
+        ssFiltroUbicacion = new SearchSelect({
+            wrapperId: 'wrapFiltroUbicacion',
+            hiddenInputId: 'filtroUbicacion',
+            placeholder: 'Todas las ubicaciones',
+            noResultsText: 'Sin ubicaciones',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+    }
 
     /* ============================================================
        API
@@ -109,23 +159,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.ok) throw new Error('combos');
         combos = d;
 
-        fillSelect($('id_enlace_producto'), d.enlaces, 'id', 'nombre', 'Seleccione...');
-        fillSelect($('id_ubicacion'),       d.ubicaciones, 'id', 'nombre', 'Seleccione...');
-        fillSelect($('id_proveedor'),       d.proveedores, 'id', 'nombre', 'Seleccione...');
+        const enlacesOpts = (d.enlaces || []).map(e => ({
+            value: e.id,
+            label: e.nombre,
+            search: e.nombre.toLowerCase()
+        }));
+        ssEnlace.setOptions(enlacesOpts);
+        ssFiltroEnlace.setOptions(enlacesOpts);
 
-        fillSelect($('filtroEnlace'),    d.enlaces, 'id', 'nombre', 'Todos los tipos');
-        fillSelect($('filtroUbicacion'), d.ubicaciones, 'id', 'nombre', 'Todas las ubicaciones');
-    }
+        const ubicacionesOpts = (d.ubicaciones || []).map(u => ({
+            value: u.id,
+            label: u.nombre,
+            search: u.nombre.toLowerCase()
+        }));
+        ssUbicacion.setOptions(ubicacionesOpts);
+        ssFiltroUbicacion.setOptions(ubicacionesOpts);
 
-    function fillSelect(sel, items, vKey, lKey, placeholder){
-        if (!sel) return;
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        items.forEach(it => {
-            const o = document.createElement('option');
-            o.value = it[vKey];
-            o.textContent = it[lKey];
-            sel.appendChild(o);
-        });
+        ssProveedor.setOptions((d.proveedores || []).map(p => ({
+            value: p.id,
+            label: p.nombre,
+            search: p.nombre.toLowerCase()
+        })));
     }
 
     /* ============================================================
@@ -137,9 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
         $('toggleForm')?.addEventListener('click', toggleSeccion);
         $('btnToggleForm')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion(); });
 
-        $('filtroEnlace')?.addEventListener('change',    () => dt?.changePage(1) || dt?.reload());
-        $('filtroUbicacion')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
-        $('filtroStock')?.addEventListener('change',     () => dt?.changePage(1) || dt?.reload());
+        $('filtroStock')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape'){ cerrarFormulario(); cerrarModalStock(); }
@@ -188,12 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const f = $('formProducto');
         f.reset();
         $('id_producto').value = '';
-        $('id_enlace_producto').value = '';
-        $('id_ubicacion').value = '';
-        $('id_proveedor').value = '';
         $('present_producto').value = 'UNIDAD';
         $('tag_producto').value = '1';
         $('cant_producto').value = 0;
+
+        ssEnlace.clear();
+        ssUbicacion.clear();
+        ssProveedor.clear();
 
         $('cantidadGroup').style.display = '';
 
@@ -222,13 +275,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             $('id_producto').value             = p.id_producto;
             $('producto').value                = p.producto || '';
-            $('id_enlace_producto').value      = p.id_enlace_producto || '';
-            $('id_ubicacion').value            = p.id_ubicacion || '';
-            $('id_proveedor').value            = p.id_proveedor || '';
             $('present_producto').value        = p.present_producto || 'UNIDAD';
             $('tag_producto').value            = p.tag_producto || '1';
 
-            // En edición NO se cambia el stock desde aquí
+            ssEnlace.setValue(p.id_enlace_producto);
+            ssUbicacion.setValue(p.id_ubicacion);
+            ssProveedor.setValue(p.id_proveedor);
+
             $('cantidadGroup').style.display = 'none';
 
             $('formSectionTitle').textContent = 'Editar Producto';
@@ -394,6 +447,11 @@ document.addEventListener('DOMContentLoaded', () => {
         form.reset();
         $('id_producto').value = '';
         $('cantidadGroup').style.display = '';
+
+        ssEnlace?.clear();
+        ssUbicacion?.clear();
+        ssProveedor?.clear();
+
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nuevo Producto';

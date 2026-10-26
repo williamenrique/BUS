@@ -63,19 +63,22 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
 
                 <div class="form-group">
                     <label>Tipo / Enlace <span class="req">*</span></label>
-                    <select name="id_enlace_producto" id="id_enlace_producto"></select>
+                    <div id="wrapEnlace"></div>
+                    <input type="hidden" name="id_enlace_producto" id="id_enlace_producto">
                     <span class="error" data-error="id_enlace_producto"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Ubicación <span class="req">*</span></label>
-                    <select name="id_ubicacion" id="id_ubicacion"></select>
+                    <div id="wrapUbicacion"></div>
+                    <input type="hidden" name="id_ubicacion" id="id_ubicacion">
                     <span class="error" data-error="id_ubicacion"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Proveedor <span class="req">*</span></label>
-                    <select name="id_proveedor" id="id_proveedor"></select>
+                    <div id="wrapProveedor"></div>
+                    <input type="hidden" name="id_proveedor" id="id_proveedor">
                     <span class="error" data-error="id_proveedor"></span>
                 </div>
 
@@ -136,13 +139,13 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <span class="dt-toolbar-label">registros</span>
         </div>
 
-        <div class="dt-toolbar-right">
-            <select id="filtroEnlace" class="filter-select">
-                <option value="">Todos los tipos</option>
-            </select>
-            <select id="filtroUbicacion" class="filter-select">
-                <option value="">Todas las ubicaciones</option>
-            </select>
+        <div class="dt-toolbar-right" style="gap:.5rem;">
+            <div id="wrapFiltroEnlace" style="min-width:160px;"></div>
+            <input type="hidden" id="filtroEnlace">
+
+            <div id="wrapFiltroUbicacion" style="min-width:180px;"></div>
+            <input type="hidden" id="filtroUbicacion">
+
             <select id="filtroStock" class="filter-select">
                 <option value="">Todo el stock</option>
                 <option value="sin">Sin stock</option>
