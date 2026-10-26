@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let ssFiltroDepto    = null;
 
     /* ============================================
-       RENDER ROW (fila de tabla)
+       RENDER ROW
        ============================================ */
     function renderRow(u){
         const active = Number(u.usuario_status) === 1;
@@ -72,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
     (async () => {
         try{
             initSearchSelects();
-
             await cargarCombos();
 
             dt = new DataTable({
@@ -163,6 +162,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================
+       Deshabilitar / Habilitar SearchSelect Personal
+       ============================================ */
+    function deshabilitarPersonal(deshabilitar){
+        const wrap = $('wrapPersonal');
+        if (!wrap) return;
+
+        const input = wrap.querySelector('.ss-input');
+        const arrow = wrap.querySelector('.ss-arrow');
+
+        if (input){
+            input.disabled = !!deshabilitar;
+            input.style.cursor = deshabilitar ? 'not-allowed' : '';
+            input.style.background = deshabilitar ? '#f1f5f9' : '';
+            input.style.color = deshabilitar ? '#64748b' : '';
+        }
+        if (arrow){
+            arrow.style.display = deshabilitar ? 'none' : '';
+        }
+        wrap.style.pointerEvents = deshabilitar ? 'none' : '';
+        wrap.style.opacity = deshabilitar ? '.85' : '';
+    }
+
+    /* ============================================
        API helper
        ============================================ */
     async function fetchJSON(url, opts = {}){
@@ -172,13 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /**
      * Carga combos (roles, departamentos, estaciones) y personal disponible.
+     * @param {number|null} usuarioId — ID del USUARIO (no del personal).
+     *                                  Si se pasa, incluye el personal ya vinculado.
      */
-    async function cargarCombos(personalId = null){
-        const url = API + '/combos' + (personalId ? '?personal_id=' + personalId : '');
+    async function cargarCombos(usuarioId = null){
+        const url = API + '/combos' + (usuarioId ? '?personal_id=' + usuarioId : '');
         const d = await fetchJSON(url);
         if (!d.ok) throw new Error('combos');
 
-        // Roles
         const rolesOpts = (d.roles || []).map(r => ({
             value: r.rol_id,
             label: r.rol_nombre,
@@ -187,7 +210,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ssRol.setOptions(rolesOpts);
         ssFiltroRol.setOptions(rolesOpts);
 
-        // Departamentos
         const deptosOpts = (d.departamentos || []).map(dep => ({
             value: dep.departamento_id,
             label: dep.departamento_nombre,
@@ -196,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ssDepartamento.setOptions(deptosOpts);
         ssFiltroDepto.setOptions(deptosOpts);
 
-        // Estaciones (con opción 0 = Sin estación)
         const estOpts = [
             { value: '0', label: 'Sin estación (0)', search: 'sin estacion 0' },
             ...(d.estaciones || []).map(e => ({
@@ -207,8 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
         ssEstacion.setOptions(estOpts);
 
-        // Personal
-        actualizarOpcionesPersonal(d.personal, personalId);
+        actualizarOpcionesPersonal(d.personal, null);
     }
 
     /* ============================================
@@ -238,9 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    /**
-     * Delegación de clics para las acciones de la tabla.
-     */
     function bindTableActions(){
         const tbody = $('tbodyUsuarios');
         if (!tbody || tbody._bound) return;
@@ -295,6 +312,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ssDepartamento?.clear();
         ssEstacion?.clear();
 
+        deshabilitarPersonal(false);
+
         await cargarCombos();
 
         $('wrapPreview').style.display = 'none';
@@ -321,7 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!d.ok) throw new Error(d.message);
             const u = d.data;
 
-            await cargarCombos(u.usuario_id_personal || null);
+            // Pasar el ID del USUARIO (no el ID del personal)
+            await cargarCombos(u.usuario_id);
 
             $('usuario_id').value              = u.usuario_id;
             $('usuario_status').value          = u.usuario_status ?? 1;
@@ -329,6 +349,12 @@ document.addEventListener('DOMContentLoaded', () => {
             ssRol.setValue(u.usuario_rol_id);
             ssDepartamento.setValue(u.usuario_departamento_id);
             ssEstacion.setValue(u.usuario_estacion_id || 0);
+
+            // Setear el personal vinculado y bloquearlo
+            if (u.usuario_id_personal){
+                ssPersonal.setValue(u.usuario_id_personal);
+            }
+            deshabilitarPersonal(true);
 
             if (u.usuario_imagen){
                 $('previewImg').src = (window.SITGO_BASE || '/') + 'uploads/storage/' + u.usuario_imagen;
@@ -436,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================
-       ELIMINAR
+       ELIMINAR / TOGGLE / RESET / IMAGEN
        ============================================ */
     async function eliminar(id){
         const u = dt?.getData().find(x => Number(x.usuario_id) === Number(id));
@@ -462,9 +488,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================
-       TOGGLE STATUS
-       ============================================ */
     async function toggleStatus(id, status){
         try{
             const d = await fetchJSON(API + '/cambiar-status/' + id, {
@@ -480,9 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    /* ============================================
-       RESET PASSWORD
-       ============================================ */
     async function resetPassword(id){
         const u = dt?.getData().find(x => Number(x.usuario_id) === Number(id));
         const nick = u?.usuario_nick || 'usuario';
@@ -560,6 +580,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ssRol?.clear();
         ssDepartamento?.clear();
         ssEstacion?.clear();
+        deshabilitarPersonal(false);
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nuevo Usuario';
