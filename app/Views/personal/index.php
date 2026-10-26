@@ -63,12 +63,14 @@
 
                 <div class="form-group">
                     <label>Cargo <span class="req">*</span></label>
-                    <select name="personal_cargo" id="personal_cargo"></select>
+                    <div id="wrapCargo"></div>
+                    <input type="hidden" name="personal_cargo" id="personal_cargo">
                     <span class="error" data-error="personal_cargo"></span>
                 </div>
                 <div class="form-group">
                     <label>Departamento</label>
-                    <select name="personal_departamento" id="personal_departamento"></select>
+                    <div id="wrapDepartamento"></div>
+                    <input type="hidden" name="personal_departamento" id="personal_departamento">
                 </div>
                 <div class="form-group">
                     <label>Estatus</label>
@@ -122,16 +124,15 @@
             <span class="dt-toolbar-label">registros</span>
         </div>
 
-        <div class="dt-toolbar-right">
+        <div class="dt-toolbar-right" style="gap:.5rem;">
             <select id="filtroStatus" class="filter-select">
                 <option value="">Todos los estatus</option>
                 <option value="1">Activos</option>
                 <option value="0">Inactivos</option>
             </select>
 
-            <select id="filtroDepartamento" class="filter-select">
-                <option value="">Todos los departamentos</option>
-            </select>
+            <div id="wrapFiltroDepartamento" style="min-width:200px;"></div>
+            <input type="hidden" id="filtroDepartamento">
 
             <div class="filter-search" style="min-width:240px;">
                 <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>

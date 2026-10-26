@@ -2,7 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'personal';
     const $ = id => document.getElementById(id);
 
-    let dt = null;   // instancia del DataTable
+    let dt = null;
+
+    // SearchSelects
+    let ssCargo            = null;
+    let ssDepartamento     = null;
+    let ssFiltroDepto      = null;
 
     /* ============================================
        RENDER ROW
@@ -47,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
        ============================================ */
     (async () => {
         try {
+            initSearchSelects();
             await cargarCombos();
 
             dt = new DataTable({
@@ -63,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 noDataMessage: 'No hay personal registrado',
                 getExtraParams: () => ({
                     status: $('filtroStatus')?.value || '',
-                    departamento: $('filtroDepartamento')?.value || ''
+                    departamento: ssFiltroDepto ? ssFiltroDepto.getValue() : ''
                 }),
                 onDataLoaded: () => bindTableActions()
             });
@@ -75,6 +81,33 @@ document.addEventListener('DOMContentLoaded', () => {
             toast('Error al inicializar: ' + e.message, 'error');
         }
     })();
+
+    /* ============================================
+       SEARCHSELECTs
+       ============================================ */
+    function initSearchSelects(){
+        ssCargo = new SearchSelect({
+            wrapperId: 'wrapCargo',
+            hiddenInputId: 'personal_cargo',
+            placeholder: 'Seleccione cargo...',
+            noResultsText: 'Sin cargos'
+        });
+
+        ssDepartamento = new SearchSelect({
+            wrapperId: 'wrapDepartamento',
+            hiddenInputId: 'personal_departamento',
+            placeholder: 'Sin departamento',
+            noResultsText: 'Sin departamentos'
+        });
+
+        ssFiltroDepto = new SearchSelect({
+            wrapperId: 'wrapFiltroDepartamento',
+            hiddenInputId: 'filtroDepartamento',
+            placeholder: 'Todos los departamentos',
+            noResultsText: 'Sin departamentos',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+    }
 
     /* ============================================
        API helper
@@ -90,20 +123,22 @@ document.addEventListener('DOMContentLoaded', () => {
     async function cargarCombos() {
         const d = await fetchJSON(API + '/combos');
         if (!d.ok) throw new Error('combos');
-        fillSelect($('personal_cargo'), d.cargos, 'id_cargo', 'cargo', 'Seleccione...');
-        fillSelect($('personal_departamento'), d.departamentos, 'departamento_id', 'departamento_nombre', 'Sin departamento');
-        fillSelect($('filtroDepartamento'), d.departamentos, 'departamento_id', 'departamento_nombre', 'Todos los departamentos');
-    }
 
-    function fillSelect(sel, items, vKey, lKey, placeholder) {
-        if (!sel) return;
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        items.forEach(it => {
-            const o = document.createElement('option');
-            o.value = it[vKey];
-            o.textContent = it[lKey];
-            sel.appendChild(o);
-        });
+        // Cargos
+        ssCargo.setOptions((d.cargos || []).map(c => ({
+            value: c.id_cargo,
+            label: c.cargo,
+            search: c.cargo.toLowerCase()
+        })));
+
+        // Departamentos
+        const deptosOpts = (d.departamentos || []).map(dep => ({
+            value: dep.departamento_id,
+            label: dep.departamento_nombre,
+            search: dep.departamento_nombre.toLowerCase()
+        }));
+        ssDepartamento.setOptions(deptosOpts);
+        ssFiltroDepto.setOptions(deptosOpts);
     }
 
     /* ============================================
@@ -118,18 +153,14 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleSeccion();
         });
 
-        // Filtros que disparan al DataTable
         $('filtroStatus')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
-        $('filtroDepartamento')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
 
-        // Escape cierra formulario
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') cerrarFormulario();
         });
     }
 
     function bindTableActions() {
-        // Delegación en el tbody — se ejecuta cada vez que el DataTable re-renderiza
         const tbody = $('tbodyPersonal');
         if (!tbody || tbody._bound) return;
         tbody._bound = true;
@@ -172,8 +203,9 @@ document.addEventListener('DOMContentLoaded', () => {
         f.reset();
         $('id_personal').value = '';
         $('personal_status').value = '1';
-        $('personal_departamento').value = '';
-        $('personal_cargo').value = '';
+
+        ssCargo.clear();
+        ssDepartamento.clear();
 
         $('personal_cedula').readOnly = false;
         $('personal_cedula').classList.remove('input-locked');
@@ -201,16 +233,17 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!d.ok) throw new Error(d.message);
             const p = d.data;
 
-            $('id_personal').value           = p.id_personal;
-            $('personal_cedula').value       = p.personal_cedula || '';
-            $('personal_nombre').value       = p.personal_nombre || '';
-            $('personal_apellido').value     = p.personal_apellido || '';
-            $('personal_cargo').value        = p.personal_cargo || '';
-            $('personal_departamento').value = p.personal_departamento || '';
-            $('personal_tlf').value          = p.personal_tlf || '';
-            $('personal_email').value        = p.personal_email || '';
-            $('personal_direccion').value    = p.personal_direccion || '';
-            $('personal_status').value       = p.personal_status ?? 1;
+            $('id_personal').value       = p.id_personal;
+            $('personal_cedula').value   = p.personal_cedula || '';
+            $('personal_nombre').value   = p.personal_nombre || '';
+            $('personal_apellido').value = p.personal_apellido || '';
+            $('personal_tlf').value      = p.personal_tlf || '';
+            $('personal_email').value    = p.personal_email || '';
+            $('personal_direccion').value= p.personal_direccion || '';
+            $('personal_status').value   = p.personal_status ?? 1;
+
+            ssCargo.setValue(p.personal_cargo);
+            ssDepartamento.setValue(p.personal_departamento || '');
 
             $('personal_cedula').readOnly = true;
             $('personal_cedula').classList.add('input-locked');
@@ -352,6 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
         $('id_personal').value = '';
         $('personal_cedula').readOnly = false;
         $('personal_cedula').classList.remove('input-locked');
+        ssCargo?.clear();
+        ssDepartamento?.clear();
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nuevo Personal';
