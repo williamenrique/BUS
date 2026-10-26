@@ -191,7 +191,8 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <div class="compras-filtros" style="grid-template-columns: 2fr 1fr 1fr auto;">
                 <div class="form-group" style="margin:0;">
                     <label style="font-size:.72rem; color:#475569; font-weight:500; margin-bottom:.25rem; display:block;">Unidad</label>
-                    <select id="repUnidad" class="filter-select"></select>
+                    <div id="wrapRepUnidad"></div>
+                    <input type="hidden" id="repUnidad">
                 </div>
                 <div class="form-group" style="margin:0;">
                     <label style="font-size:.72rem; color:#475569; font-weight:500; margin-bottom:.25rem; display:block;">Desde</label>

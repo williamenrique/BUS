@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let dtPendientes = null;
     let dtCosteadas = null;
     let flotaCache = [];
+    let ssRepUnidad = null;   // SearchSelect de la unidad en Reportes
 
     /* ============================================================
        HELPER · Refrescar iconos Lucide de forma robusta
@@ -33,6 +34,15 @@ document.addEventListener('DOMContentLoaded', () => {
        ============================================================ */
     (async () => {
         try{
+            // SearchSelect de la unidad en Reportes
+            ssRepUnidad = new SearchSelect({
+                wrapperId: 'wrapRepUnidad',
+                hiddenInputId: 'repUnidad',
+                placeholder: 'Buscar unidad...',
+                noResultsText: 'Sin unidades',
+                onChange: () => actualizarConteoReporte()
+            });
+
             await cargarFlota();
 
             dtPendientes = crearDataTablePendientes();
@@ -198,7 +208,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function bindEventosReportes(){
-        $('repUnidad')?.addEventListener('change', actualizarConteoReporte);
         $('repDesde')?.addEventListener('change', actualizarConteoReporte);
         $('repHasta')?.addEventListener('change', actualizarConteoReporte);
 
@@ -208,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function actualizarConteoReporte(){
-        const unidad = $('repUnidad')?.value || '';
+        const unidad = ssRepUnidad ? ssRepUnidad.getValue() : ($('repUnidad')?.value || '');
         const desde  = $('repDesde')?.value || '';
         const hasta  = $('repHasta')?.value || '';
         const div    = $('repConteo');
@@ -603,15 +612,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.ok) throw new Error('flota');
         flotaCache = d.data || [];
 
-        const sel = $('repUnidad');
-        if (!sel) return;
-        sel.innerHTML = '<option value="">Seleccione una unidad</option>';
-        flotaCache.forEach(f => {
-            const o = document.createElement('option');
-            o.value = f.id_flota;
-            o.textContent = `${f.id_unidad} - ${f.modelo_unidad || ''}`;
-            sel.appendChild(o);
-        });
+        if (!ssRepUnidad) return;
+
+        ssRepUnidad.setOptions(flotaCache.map(f => ({
+            value: f.id_flota,
+            label: `${f.id_unidad} - ${f.modelo_unidad || ''}`,
+            search: `${f.id_unidad} ${f.modelo_unidad || ''} ${f.marca_unidad || ''} ${f.vim_unidad || ''}`.toLowerCase(),
+            data: f
+        })));
     }
 
     /* ============================================================
