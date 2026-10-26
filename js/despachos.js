@@ -6,7 +6,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let dt = null;
     let combos = { flota: [], operadores: [], mecanicos: [], despachadores: [], articulos: [] };
     let articulosAgregados = [];
-    let despachoActual = null; // Para el botón PDF
+    let despachoActual = null;
+
+    // Instancias SearchSelect
+    let ssFlota        = null;
+    let ssOperador     = null;
+    let ssMecanico     = null;
+    let ssDespachador  = null;
+    let ssArticulo     = null;
 
     function renderRow(d){
         return `
@@ -41,6 +48,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
         try{
+            initSearchSelects();
+
             await cargarCombos();
             await cargarStats();
 
@@ -74,6 +83,62 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     })();
 
+    /* ============================================================
+       SEARCHSELECT · Inicialización
+       ============================================================ */
+    function initSearchSelects(){
+        ssFlota = new SearchSelect({
+            wrapperId: 'wrapFlota',
+            hiddenInputId: 'id_flota',
+            placeholder: 'Buscar unidad...',
+            noResultsText: 'Sin unidades',
+            onChange: (value, item) => {
+                if (item && item.data){
+                    const info = item.data;
+                    $('info_id_unidad').textContent = info.id_unidad || '—';
+                    $('info_vim_unidad').textContent = info.vim_unidad || '—';
+                    $('info_marca').textContent = info.marca_unidad || '—';
+                    $('info_modelo').textContent = info.modelo_unidad || '—';
+                    $('unidadInfo').style.display = '';
+                } else {
+                    $('unidadInfo').style.display = 'none';
+                }
+            }
+        });
+
+        ssOperador = new SearchSelect({
+            wrapperId: 'wrapOperador',
+            hiddenInputId: 'operador_id',
+            placeholder: 'Buscar operador...',
+            noResultsText: 'Sin operadores'
+        });
+
+        ssMecanico = new SearchSelect({
+            wrapperId: 'wrapMecanico',
+            hiddenInputId: 'mecanico_id',
+            placeholder: 'Buscar mecánico...',
+            noResultsText: 'Sin mecánicos'
+        });
+
+        ssDespachador = new SearchSelect({
+            wrapperId: 'wrapDespachador',
+            hiddenInputId: 'despachador_id',
+            placeholder: 'Buscar despachador...',
+            noResultsText: 'Sin despachadores'
+        });
+
+        ssArticulo = new SearchSelect({
+            wrapperId: 'wrapArticulo',
+            hiddenInputId: 'sel_articulo',
+            placeholder: 'Buscar artículo...',
+            noResultsText: 'Sin artículos',
+            onChange: (value, item) => {
+                const stock = item?.data?.cant_producto || 0;
+                $('stock_disponible').textContent = stock;
+            }
+        });
+    }
+
     async function fetchJSON(url, opts = {}){
         try{
             const r = await fetch(url, {
@@ -95,38 +160,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.ok) throw new Error('combos');
         combos = d;
 
-        $('id_flota').innerHTML = '<option value="">Seleccione...</option>';
-        d.flota.forEach(f => {
-            const o = document.createElement('option');
-            o.value = f.id_flota;
-            o.textContent = `${f.id_unidad} - ${f.modelo_unidad || ''}`;
-            o.dataset.info = JSON.stringify(f);
-            $('id_flota').appendChild(o);
-        });
+        // Flota
+        ssFlota.setOptions(d.flota.map(f => ({
+            value: f.id_flota,
+            label: `${f.id_unidad} - ${f.modelo_unidad || ''}`,
+            search: `${f.id_unidad} ${f.modelo_unidad || ''} ${f.marca_unidad || ''} ${f.vim_unidad || ''}`.toLowerCase(),
+            data: f
+        })));
 
-        fillPersonal($('operador_id'),    d.operadores);
-        fillPersonal($('mecanico_id'),    d.mecanicos);
-        fillPersonal($('despachador_id'), d.despachadores);
+        // Personal
+        const mapear = (items) => items.map(p => ({
+            value: p.id_personal,
+            label: `${p.personal_cedula} - ${p.personal_nombre} ${p.personal_apellido}`,
+            search: `${p.personal_cedula} ${p.personal_nombre} ${p.personal_apellido}`.toLowerCase(),
+            data: p
+        }));
 
-        $('sel_articulo').innerHTML = '<option value="">Seleccione...</option>';
-        d.articulos.forEach(a => {
-            const o = document.createElement('option');
-            o.value = a.id_producto;
-            o.textContent = `${a.producto} (${a.cant_producto} ${a.present_producto || ''})`;
-            o.dataset.stock = a.cant_producto;
-            o.dataset.producto = a.producto;
-            $('sel_articulo').appendChild(o);
-        });
-    }
+        ssOperador.setOptions(mapear(d.operadores));
+        ssMecanico.setOptions(mapear(d.mecanicos));
+        ssDespachador.setOptions(mapear(d.despachadores));
 
-    function fillPersonal(sel, items){
-        sel.innerHTML = '<option value="">Seleccione...</option>';
-        items.forEach(p => {
-            const o = document.createElement('option');
-            o.value = p.id_personal;
-            o.textContent = `${p.personal_cedula} - ${p.personal_nombre} ${p.personal_apellido}`;
-            sel.appendChild(o);
-        });
+        // Artículos
+        ssArticulo.setOptions(d.articulos.map(a => ({
+            value: a.id_producto,
+            label: `${a.producto} (${a.cant_producto} ${a.present_producto || ''})`,
+            search: `${a.producto} ${a.id_producto}`.toLowerCase(),
+            data: a
+        })));
     }
 
     async function cargarStats(){
@@ -146,23 +206,8 @@ document.addEventListener('DOMContentLoaded', () => {
         $('toggleForm')?.addEventListener('click', toggleSeccion);
         $('btnToggleForm')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion(); });
 
-        $('id_flota')?.addEventListener('change', (e) => {
-            const opt = e.target.selectedOptions[0];
-            if (!opt || !opt.dataset.info){
-                $('unidadInfo').style.display = 'none';
-                return;
-            }
-            const info = JSON.parse(opt.dataset.info);
-            $('info_id_unidad').textContent = info.id_unidad || '—';
-            $('info_vim_unidad').textContent = info.vim_unidad || '—';
-            $('info_marca').textContent = info.marca_unidad || '—';
-            $('info_modelo').textContent = info.modelo_unidad || '—';
-            $('unidadInfo').style.display = '';
-        });
-
         $('filtroFecha')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
 
-        // Botón PDF dentro del modal de detalle
         $('btnImprimirPdfDetalle')?.addEventListener('click', generarPdfDetalle);
 
         document.addEventListener('keydown', e => {
@@ -203,21 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function bindArticuloForm(){
-        $('sel_articulo')?.addEventListener('change', (e) => {
-            const opt = e.target.selectedOptions[0];
-            const stock = opt?.dataset.stock || 0;
-            $('stock_disponible').textContent = stock;
-        });
-
         $('btnAddArticulo')?.addEventListener('click', agregarArticulo);
     }
 
     function agregarArticulo(){
-        const sel = $('sel_articulo');
-        const opt = sel.selectedOptions[0];
+        const idProd = parseInt(ssArticulo.getValue());
         const cant = parseFloat($('inp_cantidad').value);
 
-        if (!opt || !opt.value){
+        if (!idProd){
             toast('Selecciona un artículo.', 'error');
             return;
         }
@@ -226,13 +264,19 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const stockDisp = parseFloat(opt.dataset.stock || 0);
+        // Buscar el artículo en combos
+        const articulo = combos.articulos.find(a => parseInt(a.id_producto) === idProd);
+        if (!articulo){
+            toast('Artículo no encontrado.', 'error');
+            return;
+        }
+
+        const stockDisp = parseFloat(articulo.cant_producto || 0);
         if (cant > stockDisp){
             toast(`Stock insuficiente. Disponible: ${stockDisp}`, 'error');
             return;
         }
 
-        const idProd = parseInt(opt.value);
         if (articulosAgregados.some(a => a.id_producto === idProd)){
             toast('Este artículo ya está agregado.', 'error');
             return;
@@ -240,13 +284,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         articulosAgregados.push({
             id_producto: idProd,
-            producto: opt.dataset.producto,
+            producto: articulo.producto,
             cantidad: cant
         });
 
         renderArticulos();
         $('inp_cantidad').value = '';
-        sel.value = '';
+        ssArticulo.clear();
         $('stock_disponible').textContent = '0';
     }
 
@@ -290,6 +334,12 @@ document.addEventListener('DOMContentLoaded', () => {
         articulosAgregados = [];
         renderArticulos();
 
+        ssFlota.clear();
+        ssOperador.clear();
+        ssMecanico.clear();
+        ssDespachador.clear();
+        ssArticulo.clear();
+
         $('formSectionTitle').textContent = 'Nueva Orden de Despacho';
         $('formSectionSubtitle').textContent = 'Selecciona la unidad, personal y artículos';
         $('formSectionIconWrap').innerHTML = '<i data-lucide="truck" class="w-5 h-5"></i>';
@@ -310,14 +360,23 @@ document.addEventListener('DOMContentLoaded', () => {
             const o = d.data;
 
             $('id_despacho').value = o.id_despacho;
-            $('id_flota').value = o.id_flota || '';
             $('fecha_despacho').value = o.fecha_despacho || '';
-            $('operador_id').value = o.operador_id || '';
-            $('mecanico_id').value = o.mecanico_id || '';
-            $('despachador_id').value = o.despachador_id || '';
             $('observacion').value = o.observacion || '';
 
-            $('id_flota').dispatchEvent(new Event('change'));
+            ssFlota.setValue(o.id_flota);
+            ssOperador.setValue(o.operador_id);
+            ssMecanico.setValue(o.mecanico_id);
+            ssDespachador.setValue(o.despachador_id);
+
+            // Trigger del onChange de flota (para mostrar info)
+            const flotaItem = combos.flota.find(f => parseInt(f.id_flota) === parseInt(o.id_flota));
+            if (flotaItem){
+                $('info_id_unidad').textContent = flotaItem.id_unidad || '—';
+                $('info_vim_unidad').textContent = flotaItem.vim_unidad || '—';
+                $('info_marca').textContent = flotaItem.marca_unidad || '—';
+                $('info_modelo').textContent = flotaItem.modelo_unidad || '—';
+                $('unidadInfo').style.display = '';
+            }
 
             articulosAgregados = (o.articulos || []).map(a => ({
                 id_producto: parseInt(a.id_producto),
@@ -431,10 +490,8 @@ document.addEventListener('DOMContentLoaded', () => {
             despachoActual = o;
             const arts = Array.isArray(o.articulos) ? o.articulos : [];
 
-            // Remover modal previo
             document.getElementById('__modalDetalleDinamico')?.remove();
 
-            // Crear modal desde cero (todo inline, no depende del CSS)
             const wrap = document.createElement('div');
             wrap.id = '__modalDetalleDinamico';
             wrap.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;overflow-y:auto;';
@@ -516,13 +573,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.body.appendChild(wrap);
             document.body.style.overflow = 'hidden';
-            
-
         } catch (e){
             console.error('verDespacho excepción:', e);
             toast('Error: ' + e.message, 'error');
         }
     }
+
     async function generarPdfDetalle(){
         if (!despachoActual) return;
 
@@ -615,6 +671,13 @@ document.addEventListener('DOMContentLoaded', () => {
         $('unidadInfo').style.display = 'none';
         articulosAgregados = [];
         renderArticulos();
+
+        ssFlota.clear();
+        ssOperador.clear();
+        ssMecanico.clear();
+        ssDespachador.clear();
+        ssArticulo.clear();
+
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nueva Orden de Despacho';

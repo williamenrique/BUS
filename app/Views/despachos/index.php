@@ -73,7 +73,8 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <div class="form-grid">
                 <div class="form-group">
                     <label>Unidad <span class="req">*</span></label>
-                    <select name="id_flota" id="id_flota"></select>
+                    <div id="wrapFlota"></div>
+                    <input type="hidden" name="id_flota" id="id_flota">
                     <span class="error" data-error="id_flota"></span>
                 </div>
 
@@ -85,19 +86,22 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
 
                 <div class="form-group">
                     <label>Operador <span class="req">*</span></label>
-                    <select name="operador_id" id="operador_id"></select>
+                    <div id="wrapOperador"></div>
+                    <input type="hidden" name="operador_id" id="operador_id">
                     <span class="error" data-error="operador_id"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Mecánico <span class="req">*</span></label>
-                    <select name="mecanico_id" id="mecanico_id"></select>
+                    <div id="wrapMecanico"></div>
+                    <input type="hidden" name="mecanico_id" id="mecanico_id">
                     <span class="error" data-error="mecanico_id"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Despachador <span class="req">*</span></label>
-                    <select name="despachador_id" id="despachador_id"></select>
+                    <div id="wrapDespachador"></div>
+                    <input type="hidden" name="despachador_id" id="despachador_id">
                     <span class="error" data-error="despachador_id"></span>
                 </div>
 
@@ -139,7 +143,8 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <div class="despacho-articulo-form">
                 <div class="form-group" style="flex:2;">
                     <label>Artículo</label>
-                    <select id="sel_articulo"></select>
+                    <div id="wrapArticulo"></div>
+                    <input type="hidden" id="sel_articulo">
                 </div>
                 <div class="form-group" style="flex:1;">
                     <label>Cantidad</label>
