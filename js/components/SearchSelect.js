@@ -280,6 +280,15 @@ class SearchSelect {
             .replace(/&/g, '&amp;').replace(/</g, '&lt;')
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+        /**
+     * Devuelve el label del valor seleccionado (o '' si no hay).
+     */
+    getSelectedLabel(){
+        if (!this.selectedValue) return '';
+        const cur = this.options.find(o => o.value === String(this.selectedValue));
+        return cur ? cur.label : '';
+    }
 }
 
 window.SearchSelect = SearchSelect;

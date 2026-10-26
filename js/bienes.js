@@ -1,17 +1,19 @@
-// console.log('✅ bienes.js cargado. SITGO_BASE =', window.SITGO_BASE);
-// console.log('📌 INST:', window.SITGO_INST);
-
 document.addEventListener('DOMContentLoaded', () => {
-    // console.log('🔄 DOMContentLoaded en bienes.js');
-
     const INST = window.SITGO_INST || 1;
     const API  = (window.SITGO_BASE || '/') + 'bienes/i/' + INST;
-    // console.log('📡 API =', API);
 
     const $ = id => document.getElementById(id);
 
     let dt = null;
     let combos = { departamentos: [], grupos: [], subgrupos: [], secciones: [] };
+
+    // SearchSelects
+    let ssDepto         = null;
+    let ssGrupo         = null;
+    let ssSubgrupo      = null;
+    let ssSeccion       = null;
+    let ssFiltroDepto   = null;
+    let ssFiltroGrupo   = null;
 
     const STATUS_MAP = {
         '1': { text: 'Activo',        color: 'badge-success' },
@@ -54,9 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     (async () => {
         try{
-            // console.log('⏳ Cargando combos...');
+            initSearchSelects();
             await cargarCombos();
-            // console.log('✅ Combos cargados');
 
             if (typeof DataTable === 'undefined'){
                 throw new Error('DataTable no está cargado. Revisa footer.php');
@@ -75,24 +76,71 @@ document.addEventListener('DOMContentLoaded', () => {
                 endId: 'endBienes',
                 noDataMessage: 'No hay bienes registrados',
                 getExtraParams: () => ({
-                    departamento: $('filtroDepartamento')?.value || '',
-                    grupo:        $('filtroGrupo')?.value        || '',
-                    status:       $('filtroStatus')?.value       || ''
+                    departamento: ssFiltroDepto ? ssFiltroDepto.getValue() : '',
+                    grupo:        ssFiltroGrupo ? ssFiltroGrupo.getValue() : '',
+                    status:       $('filtroStatus')?.value || ''
                 }),
                 onDataLoaded: () => {
-                    // console.log('📊 Tabla cargada');
                     bindTableActions();
                 }
             });
 
             bindEvents();
             bindForm();
-            // console.log('✅ Módulo Bienes inicializado');
         } catch (e){
             console.error('❌ Error al inicializar bienes:', e);
             toast('Error al inicializar: ' + e.message, 'error');
         }
     })();
+
+    /* ============================================================
+       SEARCHSELECTs
+       ============================================================ */
+    function initSearchSelects(){
+        ssDepto = new SearchSelect({
+            wrapperId: 'wrapDepto',
+            hiddenInputId: 'bien_depatamento_id',
+            placeholder: 'Seleccione departamento...',
+            noResultsText: 'Sin departamentos'
+        });
+
+        ssGrupo = new SearchSelect({
+            wrapperId: 'wrapGrupo',
+            hiddenInputId: 'grupo_id',
+            placeholder: 'Seleccione grupo...',
+            noResultsText: 'Sin grupos'
+        });
+
+        ssSubgrupo = new SearchSelect({
+            wrapperId: 'wrapSubgrupo',
+            hiddenInputId: 'subgrupo_id',
+            placeholder: 'Seleccione subgrupo...',
+            noResultsText: 'Sin subgrupos'
+        });
+
+        ssSeccion = new SearchSelect({
+            wrapperId: 'wrapSeccion',
+            hiddenInputId: 'seccion_id',
+            placeholder: 'Seleccione sección...',
+            noResultsText: 'Sin secciones'
+        });
+
+        ssFiltroDepto = new SearchSelect({
+            wrapperId: 'wrapFiltroDepto',
+            hiddenInputId: 'filtroDepartamento',
+            placeholder: 'Todos los departamentos',
+            noResultsText: 'Sin departamentos',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+
+        ssFiltroGrupo = new SearchSelect({
+            wrapperId: 'wrapFiltroGrupo',
+            hiddenInputId: 'filtroGrupo',
+            placeholder: 'Todos los grupos',
+            noResultsText: 'Sin grupos',
+            onChange: () => dt?.changePage(1) || dt?.reload()
+        });
+    }
 
     async function fetchJSON(url, opts = {}){
         try{
@@ -120,28 +168,36 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         combos = d;
 
-        fillSelect($('bien_depatamento_id'), d.departamentos, 'id', 'nombre', 'Seleccione...');
-        fillSelect($('grupo_id'),            d.grupos,        'id', 'nombre', 'Seleccione...');
-        fillSelect($('subgrupo_id'),         d.subgrupos,     'id', 'nombre', 'Seleccione...');
-        fillSelect($('seccion_id'),          d.secciones,     'id', 'nombre', 'Seleccione...');
+        const deptosOpts = (d.departamentos || []).map(it => ({
+            value: it.id,
+            label: it.nombre,
+            search: it.nombre.toLowerCase()
+        }));
+        ssDepto.setOptions(deptosOpts);
+        ssFiltroDepto.setOptions(deptosOpts);
 
-        fillSelect($('filtroDepartamento'), d.departamentos, 'id', 'nombre', 'Todos los departamentos');
-        fillSelect($('filtroGrupo'),        d.grupos,        'id', 'nombre', 'Todos los grupos');
-    }
+        const gruposOpts = (d.grupos || []).map(it => ({
+            value: it.id,
+            label: it.nombre,
+            search: it.nombre.toLowerCase()
+        }));
+        ssGrupo.setOptions(gruposOpts);
+        ssFiltroGrupo.setOptions(gruposOpts);
 
-    function fillSelect(sel, items, vKey, lKey, placeholder){
-        if (!sel) return;
-        sel.innerHTML = `<option value="">${placeholder}</option>`;
-        items.forEach(it => {
-            const o = document.createElement('option');
-            o.value = it[vKey];
-            o.textContent = it[lKey];
-            sel.appendChild(o);
-        });
+        ssSubgrupo.setOptions((d.subgrupos || []).map(it => ({
+            value: it.id,
+            label: it.nombre,
+            search: it.nombre.toLowerCase()
+        })));
+
+        ssSeccion.setOptions((d.secciones || []).map(it => ({
+            value: it.id,
+            label: it.nombre,
+            search: it.nombre.toLowerCase()
+        })));
     }
 
     function bindEvents(){
-        // dentro de bindEvents()
         $('btnPdfBienes')?.addEventListener('click', () => generarPdfBienes(false));
         $('btnPdfBienesDepto')?.addEventListener('click', () => generarPdfBienes(true));
         $('btnNuevo')?.addEventListener('click', abrirCrear);
@@ -149,8 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
         $('toggleForm')?.addEventListener('click', toggleSeccion);
         $('btnToggleForm')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion(); });
 
-        $('filtroDepartamento')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
-        $('filtroGrupo')?.addEventListener('change',        () => dt?.changePage(1) || dt?.reload());
         $('filtroStatus')?.addEventListener('change',       () => dt?.changePage(1) || dt?.reload());
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarFormulario(); });
@@ -160,12 +214,9 @@ document.addEventListener('DOMContentLoaded', () => {
             $('qrCanvas').innerHTML = '';
         });
     }
-    /**
-     * Genera el PDF de bienes.
-     * @param {boolean} soloDepartamento — si true, exige que haya un departamento filtrado
-     */
+
     async function generarPdfBienes(soloDepartamento) {
-        const deptoId = $('filtroDepartamento')?.value || '';
+        const deptoId = ssFiltroDepto ? ssFiltroDepto.getValue() : '';
 
         if (soloDepartamento && !deptoId) {
             toast('Selecciona un departamento en el filtro para generar este PDF.', 'error');
@@ -178,13 +229,12 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.innerHTML = 'Generando...';
 
         try {
-            // 1) Traer TODOS los bienes que cumplen los filtros actuales (sin paginar)
             const params = new URLSearchParams({
                 q: $('filtroBuscar')?.value || '',
                 limit: 9999,
                 offset: 0,
                 departamento: deptoId,
-                grupo: $('filtroGrupo')?.value || '',
+                grupo: ssFiltroGrupo ? ssFiltroGrupo.getValue() : '',
                 status: $('filtroStatus')?.value || '',
             });
 
@@ -206,27 +256,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 2) Título del subtítulo según modo
             let subtitulo = 'Inventario general';
             if (soloDepartamento) {
-                const opt = $('filtroDepartamento').selectedOptions[0];
-                subtitulo = 'Departamento: ' + (opt?.textContent || '—');
+                const opt = ssFiltroDepto ? ssFiltroDepto.getSelectedLabel() : '—';
+                subtitulo = 'Departamento: ' + (opt || '—');
             } else if (deptoId) {
-                const opt = $('filtroDepartamento').selectedOptions[0];
-                subtitulo = 'Filtrado por: ' + (opt?.textContent || '—');
+                const opt = ssFiltroDepto ? ssFiltroDepto.getSelectedLabel() : '—';
+                subtitulo = 'Filtrado por: ' + (opt || '—');
             }
 
-            // 3) Llamar al servicio de PDF
             await SITGO_PDF.generar(
                 'bienes_reporte',
-                { items },                            // $items en el template
+                { items },
                 `bienes_${soloDepartamento ? 'depto' : 'general'}_${new Date().toISOString().slice(0,10)}.pdf`,
                 {
                     titulo_documento: 'REPORTE DE BIENES',
                     doc_color: '#1e40af',
                     subtitulo,
-                    agrupar_por_departamento: !soloDepartamento, // general = agrupado; depto = plano
-                    // institucion_id lo resuelve PdfService a partir de la sesión
+                    agrupar_por_departamento: !soloDepartamento,
                 }
             );
 
@@ -240,6 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (window.lucide) lucide.createIcons();
         }
     }
+
     function bindTableActions(){
         const tbody = $('tbodyBienes');
         if (!tbody || tbody._bound) return;
@@ -275,11 +323,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const f = $('formBien');
         f.reset();
         $('id_bien').value = '';
-        $('bien_depatamento_id').value = '';
-        $('grupo_id').value = '';
-        $('subgrupo_id').value = '';
-        $('seccion_id').value = '';
         $('status_bien').value = '1';
+
+        ssDepto?.clear();
+        ssGrupo?.clear();
+        ssSubgrupo?.clear();
+        ssSeccion?.clear();
 
         $('formSectionTitle').textContent = 'Nuevo Bien';
         $('formSectionSubtitle').textContent = 'Completa los datos del bien';
@@ -292,7 +341,6 @@ document.addEventListener('DOMContentLoaded', () => {
         limpiarErrores();
         abrirSeccion();
         $('seccionForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setTimeout(() => $('bien_depatamento_id')?.focus(), 300);
     }
 
     async function abrirEditar(id){
@@ -302,13 +350,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const b = d.data;
 
             $('id_bien').value              = b.id_bien;
-            $('bien_depatamento_id').value  = b.bien_depatamento_id || '';
-            $('grupo_id').value             = b.grupo_id || '';
-            $('subgrupo_id').value          = b.subgrupo_id || '';
-            $('seccion_id').value           = b.seccion_id || '';
             $('fecha_adquisicion').value    = b.fecha_adquisicion || '';
             $('descripcion_bien').value     = b.descripcion_bien || '';
             $('status_bien').value          = b.status_bien || '1';
+
+            ssDepto.setValue(b.bien_depatamento_id);
+            ssGrupo.setValue(b.grupo_id || '');
+            ssSubgrupo.setValue(b.subgrupo_id || '');
+            ssSeccion.setValue(b.seccion_id || '');
 
             $('formSectionTitle').textContent = 'Editar Bien';
             $('formSectionSubtitle').textContent = `Editando bien #${b.id_bien}`;
@@ -415,6 +464,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const form = $('formBien');
         form.reset();
         $('id_bien').value = '';
+
+        ssDepto?.clear();
+        ssGrupo?.clear();
+        ssSubgrupo?.clear();
+        ssSeccion?.clear();
+
         limpiarErrores();
 
         $('formSectionTitle').textContent = 'Nuevo Bien';
@@ -454,36 +509,28 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => t.remove(), 3500);
     }
 
-        /* ============================================================
+    /* ============================================================
        QR · Genera QR del departamento seleccionado
-       Reusa el mismo flujo del PDF por departamento:
-         - Exige departamento en el filtro
-         - Muestra QR en panel inline (sin modal)
-         - Descarga PNG + abre vista pública
        ============================================================ */
     function generarQrBienes() {
-        const deptoId = $('filtroDepartamento')?.value || '';
+        const deptoId = ssFiltroDepto ? ssFiltroDepto.getValue() : '';
 
         if (!deptoId) {
             toast('Selecciona un departamento en el filtro para generar el QR.', 'error');
             return;
         }
 
-        // Verificar que la librería QRCode esté disponible
         if (typeof QRCode === 'undefined') {
             toast('La librería QRCode no está cargada. Revisa footer.php.', 'error');
             return;
         }
 
-        const opt    = $('filtroDepartamento').selectedOptions[0];
-        const nombre = opt?.textContent || 'Departamento';
+        const nombre = ssFiltroDepto ? ssFiltroDepto.getSelectedLabel() : 'Departamento';
 
-        // URL pública: /bienes-publico/i/{INST}?depto={deptoId}
         const url = (window.SITGO_BASE || '/')
                   + 'bienes-publico/i/' + INST
                   + '?depto=' + encodeURIComponent(deptoId);
 
-        // Limpiar y generar
         const canvasWrap = $('qrCanvas');
         canvasWrap.innerHTML = '';
 
@@ -497,7 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 correctLevel: QRCode.CorrectLevel.H
             });
 
-            // El QR se renderiza como <canvas> o <img> según el navegador
             setTimeout(() => {
                 const img = canvasWrap.querySelector('img') || canvasWrap.querySelector('canvas');
                 let dataUrl = '';
@@ -510,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Actualizar panel
                 $('qrDeptoNombre').textContent = nombre;
                 $('qrUrl').textContent = url;
 

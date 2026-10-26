@@ -39,7 +39,6 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <?= icon_tag('plus', 'plus', 'w-4 h-4') ?>
             <span id="btnNuevoText">Nuevo Bien</span>
         </button>
-
     </div>
 </div>
 
@@ -71,23 +70,27 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <div class="form-grid">
                 <div class="form-group">
                     <label>Departamento <span class="req">*</span></label>
-                    <select name="bien_depatamento_id" id="bien_depatamento_id"></select>
+                    <div id="wrapDepto"></div>
+                    <input type="hidden" name="bien_depatamento_id" id="bien_depatamento_id">
                     <span class="error" data-error="bien_depatamento_id"></span>
                 </div>
 
                 <div class="form-group">
                     <label>Grupo</label>
-                    <select name="grupo_id" id="grupo_id"></select>
+                    <div id="wrapGrupo"></div>
+                    <input type="hidden" name="grupo_id" id="grupo_id">
                 </div>
 
                 <div class="form-group">
                     <label>Subgrupo</label>
-                    <select name="subgrupo_id" id="subgrupo_id"></select>
+                    <div id="wrapSubgrupo"></div>
+                    <input type="hidden" name="subgrupo_id" id="subgrupo_id">
                 </div>
 
                 <div class="form-group">
                     <label>Sección</label>
-                    <select name="seccion_id" id="seccion_id"></select>
+                    <div id="wrapSeccion"></div>
+                    <input type="hidden" name="seccion_id" id="seccion_id">
                 </div>
 
                 <div class="form-group">
@@ -183,13 +186,13 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <span class="dt-toolbar-label">registros</span>
         </div>
 
-        <div class="dt-toolbar-right">
-            <select id="filtroDepartamento" class="filter-select">
-                <option value="">Todos los departamentos</option>
-            </select>
-            <select id="filtroGrupo" class="filter-select">
-                <option value="">Todos los grupos</option>
-            </select>
+        <div class="dt-toolbar-right" style="gap:.5rem;">
+            <div id="wrapFiltroDepto" style="min-width:200px;"></div>
+            <input type="hidden" id="filtroDepartamento">
+
+            <div id="wrapFiltroGrupo" style="min-width:180px;"></div>
+            <input type="hidden" id="filtroGrupo">
+
             <select id="filtroStatus" class="filter-select">
                 <option value="">Todos los estatus</option>
                 <option value="1">Activo</option>
@@ -237,4 +240,3 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         <div class="dt-pagination" id="paginationBienes"></div>
     </div>
 </div>
-
