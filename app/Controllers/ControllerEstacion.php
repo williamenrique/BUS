@@ -524,6 +524,8 @@ class ControllerEstacion extends Controller{
        ============================================================ */
     public function getDataCierre(): void{
         AuthGuard::check();
+        MenuGuard::check();   // si llegó aquí, tiene acceso al menú de DataVenta
+
         $d = $this->input();
         $idCierre = (int)($d['id_cierre'] ?? 0);
         if ($idCierre <= 0){ $this->json(['ok'=>false,'message'=>'id_cierre requerido.'], 422); return; }
@@ -533,17 +535,20 @@ class ControllerEstacion extends Controller{
             $cierre = $m->dataCierre($idCierre);
             if (!$cierre){ $this->json(['ok'=>false,'message'=>'Cierre no encontrado.'], 404); return; }
 
-            if ($this->esSistema()){
-                // OK
-            } elseif ($this->esEstacion()){
+            // Regla:
+            // - Sistema → acceso total
+            // - Cualquier otro usuario con menú DataVenta → acceso a cierres
+            //   (ya está validado por MenuGuard, así que puede ver el cierre)
+            // - Si el usuario tiene estación asignada (es de Estación),
+            //   solo puede ver cierres de SU estación
+            if (!$this->esSistema()){
                 $idEst = $this->idEstacion();
-                if ($idEst <= 0 || (int)($cierre['id_estacion'] ?? 0) !== $idEst){
+                if ($idEst > 0 && (int)($cierre['id_estacion'] ?? 0) !== $idEst){
                     $this->json(['ok'=>false,'message'=>'No autorizado para ver este cierre.'], 403);
                     return;
                 }
-            } else {
-                $this->json(['ok'=>false,'message'=>'No autorizado.'], 403);
-                return;
+                // Si $idEst === 0 (usuario administrativo sin estación propia),
+                // puede ver cualquier cierre (como Tesorería)
             }
 
             $this->json([
@@ -559,27 +564,36 @@ class ControllerEstacion extends Controller{
        ============================================================ */
     public function getLitrosReporte(): void{
         AuthGuard::check();
+        MenuGuard::check();   // si llegó aquí, tiene acceso al menú de DataVenta
 
         $d = $this->input();
         $fecha    = $d['fecha'] ?? date('Y-m-d');
         $type     = $d['type'] ?? 'day';
         $fechaFin = $d['fechaFin'] ?? null;
 
+        // Regla:
+        // - Sistema → puede pedir cualquier estación
+        // - Estación → solo su estación
+        // - Otros con menú DataVenta (Tesoreria, etc.) → sin restricción de estación
         $idEstacion = null;
-        if ($this->esEstacion()){
-            $idEstacion = $this->idEstacion();
-            if ($idEstacion <= 0){
-                $this->json(['ok'=>false,'message'=>'No tienes estación asignada.'], 422);
-                return;
-            }
-        } elseif ($this->esSistema()){
+
+        if ($this->esSistema()){
             $estReq = $d['id_estacion'] ?? null;
             if ($estReq !== null && $estReq !== '' && (int)$estReq > 0){
                 $idEstacion = (int)$estReq;
             }
         } else {
-            $this->json(['ok'=>false,'message'=>'No autorizado.'], 403);
-            return;
+            $idEst = $this->idEstacion();
+            if ($idEst > 0){
+                $idEstacion = $idEst;   // Estación → solo la suya
+            } else {
+                // No-Sistema sin estación (Tesoreria, etc.)
+                $estReq = $d['id_estacion'] ?? null;
+                if ($estReq !== null && $estReq !== '' && (int)$estReq > 0){
+                    $idEstacion = (int)$estReq;
+                }
+                // Si no pide estación → todas
+            }
         }
 
         $this->safe(function() use ($fecha, $type, $fechaFin, $idEstacion){
