@@ -125,7 +125,7 @@ $subtitulo = [
 
     <div class="est-header">
         <div class="titulo">SERVICIO SOCIALISTA DE ABASTECIMIENTO DEL ESTADO YARACUY</div>
-        <div class="libro">LIBRO DE VENTAS GASOLINA - <?= $esc(strtoupper($estacion)) ?></div>
+        <div class="libro">LIBRO DE VENTAS COMBUSTIBLE - <?= $esc(strtoupper($estacion)) ?></div>
         <div class="subtitulo"><?= $esc($subtitulo) ?></div>
         <div class="empleado">Responsable: <?= $esc($empleado) ?></div>
     </div>
