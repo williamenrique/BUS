@@ -15,6 +15,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let ssDespachador  = null;
     let ssArticulo     = null;
 
+    /* Mapa de estados de flota (solo para mostrar en el combo) */
+    const STATUS_FLOTA = {
+        0: { text: 'Desincorporada',    color: '#64748b' },
+        1: { text: 'Operativa',         color: '#16a34a' },
+        2: { text: 'Inoperativa',       color: '#dc2626' },
+        3: { text: 'Mantenimiento',     color: '#d97706' },
+        4: { text: 'Por Desincorporar', color: '#0ea5e9' },
+        5: { text: 'Crítica',           color: '#b91c1c' },
+    };
+
     function renderRow(d){
         return `
             <tr>
@@ -95,10 +105,18 @@ document.addEventListener('DOMContentLoaded', () => {
             onChange: (value, item) => {
                 if (item && item.data){
                     const info = item.data;
-                    $('info_id_unidad').textContent = info.id_unidad || '—';
+                    $('info_id_unidad').textContent  = info.id_unidad || '—';
                     $('info_vim_unidad').textContent = info.vim_unidad || '—';
-                    $('info_marca').textContent = info.marca_unidad || '—';
-                    $('info_modelo').textContent = info.modelo_unidad || '—';
+                    $('info_marca').textContent      = info.marca_unidad || '—';
+                    $('info_modelo').textContent     = info.modelo_unidad || '—';
+
+                    const st = STATUS_FLOTA[info.status_unidad] || { text: '—', color: '#64748b' };
+                    const elSt = $('info_status');
+                    if (elSt){
+                        elSt.textContent = st.text;
+                        elSt.style.color = st.color;
+                    }
+
                     $('unidadInfo').style.display = '';
                 } else {
                     $('unidadInfo').style.display = 'none';
@@ -160,13 +178,20 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!d.ok) throw new Error('combos');
         combos = d;
 
-        // Flota
-        ssFlota.setOptions(d.flota.map(f => ({
-            value: f.id_flota,
-            label: `${f.id_unidad} - ${f.modelo_unidad || ''}`,
-            search: `${f.id_unidad} ${f.modelo_unidad || ''} ${f.marca_unidad || ''} ${f.vim_unidad || ''}`.toLowerCase(),
-            data: f
-        })));
+        // Flota: muestra todas las unidades menos las desincorporadas (status 0)
+        // y agrega el estado entre paréntesis, coloreado en el dropdown.
+        ssFlota.setOptions(d.flota.map(f => {
+            const st = STATUS_FLOTA[f.status_unidad] || { text: '—', color: '#64748b' };
+            const base = `${f.id_unidad} - ${f.modelo_unidad || ''}`.trim();
+
+            return {
+                value: f.id_flota,
+                label: `${base} (${st.text})`,
+                labelHtml: `${esc(base)} <span style="color:${st.color}; font-weight:600;">(${esc(st.text)})</span>`,
+                search: `${f.id_unidad || ''} ${f.modelo_unidad || ''} ${f.marca_unidad || ''} ${f.vim_unidad || ''} ${st.text}`.toLowerCase(),
+                data: f
+            };
+        }));
 
         // Personal
         const mapear = (items) => items.map(p => ({
@@ -371,10 +396,18 @@ document.addEventListener('DOMContentLoaded', () => {
             // Trigger del onChange de flota (para mostrar info)
             const flotaItem = combos.flota.find(f => parseInt(f.id_flota) === parseInt(o.id_flota));
             if (flotaItem){
-                $('info_id_unidad').textContent = flotaItem.id_unidad || '—';
+                $('info_id_unidad').textContent  = flotaItem.id_unidad || '—';
                 $('info_vim_unidad').textContent = flotaItem.vim_unidad || '—';
-                $('info_marca').textContent = flotaItem.marca_unidad || '—';
-                $('info_modelo').textContent = flotaItem.modelo_unidad || '—';
+                $('info_marca').textContent      = flotaItem.marca_unidad || '—';
+                $('info_modelo').textContent     = flotaItem.modelo_unidad || '—';
+
+                const st = STATUS_FLOTA[flotaItem.status_unidad] || { text: '—', color: '#64748b' };
+                const elSt = $('info_status');
+                if (elSt){
+                    elSt.textContent = st.text;
+                    elSt.style.color = st.color;
+                }
+
                 $('unidadInfo').style.display = '';
             }
 

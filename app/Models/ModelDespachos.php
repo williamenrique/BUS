@@ -360,12 +360,12 @@ class ModelDespachos extends Model{
        COMBOS
        ============================================================ */
     public function flota(int $inst = 0): array{
-        $sql = "SELECT f.id_flota, f.id_unidad, f.vim_unidad,
-                       m.marca_unidad, mo.modelo_unidad
+        $sql = "SELECT f.id_flota, f.id_unidad, f.vim_unidad, f.status_unidad,
+                    m.marca_unidad, mo.modelo_unidad
                 FROM table_flota f
                 LEFT JOIN table_flota_marca m  ON m.id_marca = f.id_marca
                 LEFT JOIN table_flota_modelo mo ON mo.id_modelo = f.id_modelo
-                WHERE f.status_unidad = 1";
+                WHERE f.status_unidad <> 0";
         $params = [];
         if ($inst > 0){
             $sql .= " AND f.id_institucion = :inst";

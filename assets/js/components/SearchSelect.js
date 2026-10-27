@@ -6,8 +6,8 @@
  *
  * Uso básico:
  *   const ss = new SearchSelect({
- *       wrapperId: 'wrapPersonal',       // contenedor
- *       hiddenInputId: 'usuario_id_personal', // input hidden que guarda el value
+ *       wrapperId: 'wrapPersonal',
+ *       hiddenInputId: 'usuario_id_personal',
  *       placeholder: 'Seleccione un personal...',
  *       onChange: (value, item) => { ... }
  *   });
@@ -20,6 +20,9 @@
  *   ss.setValue(5)     // selecciona el value 5 (si existe)
  *   ss.clear()         // limpia
  *   ss.setOptions([])  // recarga opciones
+ *
+ *   // Opcional: si un option trae labelHtml (HTML ya escapado por el caller),
+ *   // se usa solo en el dropdown. El input visible y el hidden siguen usando label.
  * ============================================================
  */
 class SearchSelect {
@@ -125,12 +128,13 @@ class SearchSelect {
 
     /**
      * Asigna las opciones del select.
-     * items: [{ value, label, search? }]
+     * items: [{ value, label, search?, labelHtml? }]
      */
     setOptions(items){
         this.options = (items || []).map(it => ({
             value: String(it.value),
             label: it.label,
+            labelHtml: it.labelHtml || null,
             search: (it.search || it.label || '').toLowerCase()
         }));
         this._filter('');
@@ -160,19 +164,23 @@ class SearchSelect {
 
     /**
      * Dibuja la lista filtrada.
+     * Si el option trae labelHtml, se usa en el dropdown (ya viene escapado por el caller).
+     * Si no, se escapa label como siempre.
      */
     _renderList(){
         if (!this.filtered.length){
             this.list.innerHTML = `<li class="ss-empty">${this.noResultsText}</li>`;
             return;
         }
-        this.list.innerHTML = this.filtered.map((o, i) => `
-            <li class="ss-option ${String(o.value) === String(this.selectedValue) ? 'selected' : ''}"
-                data-value="${o.value}"
-                data-index="${i}">
-                ${this._escape(o.label)}
-            </li>
-        `).join('');
+        this.list.innerHTML = this.filtered.map((o, i) => {
+            const contenido = o.labelHtml ? o.labelHtml : this._escape(o.label);
+            return `
+                <li class="ss-option ${String(o.value) === String(this.selectedValue) ? 'selected' : ''}"
+                    data-value="${o.value}"
+                    data-index="${i}">
+                    ${contenido}
+                </li>`;
+        }).join('');
     }
 
     /**
@@ -281,7 +289,7 @@ class SearchSelect {
             .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
-        /**
+    /**
      * Devuelve el label del valor seleccionado (o '' si no hay).
      */
     getSelectedLabel(){

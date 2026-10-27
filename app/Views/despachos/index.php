@@ -130,6 +130,10 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                     <span class="despacho-unidad-label">Modelo</span>
                     <strong id="info_modelo">—</strong>
                 </div>
+                <div class="despacho-unidad-item">
+                    <span class="despacho-unidad-label">Estado</span>
+                    <strong id="info_status">—</strong>
+                </div>
             </div>
 
             <!-- Artículos -->
