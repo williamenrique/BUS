@@ -1,0 +1,1203 @@
+============================================
+ESTRUCTURA DE ARCHIVOS -
+============================================
+Fecha: 2026-10-27 14:04:13
+Raíz: C:\xampp\htdocs
+Total Items: 1192
+Directorios: 251
+Archivos: 941
+Tamaño Total: 17.2 MB
+============================================
+
+📁 BUS
+  📁 app
+    📁 Config
+      📄 config.local.php (337 B)
+      📄 config.php (6.1 KB)
+      📄 config.x.php (5.9 KB)
+      📄 routes.php (26.8 KB)
+    📁 Controllers
+      📄 ControllerAuth.php (6.6 KB)
+      📄 ControllerBienes.php (6.8 KB)
+      📄 ControllerCompras.php (8.4 KB)
+      📄 ControllerDashboard.php (7.3 KB)
+      📄 ControllerDespachos.php (12 KB)
+      📄 ControllerEstacion.php (32 KB)
+      📄 ControllerFlota.php (16.9 KB)
+      📄 ControllerFlotaStatus.php (3.1 KB)
+      📄 ControllerMenu.php (10.5 KB)
+      📄 ControllerPdf.php (6.2 KB)
+      📄 ControllerPersonal.php (6.8 KB)
+      📄 ControllerProductos.php (8.4 KB)
+      📄 ControllerPublico.php (33.5 KB)
+      📄 ControllerRecuperar.php (7 KB)
+      📄 ControllerUsuario.php (30.4 KB)
+    📁 Core
+      📄 App.php (5.8 KB)
+      📄 AppException.php (73 B)
+      📄 Controller.php (3.2 KB)
+      📄 Database.php (2 KB)
+      📄 DatabaseException.php (700 B)
+      📄 Model.php (3.4 KB)
+      📄 Validator.php (1 KB)
+    📁 Helpers
+      📄 helpers.php (15.1 KB)
+    📁 Middleware
+      📄 AuthGuard.php (3.5 KB)
+      📄 MenuGuard.php (8 KB)
+      📄 RoleGuard.php (714 B)
+    📁 Models
+      📄 ModelBienes.php (9.8 KB)
+      📄 ModelCompras.php (13.9 KB)
+      📄 ModelDashboard.php (25.6 KB)
+      📄 ModelDespachos.php (24.5 KB)
+      📄 ModelEstacion.php (43.8 KB)
+      📄 ModelFlota.php (22.5 KB)
+      📄 ModelFlotaStatus.php (6.1 KB)
+      📄 ModelMenu.php (10 KB)
+      📄 ModelPersonal.php (7.5 KB)
+      📄 ModelProductos.php (10.8 KB)
+      📄 ModelPublico.php (31.8 KB)
+      📄 ModelRecuperar.php (3.3 KB)
+      📄 ModelUsuario.php (21.5 KB)
+    📁 Services
+      📄 PdfService.php (5.2 KB)
+    📁 Views
+      📁 auth
+        📄 Login.php (6.1 KB)
+      📁 bienes
+        📄 index.php (10.8 KB)
+      📁 compras
+        📄 index.php (14.9 KB)
+      📁 dashboard
+        📄 index.php (27.9 KB)
+      📁 despachos
+        📄 historial.php (5.7 KB)
+        📄 index.php (13.3 KB)
+      📁 errores
+        📄 404.php (5.7 KB)
+      📁 estacion
+        📄 dataventa.php (10.8 KB)
+        📄 registrar.php (12.7 KB)
+        📄 seleccionar.php (2.6 KB)
+      📁 flota
+        📄 aceite.php (9.5 KB)
+        📄 historial.php (8.4 KB)
+        📄 index.php (13.7 KB)
+        📄 status_historial.php (4.9 KB)
+      📁 inc
+        📄 confirm_modal.php (2.9 KB)
+        📄 footer.php (1.5 KB)
+        📄 header.php (15.3 KB)
+      📁 menu
+        📄 index.php (13.1 KB)
+      📁 Pdf
+        📁 inc
+          📄 footer.php (218 B)
+          📄 header.php (2.3 KB)
+          📄 pdf.css.php (6.9 KB)
+        📁 templates
+          📄 bienes_reporte.php (4 KB)
+          📄 compras_costeadas_filtrado.php (6.1 KB)
+          📄 compras_orden_costeada.php (4.7 KB)
+          📄 despachos_orden.php (5.4 KB)
+          📄 estacion_litros.php (5.6 KB)
+          📄 estacion_reporte_dia.php (14.7 KB)
+          📄 flota_aceite.php (4.8 KB)
+          📄 flota_hoja_vida.php (7.8 KB)
+          📄 flota_operatividad.php (3.6 KB)
+          📄 productos_historial.php (2.8 KB)
+          📄 productos_inventario.php (2.9 KB)
+          📄 publico_aceite.php (6 KB)
+          📄 publico_movimientos.php (3.9 KB)
+          📄 publico_ventas_estacion.php (8.2 KB)
+      📁 perfil
+        📄 index.php (9 KB)
+      📁 personal
+        📄 index.php (7.5 KB)
+      📁 productos
+        📄 index.php (9.6 KB)
+      📁 publico
+        📁 inc
+          📄 footer.php (2.2 KB)
+          📄 header.php (10.8 KB)
+        📄 bienes.php (5.5 KB)
+        📄 movimientos.php (26.4 KB)
+      📁 recuperar
+        📄 index.php (990 B)
+      📁 usuarios
+        📄 index.php (9.3 KB)
+  📁 css
+    📄 styles.css (114.5 KB)
+    📄 tailwind.min.css (64.6 KB)
+  📁 doc
+    📄 ESTRUCTURA_2026-10-26.txt (41.8 KB)
+    📄 url.txt (924 B)
+  📁 img
+    📄 default.png (941 B)
+    📄 logo.png (245.8 KB)
+  📁 js
+    📁 components
+      📄 DataTable.js (11.3 KB)
+      📄 IconPicker.js (16.1 KB)
+      📄 SearchSelect.js (9.3 KB)
+    📄 aceite.js (11.4 KB)
+    📄 app.js (12.4 KB)
+    📄 bienes.js (21.8 KB)
+    📄 compras.js (25.3 KB)
+    📄 dashboard.js (30.9 KB)
+    📄 dataventa.js (35.7 KB)
+    📄 despachos.js (29.6 KB)
+    📄 estacion-seleccionar.js (2.4 KB)
+    📄 estacion.js (35.1 KB)
+    📄 flota-status.js (9.4 KB)
+    📄 flota.js (22.3 KB)
+    📄 function.imprimir.js (4.7 KB)
+    📄 function.imprimirQZ.js (13.4 KB)
+    📄 historial-productos.js (24.1 KB)
+    📄 historial.js (14.9 KB)
+    📄 login.js (8 KB)
+    📄 menu.js (43.1 KB)
+    📄 movimientos.js (84.8 KB)
+    📄 notifications.js (3.3 KB)
+    📄 pdf.js (3.2 KB)
+    📄 perfil.js (9.3 KB)
+    📄 personal.js (16.2 KB)
+    📄 productos.js (18.5 KB)
+    📄 publico-bienes.js (11.1 KB)
+    📄 recuperar.js (8.9 KB)
+    📄 usuarios.js (30 KB)
+    📄 utils.js (21.5 KB)
+  📁 public_html
+    📁 uploads
+      📁 tmp_pdf
+  📁 sql
+    📄 ESTRUCTURA_BUSYARACUY_22-10-26.sql (36.9 KB)
+    📄 ESTRUCTURA_BUSYARACUY_23-10-26.sql (37.1 KB)
+    📄 remoto_26-10-26.sql (10.5 MB)
+    📄 remoto_27-10-26.sql (10.5 MB)
+    📄 sql.zip (5.7 KB)
+  📁 storage
+    📁 logs
+      📄 db-errors.log (4.5 KB)
+    📁 pdf_tokens
+  📁 uploads
+    📁 storage
+      📁 A0-25
+        📄 A0-25_default.png (941 B)
+      📁 ADMIN
+        📄 default.png (24.9 KB)
+      📁 AM-23
+        📄 default.png (245.8 KB)
+      📁 BM-19
+        📄 default.png (245.8 KB)
+      📁 DB-13
+        📄 profile_6a280cb17b91a2.24511689.jpeg (113.8 KB)
+      📁 DG-11
+        📄 profile_68eeae865b50e7.01552912.png (73.8 KB)
+      📁 DP-21
+        📄 default.png (245.8 KB)
+      📁 EL-08
+        📄 default.png (17.8 KB)
+      📁 FA-06
+        📄 default.png (17.8 KB)
+      📁 GR-05
+        📄 default.png (17.8 KB)
+      📁 HR-20
+        📄 default.png (245.8 KB)
+      📁 JG-22
+        📄 default.png (245.8 KB)
+      📁 JZ-10
+        📄 default.png (24.9 KB)
+      📁 KM-07
+        📄 default.png (17.8 KB)
+      📁 KM-15
+        📄 default.png (73.8 KB)
+      📁 MO-03
+        📄 default.png (17.8 KB)
+      📁 MR-24
+        📄 MR-24_default.png (941 B)
+      📁 NL-16
+        📄 profile_68ffeb47401ab3.36557297.jpeg (39.1 KB)
+      📁 OM-17
+        📄 default.png (245.8 KB)
+      📁 PB-24
+        📄 PB-24_default.png (941 B)
+      📁 RD-09
+        📄 default.png (17.8 KB)
+      📁 SM-12
+        📄 profile_68e3b3a42c2c05.48317417.png (73.8 KB)
+      📁 WILL
+        📄 WILL_20261022_095239_dd681430.png (27.4 KB)
+      📁 YA-11
+        📄 default.png (17.8 KB)
+      📁 YM-12
+        📄 default.png (17.8 KB)
+      📁 YR-04
+        📄 default.png (17.8 KB)
+      📁 YS-18
+        📄 default.png (245.8 KB)
+    📁 tmp_pdf
+  📄 dd.html (2.6 KB)
+  📄 estructura.php (31 KB)
+  📄 i.html (2.6 KB)
+  📄 index.php (650 B)
+📁 BUS2
+  📁 data
+    📁 almacen
+      📄 historia_productos.php (4.1 KB)
+      📄 reporte.php (7.8 KB)
+      📄 reporte_inventario.php (3.7 KB)
+      📄 reportePDFdesp.php (5.8 KB)
+    📁 bienes
+      📄 bienes_qr.php (14.4 KB)
+      📄 reporte_bienes.php (4.9 KB)
+    📁 compra
+      📄 reporte_compra.php (5.6 KB)
+      📄 reporte_costeada.php (4.4 KB)
+      📄 reporte_costeadas_filtrado.php (6.7 KB)
+    📁 dompdf
+      📄 AUTHORS.md (509 B)
+      📄 autoload.inc.php (49 B)
+      📄 LICENSE.LGPL (24.2 KB)
+      📄 README.md (8.3 KB)
+      📄 VERSION (7 B)
+    📁 estacion
+      📄 reporte copy.php (5.6 KB)
+      📄 reporte.php (7 KB)
+      📄 reporte_venta.php (4.4 KB)
+    📁 flota
+      📄 historial_flota.php (7.2 KB)
+      📄 operatividad.php (4.8 KB)
+      📄 reporteaceite.php (5.2 KB)
+    📄 encabezado.php (3.4 KB)
+  📁 src
+    📁 css
+      📄 adminlte.min.css (1.3 MB)
+      📄 adminlte.min.css.map (3.6 MB)
+      📄 public.css (8.6 KB)
+    📁 img
+      📄 default.png (73.8 KB)
+      📄 logo.png (245.8 KB)
+    📁 js
+      📄 adminlte.min.js (43.2 KB)
+      📄 adminlte.min.js.map (126.6 KB)
+      📄 function.bienes.js (18 KB)
+      📄 function.cambioaceite.js (15 KB)
+      📄 function.clean.js (6.7 KB)
+      📄 function.compras.js (26.9 KB)
+      📄 function.dataventa.js (41.5 KB)
+      📄 function.dataventaa.js (25.9 KB)
+      📄 function.departamentos.js (11.2 KB)
+      📄 function.estacion.js (27.6 KB)
+      📄 function.flota.js (22.5 KB)
+      📄 function.historialunidad.js (13.4 KB)
+      📄 function.home.js (35.9 KB)
+      📄 function.imprimir.js (3.4 KB)
+      📄 function.imprimirQZ.js (11.7 KB)
+      📄 function.login.js (22.1 KB)
+      📄 function.main.js (15.6 KB)
+      📄 function.movimientos.js (104.6 KB)
+      📄 function.ordenes.js (37.9 KB)
+      📄 function.ordeness.js (31 KB)
+      📄 function.personal.js (12.6 KB)
+      📄 function.producto.js (30.8 KB)
+      📄 function.user.js (36.2 KB)
+      📄 functionmenu.js (40 KB)
+      📄 notifications.js (3 KB)
+    📁 plugins
+      📁 bootstrap
+        📁 js
+          📄 bootstrap.bundle.js (238.2 KB)
+          📄 bootstrap.bundle.js.map (400 KB)
+          📄 bootstrap.bundle.min.js (82.4 KB)
+          📄 bootstrap.bundle.min.js.map (308.8 KB)
+          📄 bootstrap.js (145 KB)
+          📄 bootstrap.js.map (248.5 KB)
+          📄 bootstrap.min.js (62 KB)
+          📄 bootstrap.min.js.map (188 KB)
+      📁 fontawesome-free
+        📁 css
+          📄 all.css (76.4 KB)
+          📄 all.min.css (58 KB)
+          📄 brands.css (747 B)
+          📄 brands.min.css (679 B)
+          📄 fontawesome.css (74.8 KB)
+          📄 fontawesome.min.css (56.6 KB)
+          📄 regular.css (749 B)
+          📄 regular.min.css (681 B)
+          📄 solid.css (743 B)
+          📄 solid.min.css (673 B)
+          📄 svg-with-js.css (8.3 KB)
+          📄 svg-with-js.min.css (6.2 KB)
+          📄 v4-shims.css (42.5 KB)
+          📄 v4-shims.min.css (26.1 KB)
+        📁 webfonts
+          📄 fa-brands-400.eot (131.2 KB)
+          📄 fa-brands-400.svg (733.7 KB)
+          📄 fa-brands-400.ttf (130.9 KB)
+          📄 fa-brands-400.woff (87.9 KB)
+          📄 fa-brands-400.woff2 (75 KB)
+          📄 fa-regular-400.eot (33.2 KB)
+          📄 fa-regular-400.svg (142.1 KB)
+          📄 fa-regular-400.ttf (32.9 KB)
+          📄 fa-regular-400.woff (15.9 KB)
+          📄 fa-regular-400.woff2 (13 KB)
+          📄 fa-solid-900.eot (198.3 KB)
+          📄 fa-solid-900.svg (902.4 KB)
+          📄 fa-solid-900.ttf (198 KB)
+          📄 fa-solid-900.woff (99.3 KB)
+          📄 fa-solid-900.woff2 (76.4 KB)
+      📁 jquery
+        📄 jquery.js (292.4 KB)
+        📄 jquery.min.js (87.4 KB)
+        📄 jquery.min.map (134.7 KB)
+        📄 jquery.slim.js (238.4 KB)
+        📄 jquery.slim.min.js (70.7 KB)
+        📄 jquery.slim.min.map (107.7 KB)
+      📁 js
+        📄 es_es.json (6.7 KB)
+      📁 overlayScrollbars
+        📁 css
+          📄 OverlayScrollbars.css (23.8 KB)
+          📄 OverlayScrollbars.min.css (19.6 KB)
+        📁 js
+          📄 jquery.overlayScrollbars.js (316 KB)
+          📄 jquery.overlayScrollbars.min.js (41.6 KB)
+          📄 OverlayScrollbars.js (360.7 KB)
+          📄 OverlayScrollbars.min.js (52.5 KB)
+  📁 storage
+    📁 ADMIN
+      📄 default.png (24.9 KB)
+    📁 AM-23
+      📄 default.png (245.8 KB)
+    📁 BM-19
+      📄 default.png (245.8 KB)
+    📁 DB-13
+      📄 profile_6a280cb17b91a2.24511689.jpeg (113.8 KB)
+    📁 DG-11
+      📄 profile_68eeae865b50e7.01552912.png (73.8 KB)
+    📁 DP-21
+      📄 default.png (245.8 KB)
+    📁 EL-08
+      📄 default.png (17.8 KB)
+    📁 FA-06
+      📄 default.png (17.8 KB)
+    📁 GR-05
+      📄 default.png (17.8 KB)
+    📁 HR-20
+      📄 default.png (245.8 KB)
+    📁 JG-22
+      📄 default.png (245.8 KB)
+    📁 JZ-10
+      📄 default.png (24.9 KB)
+    📁 KM-07
+      📄 default.png (17.8 KB)
+    📁 KM-15
+      📄 default.png (73.8 KB)
+    📁 MO-03
+      📄 default.png (17.8 KB)
+    📁 NL-16
+      📄 profile_68ffeb47401ab3.36557297.jpeg (39.1 KB)
+    📁 OC-14
+      📄 default.png (73.8 KB)
+    📁 OM-17
+      📄 default.png (245.8 KB)
+    📁 RD-09
+      📄 default.png (17.8 KB)
+    📁 SM-12
+      📄 profile_68e3b3a42c2c05.48317417.png (73.8 KB)
+    📁 WILL
+      📄 profile_69036ad0b942f2.62238234.png (27.4 KB)
+      📄 profile_6928711aca9b87.19854429.png (64.6 KB)
+    📁 YA-11
+      📄 default.png (17.8 KB)
+    📁 YM-12
+      📄 default.png (17.8 KB)
+    📁 YR-04
+      📄 default.png (17.8 KB)
+    📁 YS-18
+      📄 default.png (245.8 KB)
+  📁 system
+    📁 app
+      📁 Controllers
+        📄 BienesController.php (13.5 KB)
+        📄 CleanController.php (8.3 KB)
+        📄 ComprasController.php (19.9 KB)
+        📄 ErrorController.php (374 B)
+        📄 EstacionController.php (34.3 KB)
+        📄 EstacionControllerr.php (29 KB)
+        📄 FlotaController.php (21.6 KB)
+        📄 FlotaControllerr.php (17.5 KB)
+        📄 HomeController.php (15.4 KB)
+        📄 LoginControlle.php (22.6 KB)
+        📄 LoginController.php (25.5 KB)
+        📄 LogoutController.php (318 B)
+        📄 MenuController.php (11.1 KB)
+        📄 OrdenController.php (19.3 KB)
+        📄 OrdenControllerr.php (16.8 KB)
+        📄 PersonalController.php (14.6 KB)
+        📄 ProductoController.php (15.8 KB)
+        📄 PublicoController.php (33.8 KB)
+        📄 UserController.php (32.9 KB)
+      📁 Models
+        📄 BienesModel.php (8.9 KB)
+        📄 ComprasModel.php (23.3 KB)
+        📄 EstacionModel.php (36.1 KB)
+        📄 EstacionModell.php (29.5 KB)
+        📄 FlotaModel.php (19.6 KB)
+        📄 FlotaModell.php (17.8 KB)
+        📄 HomeModel.php (17.8 KB)
+        📄 LoginModel.php (8.2 KB)
+        📄 MenuModel.php (11.4 KB)
+        📄 OrdenModel.php (18.2 KB)
+        📄 PersonalModel.php (7 KB)
+        📄 ProductoModel.php (18.5 KB)
+        📄 PublicoModel.php (31.5 KB)
+        📄 UserModel.php (15.4 KB)
+      📁 Views
+        📁 Bienes
+          📄 bienes.php (11.1 KB)
+        📁 Clean
+          📄 cleanAlmacen.php (7.5 KB)
+        📁 Compras
+          📄 costo.php (14.8 KB)
+          📄 costos.php (14.8 KB)
+        📁 Errors
+          📄 error.php (8.7 KB)
+        📁 Estacion
+          📄 dataventa.php (6.5 KB)
+          📄 registrar.php (10.7 KB)
+        📁 Flota
+          📄 flota.php (13.1 KB)
+          📄 historialunidad.php (11.8 KB)
+          📄 historialunidadd.php (5.8 KB)
+          📄 statusaceite.php (11.2 KB)
+        📁 Login
+          📄 login.php (23.5 KB)
+        📁 Menu
+          📄 menu.php (33.6 KB)
+        📁 Modules
+          📁 data
+            📄 almacen.php (1.2 KB)
+            📄 bienes.php (2.4 KB)
+            📄 estacion.php (2.5 KB)
+            📄 operaciones.php (3.6 KB)
+            📄 sistema.php (2.1 KB)
+          📄 footer.php (2.8 KB)
+          📄 header.php (8.9 KB)
+          📄 plantilla.php (618 B)
+        📁 Orden
+          📄 orden.php (15.6 KB)
+          📄 ordenn.php (15.3 KB)
+        📁 Personal
+          📄 personal.php (9.2 KB)
+        📁 Producto
+          📄 historial.php (3.8 KB)
+          📄 inventario.php (2.3 KB)
+          📄 producto.php (9.8 KB)
+        📁 Publico
+          📄 movimientos.php (39.8 KB)
+        📁 User
+          📄 departamentos.php (8.7 KB)
+          📄 newuser.php (12 KB)
+          📄 perfil.php (10 KB)
+          📄 recuperar.php (2.1 KB)
+        📄 home.php (2.5 KB)
+    📁 core
+      📁 Config
+        📄 config.system.php (1.5 KB)
+      📁 DB
+        📄 ESTRUCTURA_LIMPIA_17-10-25.sql (45 KB)
+        📄 INSERT_ORGANIZADOS.sql (1.9 MB)
+      📁 Helpers
+        📄 Helpers.php (15 KB)
+      📁 Libraries
+        📄 autoLoad.php (135 B)
+        📄 Conexion.php (1.1 KB)
+        📄 Controllers.php (523 B)
+        📄 Load.php (779 B)
+        📄 Mysql.php (8.3 KB)
+        📄 Views.php (465 B)
+  📄 busyarac_data_13-10-26.sql (9.3 MB)
+  📄 index.php (920 B)
+  📄 mant.html (4 KB)
+📁 dashboard
+  📁 de
+    📄 faq.html (34.6 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 docs
+    📁 images
+      📁 access-phpmyadmin-remotely
+        📄 image1.png (25.2 KB)
+      📁 activate-use-xdebug
+        📄 image1.png (18.3 KB)
+        📄 image2.png (37.4 KB)
+        📄 image3.png (41.6 KB)
+      📁 auto-start-xampp
+        📄 image1.png (28.7 KB)
+      📁 backup-restore-mysql
+        📄 image1.png (51.3 KB)
+        📄 image10.png (25.8 KB)
+        📄 image11.png (13.8 KB)
+        📄 image12.png (16.5 KB)
+        📄 image13.png (15.6 KB)
+        📄 image14.png (25.8 KB)
+        📄 image2.png (16.6 KB)
+        📄 image3.png (9 KB)
+        📄 image4.png (48.4 KB)
+        📄 image5.png (13.9 KB)
+        📄 image6.png (31 KB)
+        📄 image7.png (27.2 KB)
+        📄 image8.png (10.1 KB)
+        📄 image9.png (29.2 KB)
+      📁 configure-use-tomcat
+        📄 image1.png (29.9 KB)
+        📄 image2.png (43.5 KB)
+        📄 image3.png (19.8 KB)
+        📄 image4.png (18.3 KB)
+        📄 image5.png (29.5 KB)
+        📄 image6.png (42.5 KB)
+        📄 image7.png (31.3 KB)
+      📁 configure-vhosts
+        📄 image1.png (7.3 KB)
+        📄 image2.png (25.1 KB)
+        📄 image3.png (4.4 KB)
+        📄 image4.png (29.2 KB)
+      📁 configure-wildcard-subdomains
+        📄 image1.png (7.5 KB)
+        📄 image2.png (25.1 KB)
+        📄 image3.png (4.3 KB)
+        📄 image4.png (23 KB)
+      📁 create-framework-project-zf1
+        📄 image1.png (9.8 KB)
+        📄 image2.png (35.3 KB)
+      📁 create-framework-project-zf2
+        📄 image1.png (37.8 KB)
+        📄 image2.png (9.9 KB)
+        📄 image3.png (30.1 KB)
+        📄 image4.png (16.3 KB)
+        📄 image5.png (34.7 KB)
+      📁 deploy-git-app
+        📄 image1.png (38.6 KB)
+        📄 image2.png (13.3 KB)
+        📄 image3.png (11.8 KB)
+        📄 image4.png (12.6 KB)
+        📄 image5.png (23.8 KB)
+        📄 image6.png (19.4 KB)
+      📁 install-wordpress
+        📄 image01.png (250.7 KB)
+        📄 image02.png (2.3 KB)
+        📄 image11.png (9.9 KB)
+        📄 image110.png (24.2 KB)
+        📄 image12.png (23.4 KB)
+        📄 image13.png (14.4 KB)
+        📄 image14.png (13.9 KB)
+        📄 image15.png (9.3 KB)
+        📄 image16.png (13 KB)
+        📄 image17.png (14.3 KB)
+        📄 image18.png (14.9 KB)
+        📄 image19.png (39.2 KB)
+        📄 image21.png (39.3 KB)
+        📄 image22.png (16.1 KB)
+        📄 image23.png (11.8 KB)
+        📄 image24.png (29.9 KB)
+        📄 image31.png (19 KB)
+        📄 image32.png (39.9 KB)
+        📄 image33.png (13.6 KB)
+        📄 image34.png (9.1 KB)
+        📄 image35.png (35.4 KB)
+        📄 image36.png (14.8 KB)
+        📄 image37.png (5.2 KB)
+        📄 image38.png (12.5 KB)
+      📁 reset-mysql-password
+        📄 image1.png (30.1 KB)
+        📄 image2.png (8.2 KB)
+        📄 image3.png (11.2 KB)
+      📁 send-mail
+        📄 image1.png (6.7 KB)
+        📄 image2.png (31.1 KB)
+        📄 image3.png (5 KB)
+      📁 transfer-files-ftp
+        📄 image1.png (26.5 KB)
+        📄 image10.png (42.5 KB)
+        📄 image11.png (14.6 KB)
+        📄 image2.png (2.9 KB)
+        📄 image3.png (8.2 KB)
+        📄 image4.png (8.1 KB)
+        📄 image5.png (13.7 KB)
+        📄 image6.png (12.1 KB)
+        📄 image7.png (15.6 KB)
+        📄 image8.png (13.7 KB)
+        📄 image9.png (41.1 KB)
+      📁 troubleshoot-apache
+        📄 image1.png (8 KB)
+        📄 image2.png (23.9 KB)
+        📄 image3.png (30.2 KB)
+        📄 image4.png (23.4 KB)
+        📄 image5.png (145.5 KB)
+        📄 image6.png (129.5 KB)
+        📄 image7.png (57.7 KB)
+        📄 image8.png (57.2 KB)
+      📁 use-different-php-version
+        📄 image1.png (33.2 KB)
+      📁 use-php-fcgi
+        📄 image1.png (17.9 KB)
+      📁 use-sqlite
+        📄 image1.png (9.1 KB)
+        📄 image2.png (9.1 KB)
+        📄 image3.png (6.8 KB)
+    📄 access-phpmyadmin-remotely.html (5.4 KB)
+    📄 access-phpmyadmin-remotely.pdf (33.6 KB)
+    📄 access-phpmyadmin-remotely.pdfmarks (212 B)
+    📄 activate-use-xdebug.html (8 KB)
+    📄 activate-use-xdebug.pdf (111.9 KB)
+    📄 activate-use-xdebug.pdfmarks (201 B)
+    📄 auto-start-xampp.html (4.8 KB)
+    📄 auto-start-xampp.pdf (30.3 KB)
+    📄 auto-start-xampp.pdfmarks (194 B)
+    📄 backup-restore-mysql.html (13.7 KB)
+    📄 backup-restore-mysql.pdf (302.9 KB)
+    📄 backup-restore-mysql.pdfmarks (220 B)
+    📄 change-mysql-temp-dir.html (4.8 KB)
+    📄 change-mysql-temp-dir.pdf (8.1 KB)
+    📄 change-mysql-temp-dir.pdfmarks (220 B)
+    📄 configure-use-tomcat.html (8.9 KB)
+    📄 configure-use-tomcat.pdf (205.5 KB)
+    📄 configure-use-tomcat.pdfmarks (209 B)
+    📄 configure-vhosts.html (9.9 KB)
+    📄 configure-vhosts.pdf (100.7 KB)
+    📄 configure-vhosts.pdfmarks (201 B)
+    📄 configure-wildcard-subdomains.html (10.2 KB)
+    📄 configure-wildcard-subdomains.pdf (94.5 KB)
+    📄 configure-wildcard-subdomains.pdfmarks (213 B)
+    📄 create-framework-project-zf1.html (8.4 KB)
+    📄 create-framework-project-zf1.pdf (64.7 KB)
+    📄 create-framework-project-zf1.pdfmarks (214 B)
+    📄 create-framework-project-zf2.html (9.4 KB)
+    📄 create-framework-project-zf2.pdf (137 KB)
+    📄 create-framework-project-zf2.pdfmarks (214 B)
+    📄 deploy-git-app.html (8.4 KB)
+    📄 deploy-git-app.pdf (120.7 KB)
+    📄 deploy-git-app.pdfmarks (209 B)
+    📄 increase-php-file-upload-limit.html (4.9 KB)
+    📄 increase-php-file-upload-limit.pdf (9.2 KB)
+    📄 increase-php-file-upload-limit.pdfmarks (212 B)
+    📄 reset-mysql-password.html (6.3 KB)
+    📄 reset-mysql-password.pdf (59.9 KB)
+    📄 reset-mysql-password.pdfmarks (215 B)
+    📄 send-mail.html (10.5 KB)
+    📄 send-mail.pdf (72.3 KB)
+    📄 send-mail.pdfmarks (196 B)
+    📄 transfer-files-ftp.html (8.7 KB)
+    📄 transfer-files-ftp.pdf (189.3 KB)
+    📄 transfer-files-ftp.pdfmarks (198 B)
+    📄 troubleshoot-apache.html (14.2 KB)
+    📄 troubleshoot-apache.pdf (486.5 KB)
+    📄 troubleshoot-apache.pdfmarks (214 B)
+    📄 use-different-php-version.html (6.8 KB)
+    📄 use-different-php-version.pdf (43.5 KB)
+    📄 use-different-php-version.pdfmarks (205 B)
+    📄 use-php-fcgi.html (6.7 KB)
+    📄 use-php-fcgi.pdf (34.1 KB)
+    📄 use-php-fcgi.pdfmarks (199 B)
+    📄 use-sqlite.html (8.9 KB)
+    📄 use-sqlite.pdf (48.1 KB)
+    📄 use-sqlite.pdfmarks (196 B)
+  📁 es
+    📄 faq.html (32.3 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.1 KB)
+  📁 fr
+    📄 faq.html (32.7 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 hu
+    📄 faq.html (35 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 images
+    📁 bitnami-xampp
+      📄 image1.png (20.6 KB)
+      📄 image2.png (19.3 KB)
+      📄 image3.png (109.2 KB)
+      📄 image4.png (16.8 KB)
+      📄 image5.png (86.5 KB)
+      📄 image6.png (16.9 KB)
+      📄 image7.png (34.5 KB)
+    📁 blog
+      📄 download-xampp-vm.png (24.7 KB)
+      📄 heartbleed-affected-osx.png (223.8 KB)
+      📄 heartbleed-affected.png (137.1 KB)
+      📄 heartbleed-fixed.png (127.9 KB)
+      📄 phpinfo-section-1.png (152.1 KB)
+      📄 phpinfo-section-2.png (184.7 KB)
+      📄 xampp-vm-cakephp-1.png (25.5 KB)
+      📄 xampp-vm-cakephp-10.png (18.8 KB)
+      📄 xampp-vm-cakephp-11.png (25.9 KB)
+      📄 xampp-vm-cakephp-2.png (26.2 KB)
+      📄 xampp-vm-cakephp-3.png (22.4 KB)
+      📄 xampp-vm-cakephp-4.png (42.5 KB)
+      📄 xampp-vm-cakephp-5.png (63.3 KB)
+      📄 xampp-vm-cakephp-6.png (66.4 KB)
+      📄 xampp-vm-cakephp-7.png (84.9 KB)
+      📄 xampp-vm-cakephp-8.png (55.6 KB)
+      📄 xampp-vm-cakephp-9.png (66.8 KB)
+      📄 xampp-vm-general.png (53.9 KB)
+      📄 xampp-vm-manager.png (37.4 KB)
+      📄 xampp-vm-network.png (54.9 KB)
+      📄 xampp-vm-php-finder.png (95.9 KB)
+      📄 xampp-vm-php-output.png (22.9 KB)
+      📄 xampp-vm-tray.png (116.9 KB)
+      📄 xampp-vm-volumes.png (47.4 KB)
+    📁 flags
+      📄 cn.png (472 B)
+      📄 de.png (545 B)
+      📄 en.png (609 B)
+      📄 es.png (469 B)
+      📄 fr.png (545 B)
+      📄 hu.png (432 B)
+      📄 it.png (420 B)
+      📄 jp.png (420 B)
+      📄 pl.png (374 B)
+      📄 pt.png (554 B)
+      📄 pt_br.png (729 B)
+      📄 ro.png (495 B)
+      📄 ru.png (420 B)
+      📄 tr.png (492 B)
+      📄 ur.png (569 B)
+      📄 zh_cn.png (472 B)
+      📄 zh_tw.png (465 B)
+    📁 screenshots
+      📄 xampp-linux-start.jpg (468.7 KB)
+      📄 xampp-macosx-download-installer.jpg (66.7 KB)
+      📄 xampp-macosx-launch-credentials.jpg (60.9 KB)
+      📄 xampp-macosx-run-installer.jpg (98.4 KB)
+      📄 xampp-macosx-stack-manager-general.jpg (86.8 KB)
+      📄 xampp-macosx-stack-manager-network.jpg (85.1 KB)
+      📄 xampp-macosx-stack-manager-services.jpg (78.7 KB)
+      📄 xampp-macosx-stack-manager-volumes.jpg (69.1 KB)
+      📄 xampp-macosx-stack-manager.jpg (78.5 KB)
+      📄 xampp-macosx-start.jpg (474.7 KB)
+      📄 xampp-macosx-wordpress.jpg (135.4 KB)
+      📄 xampp-windows-start.jpg (479.6 KB)
+    📁 stamps
+      📄 stamp-173x38.gif (1.9 KB)
+      📄 stamp-80x15.gif (1.1 KB)
+      📄 stamp-88x31.gif (940 B)
+    📁 team
+      📄 beltran-rueda.png (14.9 KB)
+      📄 daniel-lopez.png (16.6 KB)
+      📄 kai-seidler.jpg (23.6 KB)
+      📄 kay-vogelgesang.jpg (18.1 KB)
+      📄 paul-hinz.jpg (10.4 KB)
+    📄 addons-video-thumb.png (16.5 KB)
+    📄 apple-logo.png (1.5 KB)
+    📄 appleVM-logo.png (1.5 KB)
+    📄 background.png (2.7 KB)
+    📄 bitnami-xampp.png (21.6 KB)
+    📄 fastly-logo.png (1.7 KB)
+    📄 fastly-logo@2x.png (2.6 KB)
+    📄 favicon.png (2.4 KB)
+    📄 linux-logo.png (1.8 KB)
+    📄 middleman.png (24.7 KB)
+    📄 pdf-icon.png (3.7 KB)
+    📄 social-icons-large.png (7.3 KB)
+    📄 social-icons-large@2x.png (6.4 KB)
+    📄 social-icons.png (3.3 KB)
+    📄 social-icons@2x.png (5.2 KB)
+    📄 sourceforge-logo.png (6.2 KB)
+    📄 sourceforge-logo@2x.png (10.7 KB)
+    📄 stack-icons.png (10.8 KB)
+    📄 stack-icons@2x.png (10.8 KB)
+    📄 twitter-bird.png (75.1 KB)
+    📄 windows-logo.png (1.9 KB)
+    📄 xampp-cloud.png (15.5 KB)
+    📄 xampp-cloud@2x.png (29.6 KB)
+    📄 xampp-logo.svg (5.3 KB)
+    📄 xampp-newsletter-logo.png (7.9 KB)
+  📁 it
+    📄 faq.html (33.1 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 javascripts
+    📄 all.js (184 KB)
+    📄 modernizr.js (50.2 KB)
+  📁 jp
+    📄 faq.html (32.9 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.6 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 pl
+    📄 faq.html (32.9 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 pt_br
+    📄 faq.html (33.6 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 ro
+    📄 faq.html (33 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.2 KB)
+  📁 ru
+    📄 faq.html (45 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.3 KB)
+  📁 stylesheets
+    📄 all-rtl.css (397.6 KB)
+    📄 all.css (397.5 KB)
+    📄 asciidoctor.css (38.5 KB)
+    📄 normalize.css (6.7 KB)
+  📁 tr
+    📄 faq.html (32.9 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.6 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.1 KB)
+  📁 ur
+    📄 faq.html (41.9 KB)
+    📄 howto.html (5.7 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (5 KB)
+    📄 index.html (5.2 KB)
+  📁 zh_cn
+    📄 faq.html (30.9 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.1 KB)
+  📁 zh_tw
+    📄 faq.html (30.8 KB)
+    📄 howto.html (5.6 KB)
+    📄 howto_platform_links.html (3.7 KB)
+    📄 howto_shared_links.html (4.9 KB)
+    📄 index.html (5.1 KB)
+  📄 404.html (4 KB)
+  📄 faq.html (30.8 KB)
+  📄 favicon.ico (1.1 KB)
+  📄 howto.html (5.5 KB)
+  📄 howto_platform_links.html (3.6 KB)
+  📄 howto_shared_links.html (4.9 KB)
+  📄 index.html (5.1 KB)
+  📄 phpinfo.php (21 B)
+📁 img
+  📄 module_table_bottom.png (751 B)
+  📄 module_table_top.png (337 B)
+📁 multiservicio
+  📁 app
+    📁 Config
+      📄 config.php (4.5 KB)
+      📄 routes.php (5 KB)
+    📁 Controllers
+      📄 ControllerAudit.php (1.7 KB)
+      📄 ControllerAuth.php (11.3 KB)
+      📄 ControllerCaja.php (491 B)
+      📄 ControllerCatalogo.php (34.1 KB)
+      📄 ControllerClientes.php (6.2 KB)
+      📄 ControllerConsultas.php (6.7 KB)
+      📄 ControllerDashboard.php (6.2 KB)
+      📄 ControllerDevoluciones.php (9 KB)
+      📄 ControllerEmail.php (21.1 KB)
+      📄 ControllerEmpresa.php (3.1 KB)
+      📄 ControllerErrores.php (401 B)
+      📄 ControllerFacturacion.php (35.8 KB)
+      📄 ControllerFacturas.php (3.1 KB)
+      📄 ControllerGarantia.php (8.9 KB)
+      📄 ControllerGastos.php (1.8 KB)
+      📄 ControllerHistorial.php (1.8 KB)
+      📄 ControllerInventario.php (22.3 KB)
+      📄 ControllerPerfil.php (4.3 KB)
+      📄 ControllerPersonal.php (9.2 KB)
+      📄 ControllerPresupuesto.php (34.1 KB)
+      📄 ControllerProveedores.php (9.9 KB)
+      📄 ControllerRecuperar.php (457 B)
+      📄 ControllerReportes.php (12 KB)
+      📄 ControllerSearch.php (5 KB)
+      📄 ControllerTaller.php (39.1 KB)
+      📄 ControllerVenta.php (4 KB)
+    📁 Core
+      📄 App.php (3.4 KB)
+      📄 AppException.php (388 B)
+      📄 Controller.php (4.6 KB)
+      📄 Database.php (5.1 KB)
+      📄 Model.php (508 B)
+      📄 StockException.php (113 B)
+      📄 Validator.php (7.7 KB)
+    📁 Helpers
+      📄 helpers.php (6.6 KB)
+      📄 NotificationChecker.php (8.3 KB)
+    📁 Middleware
+      📄 AuthGuard.php (6.8 KB)
+      📄 RoleGuard.php (4.1 KB)
+    📁 Models
+      📄 ModelAudit.php (3.3 KB)
+      📄 ModelCaja.php (819 B)
+      📄 ModelCatalogo.php (22.2 KB)
+      📄 ModelCliente.php (7.6 KB)
+      📄 ModelDashboard.php (22.8 KB)
+      📄 ModelDevoluciones.php (17.2 KB)
+      📄 ModelEmail.php (10.3 KB)
+      📄 ModelEmpresa.php (3.3 KB)
+      📄 ModelFacturacion.php (54.4 KB)
+      📄 ModelFacturas.php (12.3 KB)
+      📄 ModelGarantia.php (37.8 KB)
+      📄 ModelGasto.php (3.7 KB)
+      📄 ModelHistorial.php (5.1 KB)
+      📄 ModelInventario.php (26.3 KB)
+      📄 ModelOrden.php (22.5 KB)
+      📄 ModelPerfil.php (2.1 KB)
+      📄 Modelpersonal.php (10.2 KB)
+      📄 ModelPresupuesto.php (63 KB)
+      📄 ModelProveedor.php (23.2 KB)
+      📄 ModelReportes.php (28.7 KB)
+      📄 ModelUsuario.php (6.3 KB)
+      📄 ModelVehiculo.php (3.1 KB)
+    📁 Scripts
+      📄 notificar_proveedores.php (4.7 KB)
+      📄 test_whatsapp.php (3.1 KB)
+    📁 Services
+      📄 BillingService.php (7.3 KB)
+      📄 CalculadoraFinaciera.php (2 B)
+      📄 CompraService.php (2.2 KB)
+      📄 EmailService.php (25.3 KB)
+      📄 PdfService.php (5 KB)
+      📄 WhatsAppService.php (9.1 KB)
+    📁 Views
+      📁 audit
+        📄 index.php (12.6 KB)
+      📁 auth
+        📄 Login.php (5.1 KB)
+      📁 catalogo
+        📄 pedidos_pendientes.php (8.7 KB)
+        📄 pedidos_procesados.php (6.1 KB)
+        📄 ver_pedido.php (14 KB)
+      📁 cliente
+        📄 index.php (10.6 KB)
+      📁 dashboard
+        📄 index.php (10 KB)
+      📁 devoluciones
+        📄 index.php (40 KB)
+      📁 email
+        📁 previews
+          📄 admin_preview.html (6.1 KB)
+          📄 cliente_preview.html (6 KB)
+        📁 templates
+          📄 default_compose.php (1.6 KB)
+        📄 abono_registrado.php (10.8 KB)
+        📄 factura_directa.php (6.9 KB)
+        📄 index.php (72.7 KB)
+        📄 layout.php (5.2 KB)
+        📄 orden_servicio_cambio_estado.php (4.2 KB)
+        📄 orden_servicio_creada.php (4 KB)
+        📄 orden_servicio_lista.php (3.9 KB)
+        📄 pedido_catalogo_admin.php (3 KB)
+        📄 pedido_catalogo_cliente.php (2.6 KB)
+        📄 pedido_procesado_cliente.php (3.5 KB)
+        📄 plantillas.php (18.2 KB)
+        📄 proveedor_vencimiento.php (4.2 KB)
+        📄 recordatorio_pago.php (12.1 KB)
+        📄 resumen_mensual.php (6.1 KB)
+      📁 empresa
+        📄 index.php (7.6 KB)
+      📁 errores
+        📄 404.php (921 B)
+      📁 facturacion
+        📄 index.php (19.9 KB)
+      📁 facturas
+        📄 index.php (6.4 KB)
+        📄 ver.php (33 KB)
+      📁 garantia
+        📄 index.php (56.9 KB)
+      📁 gastos
+        📄 index.php (5 KB)
+      📁 inc
+        📄 footer.php (57 B)
+        📄 header.php (19 KB)
+      📁 inventario
+        📄 index.php (19.3 KB)
+        📄 kardex.php (10.9 KB)
+      📁 pdf
+        📁 inc
+          📄 footer.php (388 B)
+          📄 header.php (3.2 KB)
+        📁 templates
+          📄 cartera.php (1.8 KB)
+          📄 devolucion.php (14.9 KB)
+          📄 factura.php (16.2 KB)
+          📄 garantia.php (13.8 KB)
+          📄 kardex_individual.php (6.3 KB)
+          📄 kardex_reporte.php (5.9 KB)
+          📄 orden.php (15.8 KB)
+          📄 presupuesto.php (17.4 KB)
+          📄 recibo_abono.php (7.7 KB)
+          📄 recibo_pago.php (8.8 KB)
+          📄 reporte_auditoria.php (6.2 KB)
+          📄 reporte_cartera_proveedores.php (3.9 KB)
+          📄 reporte_gastos.php (6.3 KB)
+          📄 reporte_mostrador.php (2.4 KB)
+          📄 reporte_proveedor_individual.php (14.4 KB)
+      📁 perfil
+        📄 index.php (7.8 KB)
+      📁 personal
+        📄 index.php (10 KB)
+      📁 presupuesto
+        📄 index.php (133.7 KB)
+        📄 ver.php (55.5 KB)
+      📁 proveedor
+        📄 index.php (21.7 KB)
+      📁 public
+        📁 catalogo
+          📄 carrito.php (10.8 KB)
+          📄 checkout.php (11.2 KB)
+          📄 confirmacion.php (12.5 KB)
+          📄 detalle.php (13.2 KB)
+          📄 index.php (20.7 KB)
+        📄 vehicle_history_qr.php (16.7 KB)
+      📁 recuperar
+        📄 index.php (853 B)
+      📁 reportes
+        📄 index.php (31.9 KB)
+      📁 taller
+        📄 cerradas.php (17.4 KB)
+        📄 historial.php (17.8 KB)
+        📄 index.php (24.6 KB)
+        📄 nueva_orden.php (34.7 KB)
+      📁 venta
+        📄 index.php (59.2 KB)
+  📁 doc
+    📄 descripcion_interfaces_funcionalidad.txt (19.8 KB)
+    📄 ESTRUCTURA_MULTISERVICIO_3.0.txt (9.5 KB)
+  📁 public_html
+    📁 css
+      📄 styles.css (11.3 KB)
+      📄 styles.min.css (4.9 KB)
+      📄 styles_catalogo.css (14.8 KB)
+      📄 tailwind.min.css (64.6 KB)
+    📁 img
+      📄 default.png (941 B)
+      📄 logo.png (353.6 KB)
+    📁 js
+      📄 app.js (90.4 KB)
+      📄 carrito.js (10.1 KB)
+      📄 catalogo-publico.js (2.7 KB)
+      📄 clientes.js (11.1 KB)
+      📄 dashboard.js (49.9 KB)
+      📄 DataTableRefactor.js (8 KB)
+      📄 detalle.js (3.4 KB)
+      📄 empresa.js (1.8 KB)
+      📄 facturacion.js (79.8 KB)
+      📄 facturas.js (14.7 KB)
+      📄 gastos.js (7.2 KB)
+      📄 historial.js (12 KB)
+      📄 inventario.js (34.7 KB)
+      📄 js.zip (17.5 KB)
+      📄 login.js (5.7 KB)
+      📄 notifications.zip (1.4 KB)
+      📄 perfil.js (2.2 KB)
+      📄 personal.js (12.4 KB)
+      📄 polling.js (4.6 KB)
+      📄 proveedores.js (45.7 KB)
+      📄 recuperar.js (0 B)
+      📄 reportes.js (116 KB)
+      📄 taller_nueva_orden.js (26.9 KB)
+      📄 utils.js (14.6 KB)
+    📁 sound
+      📄 coin.mp3 (22.1 KB)
+      📄 cute.mp3 (25 KB)
+      📄 email.mp3 (22.6 KB)
+    📁 uploads
+      📁 emails
+      📁 emails_attachments
+        📁 2026
+          📁 10
+            📄 email_6_1792089157_0_PRES-0005.pdf (28.2 KB)
+            📄 email_7_1792090031_0_PRES-0006.pdf (25.1 KB)
+            📄 email_8_1792090666_0_PRES-0005.pdf (28.8 KB)
+      📁 inventario
+        📄 prod_1788264717_101ce57c.jpg (6.6 KB)
+        📄 prod_1788264822_1f775165.jpg (5.2 KB)
+        📄 prod_1788265270_ea8666d3.jpg (9 KB)
+        📄 prod_1788265426_279a7c13.jpg (7.9 KB)
+        📄 prod_1788265643_18fad8ba.png (36.5 KB)
+        📄 prod_1788265713_e7b93b77.jpg (10 KB)
+        📄 prod_1788265827_a55d0b30.jpg (10.9 KB)
+        📄 prod_1788265858_10235ffe.jpg (11.2 KB)
+        📄 prod_1788265939_ddb17df9.jpg (5.8 KB)
+        📄 prod_1792005964_57b96bc8.jpg (9 KB)
+        📄 prod_1792005998_d3de8bdc.jpg (7.9 KB)
+        📄 prod_1792006006_e2e1ce8c.png (36.5 KB)
+        📄 prod_1792006022_5a04a66b.jpg (5.2 KB)
+        📄 prod_1792006032_f17e79ab.jpg (6.2 KB)
+        📄 prod_1792006040_5c060e00.jpg (7.9 KB)
+        📄 prod_1792006048_0fbdabea.jpg (6.2 KB)
+        📄 prod_1792006062_d887b290.jpg (6.6 KB)
+        📄 prod_1792006191_d833b1fd.jpg (6.2 KB)
+        📄 prod_1792006197_892f6c21.jpg (6.4 KB)
+        📄 prod_1792006205_7c44cd0e.jpg (8.9 KB)
+        📄 prod_1792094232_cc968f6b.jpg (9 KB)
+        📄 prod_1792094239_474ea936.jpg (6.2 KB)
+        📄 prod_1792094285_a151960b.jpg (6.4 KB)
+        📄 prod_1792094297_3be81831.jpg (7.9 KB)
+        📄 prod_1792094309_42c7276c.jpg (5.2 KB)
+        📄 prod_1792094356_0bea9817.png (199.1 KB)
+        📄 prod_1792094366_a2e59680.jpg (8.9 KB)
+        📄 prod_1792094374_305b948d.jpg (5.2 KB)
+        📄 prod_1792094382_ea2cbaf9.jpg (6.2 KB)
+        📄 prod_1792094391_2e5defd4.jpg (7.9 KB)
+        📄 prod_1792094400_fb272b5d.jpg (6.2 KB)
+        📄 prod_1792094408_733d45a3.jpg (9.8 KB)
+        📄 prod_1792095969_00a1710d.jpg (6.9 KB)
+      📁 logo
+        📄 logo_empresa_1788264320.png (267.4 KB)
+        📄 logo_empresa_1792093821.png (267.4 KB)
+      📁 tmp_pdf
+    📄 accion.php (32.4 KB)
+    📄 estructura.php (31 KB)
+    📄 index.php (6 KB)
+    📄 mantenimient.html (7.4 KB)
+    📄 ver.html (9.4 KB)
+  📁 sql
+    📄 antiguo.zip (21.8 KB)
+    📄 multiservicio_3.0_limipa.sql (37.6 KB)
+  📁 tailwind-build
+    📄 input.css (566 B)
+    📄 tailwind.config.js (609 B)
+  📄 EVALUACION_SISTEMA.md (26.4 KB)
+  📄 MANUAL_INSTALACION.txt (27.5 KB)
+  📄 multiservicio3.0.txt (14 B)
+📁 tailwind-build
+  📄 input.css (539 B)
+  📄 tailwind.config.js (586 B)
+📁 webalizer
+📁 xampp
+  📄 .modell (5 B)
+  📄 .modell-usb (14 B)
+  📄 .version (7 B)
+📄 applications.html (3.5 KB)
+📄 bitnami.css (177 B)
+📄 BUS.zip (6.5 MB)
+📄 BUS_REMOTO_ANTIGUO_13-10-26.zip (10.6 MB)
+📄 deepseek_php_20261026_c33af8.phpinfo_sesion.php (534 B)
+📄 favicon.ico (30.2 KB)
+📄 index.php (260 B)
