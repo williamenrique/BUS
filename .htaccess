@@ -7,7 +7,25 @@ DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # --------------------------------------------
+    # MODO MANTENIMIENTO
+    # Si existe el archivo .maintenance en la raíz,
+    # todos los usuarios (excepto las IPs de abajo)
+    # ven la página maintenance.html con HTTP 503.
+    # --------------------------------------------
+    RewriteCond %{REMOTE_ADDR} !^127\.0\.0\.1$
+    RewriteCond %{REMOTE_ADDR} !^::1$
+    RewriteCond %{DOCUMENT_ROOT}/.maintenance -f
+    RewriteCond %{REQUEST_URI} !^/maintenance\.html$
+    RewriteRule ^.*$ /maintenance.html [R=503,L]
+
+    # --------------------------------------------
+    # RUTAS DE LA APP (lo que ya tenías)
+    # --------------------------------------------
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]
 </IfModule>
+
+ErrorDocument 503 /maintenance.html
