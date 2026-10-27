@@ -31,6 +31,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /* Escapa HTML para inyectar texto seguro en innerHTML */
+    function esc(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     function refreshIcons() {
         if (window.lucide && typeof window.lucide.createIcons === 'function') {
             try { window.lucide.createIcons(); } catch(e) { console.error(e); }
@@ -141,9 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const d = await fetchJSON(API + '/instituciones');
         if (!d.success || !d.data || !d.data.length) return;
 
-        sel.innerHTML = d.data.map(i =>
-            `<option value="${i.id_institucion}">${i.nombre}</option>`
-        ).join('');
+        sel.innerHTML = d.data.map(i => {
+            const corto = i.nombre_corto || i.nombre;
+            return `<option value="${i.id_institucion}" title="${esc(i.nombre)}">${esc(corto)}</option>`;
+        }).join('');
 
         if (!d.data.find(x => parseInt(x.id_institucion) === institucionActual)) {
             institucionActual = parseInt(d.data[0].id_institucion, 10);

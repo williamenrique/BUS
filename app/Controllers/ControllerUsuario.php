@@ -732,7 +732,7 @@ class ControllerUsuario extends Controller{
     }
 
     private function storageBase(): string{
-        return PUBLIC_PATH . 'uploads' . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR;
+        return ROOT_PATH . 'assets' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'storage' . DIRECTORY_SEPARATOR;
     }
 
     private function copiarDefault(string $nick): string{

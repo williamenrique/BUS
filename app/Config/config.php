@@ -49,6 +49,7 @@ if (!defined('ROOT_PATH'))  define('ROOT_PATH',  dirname(APPROOT) . DIRECTORY_SE
 if (!defined('APP_PATH'))   define('APP_PATH',   APPROOT . DIRECTORY_SEPARATOR);
 if (!defined('VIEWS_PATH')) define('VIEWS_PATH', APP_PATH . 'Views' . DIRECTORY_SEPARATOR);
 if (!defined('PUBLIC_PATH')) define('PUBLIC_PATH', ROOT_PATH);   // ← WEB: raíz ya es pública
+if (!defined('ASSETS_PATH')) define('ASSETS_PATH', ROOT_PATH . 'assets' . DIRECTORY_SEPARATOR);   // ← NUEVO
 
 // ============================================
 // Base de datos · PRODUCCIÓN

@@ -22,10 +22,16 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </h2>
         <p class="page-subtitle">Inventario del almacén</p>
     </div>
-    <button id="btnNuevo" class="btn btn-primary">
-        <?= icon_tag('plus', 'plus', 'w-4 h-4') ?>
-        <span id="btnNuevoText">Nuevo Producto</span>
-    </button>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+        <button id="btnPdfPorEstado" class="btn btn-primary">
+            <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+            <span id="btnPdfPorEstadoText">PDF por Estado</span>
+        </button>
+        <button id="btnNuevo" class="btn btn-primary">
+            <?= icon_tag('plus', 'plus', 'w-4 h-4') ?>
+            <span id="btnNuevoText">Nuevo Producto</span>
+        </button>
+    </div>
 </div>
 
 <!-- ============================================ -->

@@ -231,4 +231,40 @@ class ControllerProductos extends Controller{
         }
         return $d;
     }
+        /* ============================================================
+       PDF · PRODUCTOS POR ESTADO DE STOCK
+       ============================================================ */
+    public function pdfPorEstado(string $inst = '1'): void{
+        AuthGuard::check();
+        MenuGuard::check();
+        $instId = inst_actual((int)$inst);
+
+        $this->safe(function() use ($instId){
+            $m = new ModelProductos();
+            $grupos = $m->productosPorEstadoStock($instId);
+
+            $total = count($grupos['Sin stock'])
+                   + count($grupos['Stock bajo'])
+                   + count($grupos['Con stock']);
+
+            if ($total === 0){
+                $this->json([
+                    'ok'      => false,
+                    'message' => 'No hay productos para generar el PDF.'
+                ], 422);
+                return;
+            }
+
+            $this->json([
+                'ok'     => true,
+                'grupos' => $grupos,
+                'conteos' => [
+                    'sin_stock' => count($grupos['Sin stock']),
+                    'bajo'      => count($grupos['Stock bajo']),
+                    'ok'        => count($grupos['Con stock']),
+                    'total'     => $total,
+                ],
+            ]);
+        });
+    }
 }

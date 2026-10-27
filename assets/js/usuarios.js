@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
             : '<span class="text-muted">Sin vincular</span>';
 
         const avatarUrl = u.usuario_imagen
-            ? (window.SITGO_BASE || '/') + 'uploads/storage/' + esc(u.usuario_imagen)
+            ? (window.SITGO_BASE || '/') + 'assets/uploads/storage/' + esc(u.usuario_imagen)
             : null;
 
         const inicial = (u.usuario_nick || '?').charAt(0).toUpperCase();
@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
             deshabilitarPersonal(true);
 
             if (u.usuario_imagen){
-                $('previewImg').src = (window.SITGO_BASE || '/') + 'uploads/storage/' + u.usuario_imagen;
+                $('previewImg').src = (window.SITGO_BASE || '/') + 'assets/uploads/storage/' + u.usuario_imagen;
                 $('wrapPreview').style.display = '';
             } else {
                 $('wrapPreview').style.display = 'none';

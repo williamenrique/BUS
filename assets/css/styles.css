@@ -5898,3 +5898,25 @@ body{
     color: #dc2626;
     font-weight: 500;
 }
+
+/* ============================================
+   BOTONES · Success y Warning (para el botón PDF por Estado)
+   ============================================ */
+
+.btn-success {
+    background: #16a34a;
+    color: #ffffff;
+}
+
+.btn-success:hover:not(:disabled) {
+    background: #15803d;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: #ffffff;
+}
+
+.btn-warning:hover:not(:disabled) {
+    background: #d97706;
+}

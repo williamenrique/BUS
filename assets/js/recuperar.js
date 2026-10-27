@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fecha = formatFecha(s.request_date);
 
         const avatarUrl = s.usuario_imagen
-            ? (window.SITGO_BASE || '/') + 'uploads/storage/' + esc(s.usuario_imagen)
+            ? (window.SITGO_BASE || '/') + 'assets/uploads/storage/' + esc(s.usuario_imagen)
             : null;
 
         const avatarHtml = avatarUrl

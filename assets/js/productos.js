@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             bindEvents();
+            actualizarBotonPdf();   // ← NUEVO: estado inicial del botón
             bindForm();
             bindStockForm();
         } catch (e){
@@ -190,8 +191,12 @@ document.addEventListener('DOMContentLoaded', () => {
         $('btnCancelar')?.addEventListener('click', cerrarFormulario);
         $('toggleForm')?.addEventListener('click', toggleSeccion);
         $('btnToggleForm')?.addEventListener('click', (e) => { e.stopPropagation(); toggleSeccion(); });
+        $('btnPdfPorEstado')?.addEventListener('click', generarPdfPorEstado);
 
-        $('filtroStock')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
+        $('filtroStock')?.addEventListener('change', () => {
+            actualizarBotonPdf();
+            dt?.changePage(1) || dt?.reload();
+        });
 
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape'){ cerrarFormulario(); cerrarModalStock(); }
@@ -478,5 +483,113 @@ document.addEventListener('DOMContentLoaded', () => {
         t.textContent = msg;
         c.appendChild(t);
         setTimeout(() => t.remove(), 3500);
+    }
+
+    /* ============================================================
+       PDF · PRODUCTOS POR ESTADO DE STOCK
+       Si el select filtroStock tiene valor (sin/bajo/ok), el PDF
+       se genera SOLO para ese estado. Si está vacío, los 3 grupos.
+       ============================================================ */
+    async function generarPdfPorEstado(){
+        const btn = $('btnPdfPorEstado');
+        const original = btn.innerHTML;
+
+        const filtroStock = $('filtroStock')?.value || '';
+
+        // Mapeo filtro → nombre del grupo
+        const mapaGrupo = {
+            'sin': 'Sin stock',
+            'bajo': 'Stock bajo',
+            'ok': 'Con stock',
+        };
+        const grupoSeleccionado = mapaGrupo[filtroStock] || '';
+
+        btn.disabled = true;
+        btn.innerHTML = 'Generando...';
+
+        try{
+            const r = await fetch(`${API}/pdf-por-estado`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const ct = r.headers.get('content-type') || '';
+            if (!ct.includes('application/json')){
+                throw new Error('El servidor no devolvió JSON.');
+            }
+            const d = await r.json();
+            if (!d.ok){
+                toast(d.message || 'No se pudo generar el PDF.', 'error');
+                return;
+            }
+
+            // Filtrar grupos si el usuario seleccionó un estado
+            let grupos = d.grupos || {};
+            let conteos = d.conteos || {};
+
+            if (grupoSeleccionado){
+                grupos = { [grupoSeleccionado]: grupos[grupoSeleccionado] || [] };
+                conteos = {
+                    sin_stock: grupoSeleccionado === 'Sin stock'  ? (d.conteos?.sin_stock || 0) : 0,
+                    bajo:      grupoSeleccionado === 'Stock bajo' ? (d.conteos?.bajo || 0)      : 0,
+                    ok:        grupoSeleccionado === 'Con stock'  ? (d.conteos?.ok || 0)        : 0,
+                    total:     (d.conteos?.[
+                        grupoSeleccionado === 'Sin stock'  ? 'sin_stock' :
+                        grupoSeleccionado === 'Stock bajo' ? 'bajo' : 'ok'
+                    ] || 0),
+                    filtro:    grupoSeleccionado,
+                };
+            }
+
+            const titulo = grupoSeleccionado
+                ? `INVENTARIO · ${grupoSeleccionado.toUpperCase()}`
+                : 'INVENTARIO POR ESTADO DE STOCK';
+
+            await SITGO_PDF.generar(
+                'productos_inventario',
+                {
+                    title: titulo,
+                    data: grupos,
+                    mode: 'por_estado',
+                    conteos: conteos,
+                },
+                `productos_${grupoSeleccionado ? grupoSeleccionado.replace(/\s+/g, '_').toLowerCase() : 'por_estado'}_${new Date().toISOString().slice(0,10)}.pdf`,
+                {
+                    titulo_documento: titulo,
+                    doc_color: '#1e40af',
+                }
+            );
+        } catch(e){
+            console.error(e);
+            toast('Error al generar el PDF: ' + e.message, 'error');
+        } finally{
+            btn.disabled = false;
+            btn.innerHTML = original;
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    /* ============================================================
+       Actualiza el texto y color del botón PDF por Estado
+       según el filtro de stock seleccionado
+       ============================================================ */
+    function actualizarBotonPdf(){
+        const btn = $('btnPdfPorEstado');
+        const txt = $('btnPdfPorEstadoText');
+        if (!btn || !txt) return;
+
+        const filtro = $('filtroStock')?.value || '';
+
+        // Reset clases
+        btn.classList.remove('btn-primary', 'btn-danger', 'btn-warning', 'btn-success');
+
+        const map = {
+            ''    : { texto: 'PDF por Estado',     clase: 'btn-primary' },
+            'sin' : { texto: 'PDF · Sin stock',    clase: 'btn-danger'  },
+            'bajo': { texto: 'PDF · Stock bajo',   clase: 'btn-warning' },
+            'ok'  : { texto: 'PDF · Con stock',    clase: 'btn-success' },
+        };
+
+        const cfg = map[filtro] || map[''];
+        txt.textContent = cfg.texto;
+        btn.classList.add(cfg.clase);
     }
 });

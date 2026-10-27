@@ -178,6 +178,7 @@ return [
     ['path' => '/productos/i/{inst}/actualizar/{id}',     'method' => 'POST', 'handler' => 'ControllerProductos@actualizar'],
     ['path' => '/productos/i/{inst}/agregar-stock/{id}',  'method' => 'POST', 'handler' => 'ControllerProductos@agregarStock'],
     ['path' => '/productos/i/{inst}/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerProductos@eliminar'],
+    ['path' => '/productos/i/{inst}/pdf-por-estado',      'method' => 'GET',  'handler' => 'ControllerProductos@pdfPorEstado'],
 
     // ============================================================
     // Almacén · Despachos (multi-institución)

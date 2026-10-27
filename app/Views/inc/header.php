@@ -10,7 +10,7 @@ $nombreCorto    = $partes[0] ?? 'Usuario';
 $apellidoCorto  = $partes[1] ?? '';
 
 $avatarUrl = !empty($user['imagen'])
-    ? asset('uploads/storage/' . $user['imagen'])
+    ? asset('assets/uploads/storage/' . $user['imagen'])
     : asset('img/default.png');
 
 $iniciales = strtoupper(

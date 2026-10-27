@@ -57,12 +57,23 @@ class ControllerDashboard extends Controller
 
     /* ============================================================
        INSTITUCIONES (solo Sistema)
+       ------------------------------------------------------------
+       Devuelve las instituciones con un campo adicional
+       "nombre_corto" calculado con el helper inst_nombre_corto().
+       El JS usa nombre_corto para el <option> y el nombre completo
+       para el title (tooltip).
        ============================================================ */
     public function getInstituciones(): void
     {
         AuthGuard::check();
         $this->safe(function () {
-            $this->json(['success' => true, 'data' => (new ModelDashboard())->getInstituciones()]);
+            $rows = (new ModelDashboard())->getInstituciones();
+            foreach ($rows as &$r) {
+                $nombre = (string)($r['nombre'] ?? '');
+                $r['nombre_corto'] = inst_nombre_corto($nombre);
+            }
+            unset($r);
+            $this->json(['success' => true, 'data' => $rows]);
         });
     }
 

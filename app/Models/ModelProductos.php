@@ -264,4 +264,50 @@ class ModelProductos extends Model{
              ORDER BY ubicacion ASC"
         );
     }
+        /* ============================================================
+       PRODUCTOS AGRUPADOS POR ESTADO DE STOCK
+       ============================================================ */
+    public function productosPorEstadoStock(int $inst = 0): array{
+        $where  = "p.status_producto = 1";
+        $params = [];
+
+        if ($inst > 0){
+            $where .= " AND p.id_institucion = :inst";
+            $params['inst'] = $inst;
+        }
+
+        $sql = "SELECT p.id_producto, p.producto, p.present_producto, p.tag_producto,
+                       e.enlace_producto,
+                       u.ubicacion,
+                       prov.empresa_proveedor,
+                       COALESCE(rel.cant_producto, 0) AS cant_producto
+                FROM table_alm_producto p
+                LEFT JOIN table_alm_relacion_producto rel ON rel.id_producto = p.id_producto
+                LEFT JOIN table_proveedor prov            ON prov.id_proveedor = rel.id_proveedor
+                LEFT JOIN table_alm_ubicacion u           ON u.id_ubicacion   = p.id_ubicacion
+                LEFT JOIN table_alm_enlace_producto e     ON e.id_enlace_producto = p.id_enlace_producto
+                WHERE {$where}
+                ORDER BY p.producto ASC";
+
+        $rows = $this->fetchAll($sql, $params);
+
+        $grupos = [
+            'Sin stock'  => [],
+            'Stock bajo' => [],
+            'Con stock'  => [],
+        ];
+
+        foreach ($rows as $r){
+            $cant = (float)($r['cant_producto'] ?? 0);
+            if ($cant <= 0){
+                $grupos['Sin stock'][] = $r;
+            } elseif ($cant < 10){
+                $grupos['Stock bajo'][] = $r;
+            } else {
+                $grupos['Con stock'][] = $r;
+            }
+        }
+
+        return $grupos;
+    }
 }

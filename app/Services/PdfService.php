@@ -25,7 +25,7 @@ class PdfService
         $options->set('chroot', dirname(__DIR__, 2));
         $options->set('defaultFont', 'DejaVu Sans');
 
-        $tmpDir = dirname(__DIR__, 2) . '/public_html/uploads/tmp_pdf/';
+        $tmpDir = dirname(__DIR__, 2) . '/assets/uploads/tmp_pdf/';
         if (!is_dir($tmpDir)) {
             @mkdir($tmpDir, 0755, true);
         }

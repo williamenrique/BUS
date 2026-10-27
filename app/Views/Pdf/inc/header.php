@@ -14,7 +14,7 @@ $extraHeader = $meta['extra_header'] ?? '';
 $mostrarLogo = $meta['mostrar_logo'] ?? true;   // ← nuevo flag
 
 // Logo en base64 (solo si se debe mostrar)
-$logoPath = dirname(__DIR__, 4) . '/public_html/img/logo.png';
+$logoPath = dirname(__DIR__, 4) . '/assets/img/logo.png';
 $logoBase64 = '';
 if ($mostrarLogo && file_exists($logoPath)) {
     $tipo = pathinfo($logoPath, PATHINFO_EXTENSION);
@@ -49,10 +49,10 @@ $colLogo = $mostrarLogo ? '70' : '0';
         </td>
 
         <td class="header-col-doc" width="150">
-            <div class="header-doc-tipo"><?= htmlspecialchars($tituloDoc) ?></div>
-            <?php if ($docNumero): ?>
+            <!-- <div class="header-doc-tipo"><?= htmlspecialchars($tituloDoc) ?></div>
+            <?php /*if ($docNumero):*/ ?>
                 <div class="header-doc-numero"><?= htmlspecialchars($docNumero) ?></div>
-            <?php endif; ?>
+            <?php /*endif; */ ?> -->
         </td>
     </tr>
 </table>

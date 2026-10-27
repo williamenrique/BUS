@@ -16,7 +16,7 @@ $tlf       = $p['personal_tlf']      ?? '';
 // Avatar actual
 $imagen    = $p['usuario_imagen'] ?? '';
 $avatarUrl = !empty($imagen)
-    ? asset('uploads/storage/' . $imagen)
+    ? asset('assets/uploads/storage/' . $imagen)
     : asset('img/default.png');
 
 // Iniciales para fallback

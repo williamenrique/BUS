@@ -10,7 +10,8 @@ if (!function_exists('base_url')) {
 if (!function_exists('asset')) {
     function asset(string $path = ''): string
     {
-        return ASSETS_URL . ltrim($path, '/');
+        // Nivel 1: todos los assets viven en /assets/
+        return ASSETS_URL . 'assets/' . ltrim($path, '/');
     }
 }
 
@@ -140,23 +141,15 @@ if (!function_exists('is_legacy_password')) {
     /**
      * Detecta si una contraseña almacenada es legacy (AES+base64)
      * o moderna (bcrypt/argon2).
-     *
-     * Los hashes modernos SIEMPRE comienzan con "$" (ej: $2y$, $argon2id$)
-     * El AES+base64 produce base64 estándar (A-Z, a-z, 0-9, +, /, =)
-     * por lo que NUNCA empezará con "$".
      */
     function is_legacy_password(string $stored): bool
     {
         if ($stored === '') return false;
-        // Si NO empieza con $, y tiene pinta base64, es legacy.
         return $stored[0] !== '$';
     }
 }
 
 if (!function_exists('hash_password')) {
-    /**
-     * Genera hash seguro (bcrypt) para nuevas contraseñas.
-     */
     function hash_password(string $plain): string
     {
         return password_hash($plain, PASSWORD_BCRYPT, ['cost' => 10]);
@@ -166,13 +159,10 @@ if (!function_exists('hash_password')) {
 if (!function_exists('verify_password')) {
     /**
      * Verifica una contraseña contra el valor almacenado.
-     * Soporta bcrypt moderno Y legacy AES.
-     *
      * @return array{ok: bool, needs_rehash: bool}
      */
     function verify_password(string $plain, string $stored): array
     {
-        // 1) Intento moderno (bcrypt/argon)
         if (!is_legacy_password($stored)) {
             $ok = password_verify($plain, $stored);
             return [
@@ -181,33 +171,25 @@ if (!function_exists('verify_password')) {
             ];
         }
 
-        // 2) Intento legacy (AES)
         $decrypted = legacy_decryption($stored);
         $ok = $decrypted !== '' && hash_equals($decrypted, $plain);
 
         return [
             'ok'           => $ok,
-            'needs_rehash' => $ok, // si entró con legacy, hay que rehashear YA
+            'needs_rehash' => $ok,
         ];
     }
 }
 
 if (!function_exists('icon')) {
-    /**
-     * Normaliza un icono (acepta formato FA viejo o Lucide nuevo)
-     * y devuelve el nombre Lucide a usar.
-     */
     function icon(?string $raw, string $fallback = 'circle'): string
     {
         if (empty($raw)) return $fallback;
 
-        // 1) Si ya es un nombre Lucide válido (solo letras y guiones)
         if (preg_match('/^[a-z][a-z0-9-]*$/', $raw)) {
             return $raw;
         }
 
-        // 2) Si es formato FontAwesome (contiene "fa-" o espacios)
-        // Mapeamos a su equivalente Lucide
         $map = [
             'fa-home'              => 'home',
             'fa-house'             => 'home',
@@ -275,23 +257,17 @@ if (!function_exists('icon')) {
             'fa-briefcase'         => 'briefcase',
         ];
 
-        // Buscar coincidencia dentro de la cadena (ej: "fas fa-gas-pump" → "fuel")
         foreach ($map as $fa => $lucide) {
             if (str_contains($raw, $fa)) {
                 return $lucide;
             }
         }
 
-        // 3) Fallback
         return $fallback;
     }
 }
 
 if (!function_exists('icon_tag')) {
-    /**
-     * Genera el HTML de un icono Lucide listo para renderizar.
-     * Ejemplo: <?= icon_tag($item['menu_icono'], 'menu', 'sidebar-icon') ?>
-     */
     function icon_tag(?string $raw, string $fallback = 'circle', string $class = ''): string
     {
         $name  = icon($raw, $fallback);
@@ -301,11 +277,6 @@ if (!function_exists('icon_tag')) {
 }
 
 if (!function_exists('normalizar_mayusculas')){
-    /**
-     * Convierte a MAYÚSCULAS todos los campos string de un array.
-     * - $excepto: campos que se dejan intactos (ej: email, password)
-     * - $solo:    si se pasa, SOLO estos campos se convierten
-     */
     function normalizar_mayusculas(array $data, array $excepto = [], array $solo = []): array{
         foreach ($data as $key => $val){
             if (!is_string($val)) continue;
@@ -318,10 +289,6 @@ if (!function_exists('normalizar_mayusculas')){
 }
 
 if (!function_exists('normalizar_email')){
-    /**
-     * Solo hace trim y lowercase en el dominio (no en la parte local).
-     * Ej: "Juan@MAIL.COM " → "Juan@mail.com"
-     */
     function normalizar_email(string $email): string{
         $email = trim($email);
         if ($email === '' || !str_contains($email, '@')) return $email;
@@ -331,10 +298,6 @@ if (!function_exists('normalizar_email')){
 }
 
 if (!function_exists('es_admin_sistema')){
-    /**
-     * Devuelve true si el usuario logueado pertenece al departamento de Sistemas.
-     * Compara por ID con DEPARTAMENTO_SISTEMA de config.php.
-     */
     function es_admin_sistema(): bool{
         $user = auth_user();
         if (!$user) return false;
@@ -343,92 +306,45 @@ if (!function_exists('es_admin_sistema')){
 }
 
 if (!function_exists('inst_actual')){
-    /**
-     * Devuelve el ID de la institución activa, en este orden:
-     *   1. Parámetro de URL /i/{id}
-     *   2. Sesión ($_SESSION['inst_activa'])
-     *   3. DEFAULT_INSTITUCION
-     *
-     * También cachea en sesión para que la navegación posterior
-     * mantenga la misma institución.
-     */
     function inst_actual(?int $override = null): int{
         if ($override !== null && $override > 0){
             $_SESSION['inst_activa'] = $override;
             return $override;
         }
-
-        // 1) URL
         if (!empty($_GET['inst']) && (int)$_GET['inst'] > 0){
             $_SESSION['inst_activa'] = (int)$_GET['inst'];
             return (int)$_GET['inst'];
         }
-
-        // 2) Sesión
         if (!empty($_SESSION['inst_activa'])){
             return (int)$_SESSION['inst_activa'];
         }
-
-        // 3) Default
         return (int)DEFAULT_INSTITUCION;
     }
 }
 
 if (!function_exists('inst_url')){
-    /**
-     * Construye una URL incluyendo la institución activa.
-     * Ej: inst_url('flota') → "flota/i/2" (si estamos en inst 2)
-     */
     function inst_url(string $path, ?int $inst = null): string{
         $inst = $inst ?? inst_actual();
         $path = trim($path, '/');
         return base_url($path . '/i/' . $inst);
     }
-    if (!function_exists('inst_actual')){
-        /**
-         * Devuelve el ID de la institución activa.
-         * Prioridad: parámetro override → sesión → DEFAULT_INSTITUCION
-         */
-        function inst_actual(?int $override = null): int{
-            if ($override !== null && $override > 0){
-                $_SESSION['inst_activa'] = $override;
-                return $override;
-            }
-            if (!empty($_SESSION['inst_activa'])){
-                return (int)$_SESSION['inst_activa'];
-            }
-            return (int)DEFAULT_INSTITUCION;
-        }
-    }
 }
 
 if (!function_exists('inst_nombre_corto')){
-    /**
-     * Abrevia el nombre de una institución cuando es muy largo.
-     * - Si cabe en $maxLen, devuelve el nombre completo.
-     * - Si no, devuelve las iniciales de las palabras significativas
-     *   (ignora: de, del, la, el, y, de, para, por, etc.).
-     *
-     * Ej: "SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY"
-     *     → "SSLMTEY"
-     */
     function inst_nombre_corto(string $nombre, int $maxLen = 28): string{
         $nombre = trim($nombre);
         if ($nombre === '') return '';
 
-        // Si cabe, se devuelve completo
         if (mb_strlen($nombre, 'UTF-8') <= $maxLen){
             return $nombre;
         }
 
-        // Palabras ignoradas (conectores, preposiciones, artículos)
         $ignorar = [
             'de','del','la','las','el','los','y','e','o','u',
             'a','al','en','con','por','para','un','una','unos','unas',
             'the','of','and','&',
         ];
 
-        // Limpiar signos de puntuación y dividir en palabras
         $limpio = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $nombre);
         $partes = preg_split('/\s+/u', $limpio, -1, PREG_SPLIT_NO_EMPTY);
 
@@ -443,12 +359,10 @@ if (!function_exists('inst_nombre_corto')){
             $iniciales .= mb_strtoupper(mb_substr($p, 0, 1, 'UTF-8'), 'UTF-8');
         }
 
-        // Si quedó vacío, cortar por caracteres
         if ($iniciales === ''){
             return mb_substr($nombre, 0, $maxLen, 'UTF-8') . '…';
         }
 
-        // Si aún es muy largo, limitar longitud
         if (mb_strlen($iniciales, 'UTF-8') > $maxLen){
             $iniciales = mb_substr($iniciales, 0, $maxLen, 'UTF-8') . '…';
         }
