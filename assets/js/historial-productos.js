@@ -1,12 +1,10 @@
-// v3.0 - sin DOMContentLoaded, a prueba de scripts rotos
+// v3.3 - Orden por Total Despachado (desc/asc) + filtros de fecha
 (function () {
     'use strict';
 
-    // Helper: ejecuta `fn` cuando el DOM tenga el botón, sin importar
-    // si DOMContentLoaded ya pasó o si otro script lanzó una excepción.
     function cuandoListo(fn) {
         let intentos = 0;
-        const maxIntentos = 200; // 20 segundos
+        const maxIntentos = 200;
         const intervalo = setInterval(() => {
             intentos++;
             if (document.getElementById('btnGenerarPdfInventario')) {
@@ -25,12 +23,76 @@
         const API  = (window.SITGO_BASE || '/') + 'despachos/i/' + INST + '/historial';
         const $ = id => document.getElementById(id);
 
+        let dt = null;
+
+        // Estado del orden por Total Despachado
+        let ordenTotal = 'desc'; // 'desc' | 'asc'
+
+        let timelineState = {
+            page: 1,
+            limit: 10,
+            totalPages: 1,
+            productId: null,
+            producto: null,
+            fechaInicio: '',
+            fechaFin: ''
+        };
+
+        /* ========================================================
+           FILTROS DE FECHA · RESUMEN
+           ======================================================== */
+        function getRangoResumen() {
+            return {
+                fechaInicio: $('filtroFechaInicio')?.value || '',
+                fechaFin:    $('filtroFechaFin')?.value    || ''
+            };
+        }
+
+        function validarRango(desde, hasta) {
+            if (desde && hasta && desde > hasta) {
+                toast('La fecha inicial no puede ser mayor que la final.', 'error');
+                return false;
+            }
+            return true;
+        }
+
+        function pintarRangoActivo(idSpan, desde, hasta) {
+            const el = $(idSpan);
+            if (!el) return;
+            if (desde && hasta) {
+                el.textContent = `· Rango: ${formatFecha(desde)} al ${formatFecha(hasta)}`;
+            } else if (desde) {
+                el.textContent = `· Desde ${formatFecha(desde)}`;
+            } else if (hasta) {
+                el.textContent = `· Hasta ${formatFecha(hasta)}`;
+            } else {
+                el.textContent = '';
+            }
+        }
+
+        /* ========================================================
+           ORDEN POR TOTAL DESPACHADO
+           ======================================================== */
+        function aplicarEstadoOrdenUI() {
+            const btn = $('btnOrdenarTotal');
+            if (!btn) return;
+            btn.dataset.orden = ordenTotal;
+            btn.title = ordenTotal === 'desc'
+                ? 'Ordenado: mayor a menor (clic para invertir)'
+                : 'Ordenado: menor a mayor (clic para invertir)';
+        }
+
+        $('btnOrdenarTotal')?.addEventListener('click', () => {
+            ordenTotal = (ordenTotal === 'desc') ? 'asc' : 'desc';
+            aplicarEstadoOrdenUI();
+            dt?.changePage(1) || dt?.reload(true);
+        });
+
+        aplicarEstadoOrdenUI();
+
         /* ========================================================
            DATATABLE
            ======================================================== */
-        let dt = null;
-        let timelineState = { page: 1, limit: 10, totalPages: 1, productId: null, producto: null };
-
         if (typeof DataTable !== 'undefined' && $('tbodyHistorial')) {
             dt = new DataTable({
                 tbodyId: 'tbodyHistorial',
@@ -44,9 +106,61 @@
                 startId: 'startHistorial',
                 endId: 'endHistorial',
                 noDataMessage: 'No hay productos registrados',
-                onDataLoaded: () => bindTableActions()
+                getExtraParams: () => {
+                    const r = getRangoResumen();
+                    return {
+                        ...r,
+                        orden: ordenTotal
+                    };
+                },
+                onDataLoaded: () => {
+                    bindTableActions();
+                    const r = getRangoResumen();
+                    pintarRangoActivo('rangoActivo', r.fechaInicio, r.fechaFin);
+                }
             });
         }
+
+        /* ========================================================
+           EVENTOS FILTROS · RESUMEN
+           ======================================================== */
+        function aplicarFiltroResumen() {
+            const r = getRangoResumen();
+            if (!validarRango(r.fechaInicio, r.fechaFin)) return;
+            dt?.changePage(1) || dt?.reload(true);
+        }
+
+        $('filtroFechaInicio')?.addEventListener('change', aplicarFiltroResumen);
+        $('filtroFechaFin')?.addEventListener('change', aplicarFiltroResumen);
+
+        $('btnLimpiarFechas')?.addEventListener('click', () => {
+            if ($('filtroFechaInicio')) $('filtroFechaInicio').value = '';
+            if ($('filtroFechaFin'))    $('filtroFechaFin').value    = '';
+            pintarRangoActivo('rangoActivo', '', '');
+            dt?.changePage(1) || dt?.reload(true);
+        });
+
+        /* ========================================================
+           EVENTOS FILTROS · TIMELINE
+           ======================================================== */
+        $('btnTimelineFiltrar')?.addEventListener('click', () => {
+            const desde = $('timelineFechaInicio')?.value || '';
+            const hasta = $('timelineFechaFin')?.value    || '';
+            if (!validarRango(desde, hasta)) return;
+            timelineState.fechaInicio = desde;
+            timelineState.fechaFin    = hasta;
+            timelineState.page = 1;
+            cargarTimeline();
+        });
+
+        $('btnTimelineLimpiar')?.addEventListener('click', () => {
+            if ($('timelineFechaInicio')) $('timelineFechaInicio').value = '';
+            if ($('timelineFechaFin'))    $('timelineFechaFin').value    = '';
+            timelineState.fechaInicio = '';
+            timelineState.fechaFin    = '';
+            timelineState.page = 1;
+            cargarTimeline();
+        });
 
         /* ========================================================
            BOTONES
@@ -54,7 +168,7 @@
         $('btnVolverResumen')?.addEventListener('click', volverResumen);
         $('btnGenerarPdfInventario')?.addEventListener('click', function (e) {
             e.preventDefault();
-            generarPdfInventario();
+            generarPdfGlobal();
         });
         $('btnGenerarPdfProducto')?.addEventListener('click', function (e) {
             e.preventDefault();
@@ -67,6 +181,23 @@
                 e.preventDefault();
                 abrirTimeline(parseInt(link.dataset.id));
             }
+        });
+
+        /* ========================================================
+           AUTO-ABRIR TIMELINE SI VIENE CON #producto-{id}
+           ======================================================== */
+        function autoAbrirDesdeHash(){
+            const hash = window.location.hash || '';
+            const m = hash.match(/^#producto-(\d+)$/);
+            if (m && m[1]) {
+                setTimeout(() => abrirTimeline(parseInt(m[1])), 300);
+            }
+        }
+        autoAbrirDesdeHash();
+
+        window.addEventListener('hashchange', () => {
+            const m = (window.location.hash || '').match(/^#producto-(\d+)$/);
+            if (m && m[1]) abrirTimeline(parseInt(m[1]));
         });
 
         /* ========================================================
@@ -143,7 +274,15 @@
             mostrarResumen();
             timelineState.productId = null;
             timelineState.producto = null;
+            timelineState.fechaInicio = '';
+            timelineState.fechaFin = '';
+            if ($('timelineFechaInicio')) $('timelineFechaInicio').value = '';
+            if ($('timelineFechaFin'))    $('timelineFechaFin').value    = '';
+            pintarRangoActivo('timelineRangoActivo', '', '');
             if ($('timelineContainer')) $('timelineContainer').innerHTML = '';
+            if (window.location.hash) {
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
         }
 
         /* ========================================================
@@ -152,6 +291,10 @@
         async function abrirTimeline(idProducto){
             timelineState.productId = idProducto;
             timelineState.page = 1;
+            timelineState.fechaInicio = '';
+            timelineState.fechaFin = '';
+            if ($('timelineFechaInicio')) $('timelineFechaInicio').value = '';
+            if ($('timelineFechaFin'))    $('timelineFechaFin').value    = '';
 
             mostrarTimeline();
             $('timelineTitle').textContent = 'Cargando...';
@@ -161,6 +304,7 @@
                     <div class="dt-loading">Cargando historial...</div>
                 </div>`;
             $('timelinePaginationWrap').style.display = 'none';
+            pintarRangoActivo('timelineRangoActivo', '', '');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -170,7 +314,9 @@
         async function cargarTimeline(){
             const payload = {
                 limit:  timelineState.limit,
-                offset: (timelineState.page - 1) * timelineState.limit
+                offset: (timelineState.page - 1) * timelineState.limit,
+                fechaInicio: timelineState.fechaInicio || '',
+                fechaFin:    timelineState.fechaFin    || ''
             };
 
             try{
@@ -208,12 +354,16 @@
                     </div>
                 `;
 
+                pintarRangoActivo('timelineRangoActivo', timelineState.fechaInicio, timelineState.fechaFin);
+
                 if (!items.length){
                     $('timelineContainer').innerHTML = `
                         <div class="historial-empty">
                             ${iconSvg('inbox', 'w-16 h-16 mx-auto', '#cbd5e1')}
                             <h4>Sin despachos registrados</h4>
-                            <p>Este producto aún no ha sido despachado.</p>
+                            <p>${(timelineState.fechaInicio || timelineState.fechaFin)
+                                ? 'No hay despachos en el rango de fechas seleccionado.'
+                                : 'Este producto aún no ha sido despachado.'}</p>
                         </div>`;
                     $('timelinePaginationWrap').style.display = 'none';
                     if (window.lucide) lucide.createIcons();
@@ -281,44 +431,46 @@
         }
 
         /* ========================================================
-           PDF INVENTARIO
+           PDF GLOBAL (tabla de historial completa)
            ======================================================== */
-        async function generarPdfInventario(){
+        async function generarPdfGlobal(){
             const btn = $('btnGenerarPdfInventario');
             if (btn) btn.disabled = true;
 
             try {
                 const q = $('filtroBuscar')?.value || '';
+                const r = getRangoResumen();
 
                 let allItems = [];
                 let offset = 0;
                 const limit = 100;
                 let total = null;
-                let pagina = 1;
                 let intentos = 0;
                 const maxIntentos = 50;
 
                 while (intentos < maxIntentos) {
                     intentos++;
 
-                    const params = new URLSearchParams({ q, limit, offset });
-                    console.log(`📥 Inventario página ${pagina}: ${API}/listar?${params}`);
+                    const params = new URLSearchParams({
+                        q,
+                        limit,
+                        offset,
+                        fechaInicio: r.fechaInicio,
+                        fechaFin:    r.fechaFin,
+                        orden:       ordenTotal
+                    });
 
-                    const r = await fetch(`${API}/listar?${params}`, {
+                    const resp = await fetch(`${API}/listar?${params}`, {
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
 
-                    const ct = r.headers.get('content-type') || '';
+                    const ct = resp.headers.get('content-type') || '';
                     if (!ct.includes('application/json')) {
-                        const text = await r.text();
-                        console.error('❌ Respuesta no JSON:', text.slice(0, 300));
                         toast('Error: el servidor no devolvió JSON.', 'error');
                         return;
                     }
 
-                    const d = await r.json();
-                    // console.log('📦 Respuesta:', d);
-
+                    const d = await resp.json();
                     if (!d.ok) {
                         toast(d.message || 'Error al cargar los productos.', 'error');
                         return;
@@ -326,7 +478,6 @@
 
                     let batch = d.data;
                     if (batch && !Array.isArray(batch) && typeof batch === 'object') {
-                        // console.log('⚠️ data viene agrupada, aplanando…');
                         const aplanado = [];
                         Object.values(batch).forEach(sub => {
                             if (Array.isArray(sub)) aplanado.push(...sub);
@@ -337,17 +488,13 @@
 
                     if (total === null) {
                         total = d.totalFiltrados ?? d.total ?? batch.length;
-                        // console.log(`📊 Total según backend: ${total}`);
                     }
 
                     allItems = allItems.concat(batch);
                     offset += limit;
-                    pagina++;
 
                     if (batch.length < limit || offset >= total) break;
                 }
-
-                console.log(`✅ Productos cargados: ${allItems.length}`);
 
                 if (!allItems.length) {
                     toast('No hay productos para generar el PDF.', 'error');
@@ -360,11 +507,11 @@
                         id_producto:      p.id_producto ?? '',
                         producto:         p.producto ?? '',
                         present_producto: p.present_producto ?? '',
-                        cant_producto:    p.stock_actual ?? p.cant_producto ?? 0,
-                        ubicacion:        p.ubicacion ?? '',
+                        stock_actual:     p.stock_actual ?? p.cant_producto ?? 0,
+                        total_despachado: p.total_despachado ?? 0,
+                        primer_despacho:  p.primer_despacho ?? '',
+                        ultimo_despacho:  p.ultimo_despacho ?? '',
                     }));
-
-                console.log(`📋 Productos para PDF: ${productos.length}`, productos.slice(0, 3));
 
                 if (!productos.length) {
                     toast('Los productos no tienen el formato esperado.', 'error');
@@ -372,11 +519,17 @@
                 }
 
                 await SITGO_PDF.generar(
-                    'productos_inventario',
-                    { title: 'Reporte de Inventario', data: productos },
-                    `inventario_${new Date().toISOString().slice(0,10)}.pdf`,
+                    'productos_historial',
                     {
-                        titulo_documento: 'REPORTE DE INVENTARIO',
+                        title: 'Historial de Productos',
+                        mode: 'resumen',
+                        data: productos,
+                        fechaInicio: r.fechaInicio,
+                        fechaFin: r.fechaFin,
+                    },
+                    `historial_productos_${new Date().toISOString().slice(0,10)}.pdf`,
+                    {
+                        titulo_documento: 'HISTORIAL DE PRODUCTOS',
                         doc_color:        '#1e40af',
                     }
                 );
@@ -390,7 +543,7 @@
         }
 
         /* ========================================================
-           PDF PRODUCTO
+           PDF INDIVIDUAL (timeline de un producto)
            ======================================================== */
         async function generarPdfProducto(){
             if (!timelineState.productId) {
@@ -402,7 +555,12 @@
             if (btn) btn.disabled = true;
 
             try {
-                const payload = { limit: 9999, offset: 0 };
+                const payload = {
+                    limit: 9999,
+                    offset: 0,
+                    fechaInicio: timelineState.fechaInicio || '',
+                    fechaFin:    timelineState.fechaFin    || ''
+                };
                 const d = await fetchJSON(`${API}/detalle/${timelineState.productId}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -420,22 +578,23 @@
                     return;
                 }
 
-                const resumen = [{
-                    id_producto:      timelineState.productId,
-                    producto:         timelineState.producto?.producto || '—',
-                    stock_actual:     timelineState.producto?.stock_actual || 0,
-                    total_despachado: timelineState.producto?.total_despachado || 0,
-                    primer_despacho:  items[items.length - 1]?.fecha_despacho || '—',
-                    ultimo_despacho:  items[0]?.fecha_despacho || '—',
-                }];
-
                 await SITGO_PDF.generar(
                     'productos_historial',
                     {
                         title: `Historial de ${timelineState.producto?.producto || 'Producto'}`,
-                        data: resumen,
+                        mode: 'detalle',
+                        producto: {
+                            id_producto:      timelineState.productId,
+                            producto:         timelineState.producto?.producto || '—',
+                            present_producto: timelineState.producto?.present_producto || '—',
+                            stock_actual:     timelineState.producto?.stock_actual || 0,
+                            total_despachado: timelineState.producto?.total_despachado || 0,
+                        },
+                        data: items,
+                        fechaInicio: timelineState.fechaInicio || '',
+                        fechaFin:    timelineState.fechaFin    || '',
                     },
-                    `historial_${timelineState.producto?.producto || 'producto'}_${new Date().toISOString().slice(0,10)}.pdf`,
+                    `historial_${(timelineState.producto?.producto || 'producto').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`,
                     {
                         titulo_documento: 'HISTORIAL DE PRODUCTO',
                         doc_numero:       `#${String(timelineState.productId).padStart(4, '0')}`,

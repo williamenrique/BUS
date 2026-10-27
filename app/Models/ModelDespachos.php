@@ -422,8 +422,14 @@ class ModelDespachos extends Model{
 
     /* ============================================================
        HISTORIAL DE PRODUCTOS (resumen)
+       - Filtro de fechas se aplica al WHERE principal (EXISTS),
+         así no aparecen productos que no tuvieron despachos en el rango.
+       - Placeholders de fecha únicos: :fiW/:ffW (WHERE),
+         :fi1/:ff1 (total), :fi2/:ff2 (primer), :fi3/:ff3 (último).
+       - ORDER BY por alias total_despachado (sin repetir subconsulta),
+         porque EMULATE_PREPARES = false prohíbe placeholders repetidos.
        ============================================================ */
-    public function historialProductos(string $q = '', int $limit = 10, int $offset = 0, int $inst = 0): array{
+    public function historialProductos(string $q = '', int $limit = 10, int $offset = 0, int $inst = 0, array $filtros = []): array{
         $where  = "p.status_producto = 1";
         $params = [];
 
@@ -434,15 +440,85 @@ class ModelDespachos extends Model{
 
         if ($q !== ''){
             $where .= " AND (
-                            p.producto        LIKE :q1
-                         OR e.enlace_producto LIKE :q2
-                         OR u.ubicacion       LIKE :q3
+                            p.producto         LIKE :q1
+                         OR e.enlace_producto  LIKE :q2
+                         OR u.ubicacion        LIKE :q3
                        )";
             $like = "%{$q}%";
             $params['q1'] = $like;
             $params['q2'] = $like;
             $params['q3'] = $like;
         }
+
+        // --- Filtro de fechas ---
+        $tieneFi = !empty($filtros['fechaInicio']);
+        $tieneFf = !empty($filtros['fechaFin']);
+
+        // 1) EXISTS para el WHERE principal (placeholders únicos :fiW/:ffW)
+        $fechaWhereSql = '';
+        $fechaWhereParams = [];
+        if ($tieneFi && $tieneFf){
+            $fechaWhereSql = " AND EXISTS (
+                SELECT 1 FROM table_alm_relacion_despacho rdW
+                INNER JOIN table_alm_despacho dW ON dW.id_despacho = rdW.id_despacho
+                WHERE rdW.id_producto = p.id_producto
+                  AND dW.status_despacho = 1
+                  AND dW.fecha_despacho BETWEEN :fiW AND :ffW
+            ) ";
+            $fechaWhereParams['fiW'] = $filtros['fechaInicio'];
+            $fechaWhereParams['ffW'] = $filtros['fechaFin'];
+        } elseif ($tieneFi){
+            $fechaWhereSql = " AND EXISTS (
+                SELECT 1 FROM table_alm_relacion_despacho rdW
+                INNER JOIN table_alm_despacho dW ON dW.id_despacho = rdW.id_despacho
+                WHERE rdW.id_producto = p.id_producto
+                  AND dW.status_despacho = 1
+                  AND dW.fecha_despacho >= :fiW
+            ) ";
+            $fechaWhereParams['fiW'] = $filtros['fechaInicio'];
+        } elseif ($tieneFf){
+            $fechaWhereSql = " AND EXISTS (
+                SELECT 1 FROM table_alm_relacion_despacho rdW
+                INNER JOIN table_alm_despacho dW ON dW.id_despacho = rdW.id_despacho
+                WHERE rdW.id_producto = p.id_producto
+                  AND dW.status_despacho = 1
+                  AND dW.fecha_despacho <= :ffW
+            ) ";
+            $fechaWhereParams['ffW'] = $filtros['fechaFin'];
+        }
+
+        $where .= $fechaWhereSql;
+        $params = array_merge($params, $fechaWhereParams);
+
+        // 2) Placeholders para las subconsultas del SELECT
+        $fechaSql1 = ''; $fechaSql2 = ''; $fechaSql3 = '';
+        $fechaParams = [];
+        if ($tieneFi && $tieneFf){
+            $fechaSql1 = " AND d1.fecha_despacho BETWEEN :fi1 AND :ff1 ";
+            $fechaSql2 = " AND d2.fecha_despacho BETWEEN :fi2 AND :ff2 ";
+            $fechaSql3 = " AND d3.fecha_despacho BETWEEN :fi3 AND :ff3 ";
+            $fechaParams['fi1'] = $filtros['fechaInicio']; $fechaParams['ff1'] = $filtros['fechaFin'];
+            $fechaParams['fi2'] = $filtros['fechaInicio']; $fechaParams['ff2'] = $filtros['fechaFin'];
+            $fechaParams['fi3'] = $filtros['fechaInicio']; $fechaParams['ff3'] = $filtros['fechaFin'];
+        } elseif ($tieneFi){
+            $fechaSql1 = " AND d1.fecha_despacho >= :fi1 ";
+            $fechaSql2 = " AND d2.fecha_despacho >= :fi2 ";
+            $fechaSql3 = " AND d3.fecha_despacho >= :fi3 ";
+            $fechaParams['fi1'] = $filtros['fechaInicio'];
+            $fechaParams['fi2'] = $filtros['fechaInicio'];
+            $fechaParams['fi3'] = $filtros['fechaInicio'];
+        } elseif ($tieneFf){
+            $fechaSql1 = " AND d1.fecha_despacho <= :ff1 ";
+            $fechaSql2 = " AND d2.fecha_despacho <= :ff2 ";
+            $fechaSql3 = " AND d3.fecha_despacho <= :ff3 ";
+            $fechaParams['ff1'] = $filtros['fechaFin'];
+            $fechaParams['ff2'] = $filtros['fechaFin'];
+            $fechaParams['ff3'] = $filtros['fechaFin'];
+        }
+
+        // Orden
+        $orden = strtoupper((string)($filtros['orden'] ?? 'DESC'));
+        if ($orden !== 'ASC' && $orden !== 'DESC') $orden = 'DESC';
 
         $total = (int)($this->fetchOne(
             "SELECT COUNT(*) AS t FROM table_alm_producto WHERE status_producto = 1 AND id_institucion = :inst",
@@ -458,41 +534,48 @@ class ModelDespachos extends Model{
             $params
         )['t'] ?? 0);
 
+        $subTotal = "(
+            SELECT COALESCE(SUM(rd1.cant_despacho), 0)
+            FROM table_alm_relacion_despacho rd1
+            INNER JOIN table_alm_despacho d1 ON d1.id_despacho = rd1.id_despacho
+            WHERE rd1.id_producto = p.id_producto
+              AND d1.status_despacho = 1
+              {$fechaSql1}
+        )";
+
         $sql = "SELECT p.id_producto, p.producto, p.present_producto,
                        COALESCE(rp.cant_producto, 0) AS stock_actual,
                        e.enlace_producto,
                        u.ubicacion,
-                       COALESCE((
-                           SELECT SUM(rd.cant_despacho)
-                           FROM table_alm_relacion_despacho rd
-                           INNER JOIN table_alm_despacho d ON d.id_despacho = rd.id_despacho
-                           WHERE rd.id_producto = p.id_producto
-                             AND d.status_despacho = 1
-                       ), 0) AS total_despachado,
+                       {$subTotal} AS total_despachado,
                        (
-                           SELECT MIN(d.fecha_despacho)
-                           FROM table_alm_relacion_despacho rd
-                           INNER JOIN table_alm_despacho d ON d.id_despacho = rd.id_despacho
-                           WHERE rd.id_producto = p.id_producto
-                             AND d.status_despacho = 1
+                           SELECT MIN(d2.fecha_despacho)
+                           FROM table_alm_relacion_despacho rd2
+                           INNER JOIN table_alm_despacho d2 ON d2.id_despacho = rd2.id_despacho
+                           WHERE rd2.id_producto = p.id_producto
+                             AND d2.status_despacho = 1
+                             {$fechaSql2}
                        ) AS primer_despacho,
                        (
-                           SELECT MAX(d.fecha_despacho)
-                           FROM table_alm_relacion_despacho rd
-                           INNER JOIN table_alm_despacho d ON d.id_despacho = rd.id_despacho
-                           WHERE rd.id_producto = p.id_producto
-                             AND d.status_despacho = 1
+                           SELECT MAX(d3.fecha_despacho)
+                           FROM table_alm_relacion_despacho rd3
+                           INNER JOIN table_alm_despacho d3 ON d3.id_despacho = rd3.id_despacho
+                           WHERE rd3.id_producto = p.id_producto
+                             AND d3.status_despacho = 1
+                             {$fechaSql3}
                        ) AS ultimo_despacho
                 FROM table_alm_producto p
                 LEFT JOIN table_alm_relacion_producto rp ON rp.id_producto = p.id_producto
                 LEFT JOIN table_alm_enlace_producto e    ON e.id_enlace_producto = p.id_enlace_producto
                 LEFT JOIN table_alm_ubicacion u          ON u.id_ubicacion = p.id_ubicacion
                 WHERE {$where}
-                ORDER BY p.producto ASC
+                ORDER BY total_despachado {$orden}, p.producto ASC
                 LIMIT {$limit} OFFSET {$offset}";
 
+        $paramsFinal = array_merge($params, $fechaParams);
+
         return [
-            'data'           => $this->fetchAll($sql, $params),
+            'data'           => $this->fetchAll($sql, $paramsFinal),
             'total'          => $total,
             'totalFiltrados' => $totalFiltrados,
         ];
@@ -500,14 +583,19 @@ class ModelDespachos extends Model{
 
     /* ============================================================
        HISTORIAL DETALLE de un producto (timeline paginado)
+       Acepta filtro de fechas ($filtros['fechaInicio'], $filtros['fechaFin'])
        ============================================================ */
-    public function historialDetalle(int $idProducto, int $limit = 10, int $offset = 0): array{
+    public function historialDetalle(int $idProducto, int $limit = 10, int $offset = 0, array $filtros = []): array{
+        // Cabecera del producto (stock + total + max)
         $producto = $this->fetchOne(
             "SELECT p.id_producto, p.producto, p.present_producto,
                     COALESCE(rp.cant_producto, 0) AS stock_actual,
                     COALESCE((SELECT SUM(rd2.cant_despacho) FROM table_alm_relacion_despacho rd2
                               INNER JOIN table_alm_despacho d2 ON d2.id_despacho = rd2.id_despacho
-                              WHERE rd2.id_producto = p.id_producto AND d2.status_despacho = 1), 0) AS total_despachado
+                              WHERE rd2.id_producto = p.id_producto AND d2.status_despacho = 1), 0) AS total_despachado,
+                    COALESCE((SELECT MAX(rd3.cant_despacho) FROM table_alm_relacion_despacho rd3
+                              INNER JOIN table_alm_despacho d3 ON d3.id_despacho = rd3.id_despacho
+                              WHERE rd3.id_producto = p.id_producto AND d3.status_despacho = 1), 0) AS max_despachado
              FROM table_alm_producto p
              LEFT JOIN table_alm_relacion_producto rp ON rp.id_producto = p.id_producto
              WHERE p.id_producto = :id
@@ -517,12 +605,30 @@ class ModelDespachos extends Model{
 
         if (!$producto) return ['producto' => null, 'data' => [], 'total' => 0];
 
+        // Filtro de fechas
+        $filtroFechaSql = '';
+        $filtroFechaParams = [];
+        if (!empty($filtros['fechaInicio']) && !empty($filtros['fechaFin'])){
+            $filtroFechaSql = " AND d.fecha_despacho BETWEEN :fi AND :ff ";
+            $filtroFechaParams['fi'] = $filtros['fechaInicio'];
+            $filtroFechaParams['ff'] = $filtros['fechaFin'];
+        } elseif (!empty($filtros['fechaInicio'])){
+            $filtroFechaSql = " AND d.fecha_despacho >= :fi ";
+            $filtroFechaParams['fi'] = $filtros['fechaInicio'];
+        } elseif (!empty($filtros['fechaFin'])){
+            $filtroFechaSql = " AND d.fecha_despacho <= :ff ";
+            $filtroFechaParams['ff'] = $filtros['fechaFin'];
+        }
+
+        $paramsCount = array_merge(['id' => $idProducto], $filtroFechaParams);
+
         $total = (int)($this->fetchOne(
             "SELECT COUNT(*) AS t
              FROM table_alm_relacion_despacho rd
              INNER JOIN table_alm_despacho d ON d.id_despacho = rd.id_despacho
-             WHERE rd.id_producto = :id AND d.status_despacho = 1",
-            ['id' => $idProducto]
+             WHERE rd.id_producto = :id AND d.status_despacho = 1
+             {$filtroFechaSql}",
+            $paramsCount
         )['t'] ?? 0);
 
         $sql = "SELECT d.id_despacho, d.numero_orden, d.fecha_despacho,
@@ -542,12 +648,13 @@ class ModelDespachos extends Model{
                 LEFT JOIN table_personal p2 ON p2.id_personal = d.mecanico_id
                 LEFT JOIN table_personal p3 ON p3.id_personal = d.despachador_id
                 WHERE rd.id_producto = :id AND d.status_despacho = 1
+                {$filtroFechaSql}
                 ORDER BY d.fecha_despacho DESC, d.id_despacho DESC
                 LIMIT {$limit} OFFSET {$offset}";
 
         return [
             'producto' => $producto,
-            'data'     => $this->fetchAll($sql, ['id' => $idProducto]),
+            'data'     => $this->fetchAll($sql, array_merge(['id' => $idProducto], $filtroFechaParams)),
             'total'    => $total,
         ];
     }

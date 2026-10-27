@@ -41,7 +41,7 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
     </div>
 
     <div class="card">
-        <div class="dt-toolbar">
+        <div class="dt-toolbar" style="flex-wrap:wrap; gap:.5rem;">
             <div class="dt-toolbar-left">
                 <span class="dt-toolbar-label">Mostrar</span>
                 <select id="filtroLimit" class="filter-select" style="min-width:70px;">
@@ -54,8 +54,19 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 <span class="dt-toolbar-label">registros</span>
             </div>
 
-            <div class="dt-toolbar-right">
-                <div class="filter-search" style="min-width:280px;">
+            <div class="dt-toolbar-right" style="flex-wrap:wrap; gap:.5rem;">
+                <div style="display:flex; align-items:center; gap:.35rem;">
+                    <label style="font-size:.72rem; color:#64748b; font-weight:600;">Desde</label>
+                    <input type="date" id="filtroFechaInicio" class="filter-select" style="padding:.5rem .65rem;">
+                </div>
+                <div style="display:flex; align-items:center; gap:.35rem;">
+                    <label style="font-size:.72rem; color:#64748b; font-weight:600;">Hasta</label>
+                    <input type="date" id="filtroFechaFin" class="filter-select" style="padding:.5rem .65rem;">
+                </div>
+                <button type="button" id="btnLimpiarFechas" class="btn btn-ghost btn-sm" title="Limpiar fechas">
+                    <?= icon_tag('x', 'x', 'w-4 h-4') ?>
+                </button>
+                <div class="filter-search" style="min-width:260px;">
                     <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
                     <input type="text" id="filtroBuscar" placeholder="Buscar producto, tipo, ubicación...">
                 </div>
@@ -69,7 +80,14 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                         <th style="width:70px;">ID</th>
                         <th>Artículo</th>
                         <th class="text-right">Stock Actual</th>
-                        <th class="text-right">Total Despachado</th>
+                        <th class="text-right">
+                            <button type="button" id="btnOrdenarTotal" class="btn-orden-tabla" data-orden="desc" title="Ordenar por total despachado">
+                                <span>Total Despachado</span>
+                                <span class="orden-icon" id="ordenTotalIcon">
+                                    <?= icon_tag('arrow-down-wide-narrow', 'arrow-down-wide-narrow', 'w-3.5 h-3.5') ?>
+                                </span>
+                            </button>
+                        </th>
                         <th>Primer Despacho</th>
                         <th>Último Despacho</th>
                         <th class="text-right" style="width:100px;">Acciones</th>
@@ -85,6 +103,7 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <div class="dt-info">
                 Mostrando <strong id="startHistorial">0</strong>–<strong id="endHistorial">0</strong>
                 de <strong id="totalHistorial">0</strong> productos
+                <span id="rangoActivo" style="margin-left:.5rem; color:#64748b; font-size:.75rem;"></span>
             </div>
             <div class="dt-pagination" id="paginationHistorial"></div>
         </div>
@@ -118,6 +137,31 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
 
     <div class="historial-producto-info" id="timelineProductoInfo"></div>
 
+    <div class="card" style="margin-bottom:.75rem;">
+        <div class="dt-toolbar" style="flex-wrap:wrap; gap:.5rem;">
+            <div class="dt-toolbar-left">
+                <span class="dt-toolbar-label" style="font-weight:600; color:#334155;">Filtrar despachos:</span>
+            </div>
+            <div class="dt-toolbar-right" style="flex-wrap:wrap; gap:.5rem;">
+                <div style="display:flex; align-items:center; gap:.35rem;">
+                    <label style="font-size:.72rem; color:#64748b; font-weight:600;">Desde</label>
+                    <input type="date" id="timelineFechaInicio" class="filter-select" style="padding:.5rem .65rem;">
+                </div>
+                <div style="display:flex; align-items:center; gap:.35rem;">
+                    <label style="font-size:.72rem; color:#64748b; font-weight:600;">Hasta</label>
+                    <input type="date" id="timelineFechaFin" class="filter-select" style="padding:.5rem .65rem;">
+                </div>
+                <button type="button" id="btnTimelineFiltrar" class="btn btn-primary btn-sm">
+                    <?= icon_tag('filter', 'filter', 'w-4 h-4') ?>
+                    <span>Filtrar</span>
+                </button>
+                <button type="button" id="btnTimelineLimpiar" class="btn btn-ghost btn-sm" title="Limpiar fechas">
+                    <?= icon_tag('x', 'x', 'w-4 h-4') ?>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div id="timelineWrap">
         <div id="timelineContainer">
             <div class="historial-loading">
@@ -131,14 +175,43 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         <div class="dt-info">
             Mostrando <strong id="startTimeline">0</strong>–<strong id="endTimeline">0</strong>
             de <strong id="totalTimeline">0</strong> despachos
+            <span id="timelineRangoActivo" style="margin-left:.5rem; color:#64748b; font-size:.75rem;"></span>
         </div>
         <div class="dt-pagination" id="paginationTimeline"></div>
     </div>
 
 </div>
 
+<style>
+    .btn-orden-tabla {
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: .25rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+        font-size: .75rem;
+        color: #475569;
+        transition: color .15s;
+    }
+    .btn-orden-tabla:hover { color: #1d4ed8; }
+    .btn-orden-tabla .orden-icon {
+        display: inline-flex;
+        transition: transform .15s;
+    }
+    .btn-orden-tabla[data-orden="asc"] .orden-icon {
+        transform: rotate(180deg);
+    }
+</style>
+
 <script>
     window.SITGO_BASE = "<?= BASE_URL ?>";
     window.SITGO_INST = <?= (int)($instId ?? 1) ?>;
-    
 </script>

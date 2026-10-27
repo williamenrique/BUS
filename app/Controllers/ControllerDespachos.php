@@ -263,6 +263,7 @@ class ControllerDespachos extends Controller{
 
     /* ============================================================
        LISTAR · Resumen de productos con stock y despachos
+       Acepta: fechaInicio, fechaFin, orden (desc|asc)
        ============================================================ */
     public function historialListar(string $inst = '1'): void{
         AuthGuard::check();
@@ -273,8 +274,22 @@ class ControllerDespachos extends Controller{
         $limit  = max(1, min(100, (int)($_GET['limit'] ?? 10)));
         $offset = max(0, (int)($_GET['offset'] ?? 0));
 
-        $this->safe(function() use ($q, $limit, $offset, $instId){
-            $r = (new ModelDespachos())->historialProductos($q, $limit, $offset, $instId);
+        $fechaInicio = trim((string)($_GET['fechaInicio'] ?? ''));
+        $fechaFin    = trim((string)($_GET['fechaFin']    ?? ''));
+
+        $orden = strtolower(trim((string)($_GET['orden'] ?? 'desc')));
+        if ($orden !== 'asc' && $orden !== 'desc') $orden = 'desc';
+
+        $filtros = ['orden' => $orden];
+        if ($fechaInicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicio)) {
+            $filtros['fechaInicio'] = $fechaInicio;
+        }
+        if ($fechaFin !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFin)) {
+            $filtros['fechaFin'] = $fechaFin;
+        }
+
+        $this->safe(function() use ($q, $limit, $offset, $filtros, $instId){
+            $r = (new ModelDespachos())->historialProductos($q, $limit, $offset, $instId, $filtros);
             $this->json([
                 'ok'             => true,
                 'data'           => $r['data'],
@@ -286,6 +301,7 @@ class ControllerDespachos extends Controller{
 
     /* ============================================================
        DETALLE · Timeline paginado de un producto
+       Acepta filtro de fechas (fechaInicio / fechaFin)
        ============================================================ */
     public function historialDetalle(string $inst, string $id): void{
         AuthGuard::check();
@@ -296,11 +312,22 @@ class ControllerDespachos extends Controller{
         $d = $this->input();
         if (empty($d)) $d = $_POST;
 
-        $limit  = max(1, min(50, (int)($d['limit']  ?? 10)));
+        $limit  = max(1, min(9999, (int)($d['limit']  ?? 10)));
         $offset = max(0, (int)($d['offset'] ?? 0));
 
-        $this->safe(function() use ($id, $limit, $offset){
-            $r = (new ModelDespachos())->historialDetalle($id, $limit, $offset);
+        $fechaInicio = trim((string)($d['fechaInicio'] ?? ''));
+        $fechaFin    = trim((string)($d['fechaFin']    ?? ''));
+
+        $filtros = [];
+        if ($fechaInicio !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaInicio)) {
+            $filtros['fechaInicio'] = $fechaInicio;
+        }
+        if ($fechaFin !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaFin)) {
+            $filtros['fechaFin'] = $fechaFin;
+        }
+
+        $this->safe(function() use ($id, $limit, $offset, $filtros){
+            $r = (new ModelDespachos())->historialDetalle($id, $limit, $offset, $filtros);
 
             if (!$r['producto']){
                 $this->json(['ok' => false, 'message' => 'Producto no encontrado.'], 404);

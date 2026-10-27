@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const BASE = window.SITGO_BASE || '/';
     const INST = window.SITGO_INST || 1;
-    const API  = (window.SITGO_BASE || '/') + 'productos/i/' + INST;
+    const API  = BASE + 'productos/i/' + INST;
     const $ = id => document.getElementById(id);
 
     let dt = null;
@@ -29,11 +30,19 @@ document.addEventListener('DOMContentLoaded', () => {
             stockBadge = `<span class="badge badge-success">${cant.toLocaleString('es-VE')} ${esc(present)}</span>`;
         }
 
+        const urlHistorial = `${BASE}despachos/i/${INST}/historial#producto-${p.id_producto}`;
+
         return `
             <tr>
                 <td><strong>#${p.id_producto}</strong></td>
                 <td>
-                    <strong>${esc(p.producto)}</strong>
+                    <a href="${urlHistorial}"
+                       class="producto-historial-link"
+                       data-id="${p.id_producto}"
+                       style="color:#1d4ed8; font-weight:600; text-decoration:none;"
+                       title="Ver historial de despachos">
+                        ${esc(p.producto)}
+                    </a>
                     ${p.tag_producto == 2 ? '<span class="badge badge-info" style="margin-left:.35rem; font-size:.65rem;">REP.</span>' : ''}
                 </td>
                 <td>${esc(p.enlace_producto || '—')}</td>
@@ -42,6 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td class="text-center">${stockBadge}</td>
                 <td class="text-right">
                     <div class="actions">
+                        <button class="action-btn" data-action="historial" data-id="${p.id_producto}" title="Ver historial">
+                            <i data-lucide="history" class="w-4 h-4"></i>
+                        </button>
                         <button class="action-btn" data-action="stock" data-id="${p.id_producto}" data-producto="${esc(p.producto)}" data-cant="${cant}" title="Agregar stock">
                             <i data-lucide="plus-circle" class="w-4 h-4"></i>
                         </button>
@@ -85,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             bindEvents();
-            actualizarBotonPdf();   // ← NUEVO: estado inicial del botón
+            actualizarBotonPdf();
             bindForm();
             bindStockForm();
         } catch (e){
@@ -209,9 +221,17 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody._bound = true;
 
         tbody.addEventListener('click', e => {
+            // Si clickearon el nombre del producto (link), dejar que navegue solo.
+            const link = e.target.closest('.producto-historial-link');
+            if (link) return;
+
             const btn = e.target.closest('[data-action]');
             if (!btn) return;
             const { action, id, producto, cant } = btn.dataset;
+            if (action === 'historial') {
+                window.location.href = `${BASE}despachos/i/${INST}/historial#producto-${id}`;
+                return;
+            }
             if (action === 'editar')   abrirEditar(id);
             if (action === 'eliminar') eliminar(id);
             if (action === 'stock')    abrirModalStock(id, producto, cant);
@@ -487,8 +507,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ============================================================
        PDF · PRODUCTOS POR ESTADO DE STOCK
-       Si el select filtroStock tiene valor (sin/bajo/ok), el PDF
-       se genera SOLO para ese estado. Si está vacío, los 3 grupos.
        ============================================================ */
     async function generarPdfPorEstado(){
         const btn = $('btnPdfPorEstado');
@@ -496,7 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const filtroStock = $('filtroStock')?.value || '';
 
-        // Mapeo filtro → nombre del grupo
         const mapaGrupo = {
             'sin': 'Sin stock',
             'bajo': 'Stock bajo',
@@ -521,7 +538,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // Filtrar grupos si el usuario seleccionó un estado
             let grupos = d.grupos || {};
             let conteos = d.conteos || {};
 
@@ -568,8 +584,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       Actualiza el texto y color del botón PDF por Estado
-       según el filtro de stock seleccionado
+       Botón PDF por Estado
        ============================================================ */
     function actualizarBotonPdf(){
         const btn = $('btnPdfPorEstado');
@@ -578,7 +593,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const filtro = $('filtroStock')?.value || '';
 
-        // Reset clases
         btn.classList.remove('btn-primary', 'btn-danger', 'btn-warning', 'btn-success');
 
         const map = {
