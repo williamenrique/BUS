@@ -154,8 +154,8 @@ HTML;
             return;
         }
 
-        // Vista normal: con layout si está logueado, standalone si no
-        $withLayout = is_logged_in();
+        // 404 siempre standalone (sin header/footer, sin sidebar)
+        $withLayout = false;
         $pageTitle  = 'Página no encontrada';
 
         require VIEWS_PATH . 'errores/404.php';

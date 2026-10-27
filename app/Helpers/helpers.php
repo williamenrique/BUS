@@ -331,20 +331,39 @@ if (!function_exists('inst_url')){
 }
 
 if (!function_exists('inst_nombre_corto')){
-    function inst_nombre_corto(string $nombre, int $maxLen = 28): string{
+    /**
+     * Devuelve el nombre completo si cabe en $maxLen.
+     * Si es más largo, devuelve solo las iniciales de las palabras
+     * significativas (ignorando artículos, preposiciones y "ESTADO").
+     *
+     * Ejemplos con $maxLen = 28:
+     *   "TALLER SSLMTY"                                 → "TALLER SSLMTY"  (13)
+     *   "171"                                           → "171"            (3)
+     *   "GOBERNACION DEL ESTADO YARACUY"                → "GY"             (30 → iniciales)
+     *   "SERVICIO SOCIALISTA DE LOGISTICA, MANTENIMIENTO Y TRANSPORTE DEL ESTADO YARACUY"
+     *                                                   → "SSLMTY"         (86 → iniciales)
+     */
+    function inst_nombre_corto(string $nombre, int $maxLen = 40): string{
         $nombre = trim($nombre);
         if ($nombre === '') return '';
 
+        // Nombres cortos: se devuelven tal cual
         if (mb_strlen($nombre, 'UTF-8') <= $maxLen){
             return $nombre;
         }
 
+        // Palabras que NO aportan inicial (artículos, preposiciones, "ESTADO")
         $ignorar = [
-            'de','del','la','las','el','los','y','e','o','u',
-            'a','al','en','con','por','para','un','una','unos','unas',
-            'the','of','and','&',
+            'de', 'del', 'la', 'las', 'el', 'los',
+            'y', 'e', 'o', 'u',
+            'a', 'al', 'en', 'con', 'por', 'para',
+            'un', 'una', 'unos', 'unas',
+            'sin', 'sobre', 'entre',
+            'estado', 'estados',
+            'the', 'of', 'and',
         ];
 
+        // Limpiar signos, dejar solo letras/números/espacios
         $limpio = preg_replace('/[^\p{L}\p{N}\s]+/u', ' ', $nombre);
         $partes = preg_split('/\s+/u', $limpio, -1, PREG_SPLIT_NO_EMPTY);
 
@@ -359,10 +378,12 @@ if (!function_exists('inst_nombre_corto')){
             $iniciales .= mb_strtoupper(mb_substr($p, 0, 1, 'UTF-8'), 'UTF-8');
         }
 
+        // Si todo eran palabras ignorables, usar el nombre crudo recortado
         if ($iniciales === ''){
             return mb_substr($nombre, 0, $maxLen, 'UTF-8') . '…';
         }
 
+        // Si por alguna razón las iniciales aún superan el máximo
         if (mb_strlen($iniciales, 'UTF-8') > $maxLen){
             $iniciales = mb_substr($iniciales, 0, $maxLen, 'UTF-8') . '…';
         }

@@ -10,10 +10,10 @@ require __DIR__ . '/inc/header.php';
     <!-- ============================================================ -->
     <section class="pub-sec" id="sec-flota">
         <div class="pub-sec-head">
-            <h3><i data-lucide="fuel" class="w-5 h-5 text-primary"></i> Ventas de Estación</h3>
+            <h3><i data-lucide="bus" class="w-5 h-5 text-primary"></i> Estado de Flota</h3>
             <div style="display:flex; gap:.5rem; align-items:center;">
                 <label style="font-size:.72rem; color:#64748b; font-weight:600;">Institución:</label>
-                <select id="instEstacion" class="filter-select" style="min-width:180px;"></select>
+                <select id="instFlota" class="filter-select" style="min-width:180px;"></select>
             </div>
         </div>
         <div class="pub-sec-body">

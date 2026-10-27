@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function abreviar(nombre){
         if (!nombre) return 'N/D';
         if (nombre.length <= 30) return nombre;
-        const ignorar = ['de','del','la','el','los','las','y','e','o','a','en','con'];
+        const ignorar = ['de','del','la','el','los','las','y','e','o','a','en','con','estados','estado'];
         const palabras = nombre.split(/\s+/);
         let ini = '';
         palabras.forEach(p => {
