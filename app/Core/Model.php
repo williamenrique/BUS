@@ -22,7 +22,10 @@ abstract class Model{
             $stmt->execute($params);
             return $stmt;
         } catch (PDOException $e){
-            Database::logError('QUERY', $e);
+            Logger::exception('QUERY', $e, [
+                'sql'    => $sql,
+                'params' => $params,
+            ]);
             throw new DatabaseException(
                 $this->mensajeAmigable($e),
                 $e->getCode(),

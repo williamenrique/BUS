@@ -58,14 +58,16 @@ abstract class Controller{
         try{
             $fn();
         } catch (DatabaseException $e){
+            Logger::exception('CONTROLLER_DB', $e);
             $this->jsonError($e->getMessage(), 500, ['type' => 'database']);
         } catch (AppException $e){
+            Logger::exception('CONTROLLER_APP', $e);
             $this->jsonError($e->getMessage(), 500, ['type' => 'app']);
         } catch (\Throwable $e){
-            Database::logError('CONTROLLER', $e);
+            Logger::exception('CONTROLLER_FATAL', $e);
             $msg = ENVIRONMENT === 'development'
                 ? $e->getMessage()
-                : 'Error inesperado en el servidor.';
+                : 'Error interno del sistema. Contacta al administrador.';
             $this->jsonError($msg, 500, ['type' => 'fatal']);
         }
     }

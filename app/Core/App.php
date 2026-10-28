@@ -34,13 +34,13 @@ class App{
                 try{
                     call_user_func_array([$instance, $action], $matches);
                 } catch (DatabaseException $e){
-                    Database::logError('APP', $e);
-                    $this->respondError($e->getMessage(), 500);
+                    Logger::exception('APP_DB', $e);
+                    $this->respondError('Error de base de datos. Intenta más tarde.', 500);
                 } catch (AppException $e){
-                    Database::logError('APP', $e);
+                    Logger::exception('APP_APP', $e);
                     $this->respondError($e->getMessage(), 500);
                 } catch (\Throwable $e){
-                    Database::logError('APP', $e);
+                    Logger::exception('APP_FATAL', $e);
                     $msg = ENVIRONMENT === 'development'
                         ? $e->getMessage()
                         : 'Error inesperado en el servidor.';

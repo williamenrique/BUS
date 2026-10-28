@@ -33,23 +33,6 @@ class Database{
      * Registra un error de BD en el archivo de log.
      */
     public static function logError(string $contexto, \Throwable $e): void{
-        try{
-            $dir = ROOT_PATH . 'storage' . DIRECTORY_SEPARATOR . 'logs' . DIRECTORY_SEPARATOR;
-            if (!is_dir($dir)) @mkdir($dir, 0755, true);
-
-            $file = $dir . 'db-errors.log';
-            $line = sprintf(
-                "[%s] [%s] %s\n  SQLSTATE: %s\n  Mensaje: %s\n  Archivo: %s:%d\n%s\n",
-                date('Y-m-d H:i:s'),
-                $contexto,
-                $e->getMessage(),
-                method_exists($e, 'getSqlState') ? $e->getSqlState() : ($e->getCode() ?? ''),
-                method_exists($e, 'getRawMessage') ? $e->getRawMessage() : $e->getMessage(),
-                $e->getFile(),
-                $e->getLine(),
-                str_repeat('-', 60)
-            );
-            @file_put_contents($file, $line, FILE_APPEND | LOCK_EX);
-        } catch (\Throwable $ignored){}
+        Logger::exception($contexto, $e);
     }
 }

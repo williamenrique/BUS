@@ -3,6 +3,7 @@ namespace App\Controllers;
 
 use App\Core\Controller;
 use App\Core\Validator;
+use App\Core\Logger;
 use App\Models\ModelUsuario;
 use App\Models\ModelEstacion;
 
@@ -18,7 +19,8 @@ class ControllerAuth extends Controller
         ], false);
     }
 
-    public function login(): void {
+    public function login(): void
+    {
         header('Content-Type: application/json');
 
         $nick = trim((string)$this->post('nick'));
@@ -29,25 +31,35 @@ class ControllerAuth extends Controller
           ->required('password', $pass, 'Contraseña');
 
         if ($v->fails()) {
+            Logger::warning('LOGIN_VALIDACION', 'Campos vacíos', ['nick' => $nick]);
             $this->json(['ok' => false, 'errors' => $v->errors()], 422);
             return;
         }
 
-        $model = new ModelUsuario();
-        $user  = $model->findByNick($nick);
+        try {
+            $model = new ModelUsuario();
+            $user  = $model->findByNick($nick);
+        } catch (\Throwable $e) {
+            Logger::exception('LOGIN_FINDUSER', $e, ['nick' => $nick]);
+            $this->json(['ok' => false, 'message' => 'Error interno del sistema.'], 500);
+            return;
+        }
 
         if (!$user) {
+            Logger::warning('LOGIN_NO_USER', 'Usuario no encontrado', ['nick' => $nick]);
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
             return;
         }
 
         $check = verify_password($pass, (string)$user['usuario_password']);
         if (!$check['ok']) {
+            Logger::warning('LOGIN_BAD_PASS', 'Contraseña incorrecta', ['nick' => $nick]);
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
             return;
         }
 
         if ((int)$user['usuario_status'] !== 1) {
+            Logger::warning('LOGIN_INACTIVE', 'Usuario inactivo', ['nick' => $nick]);
             $this->json([
                 'ok'      => false,
                 'message' => 'Tu usuario está inhabilitado. Contacta al administrador del sistema.'
@@ -59,15 +71,19 @@ class ControllerAuth extends Controller
             try {
                 $model->actualizarPassword((int)$user['usuario_id'], hash_password($pass));
             } catch (\Throwable $e) {
-                error_log('SITGO: no se pudo rehashear password usuario ' . $user['usuario_id']);
+                Logger::exception('LOGIN_REHASH', $e, ['usuario_id' => $user['usuario_id']]);
             }
         }
 
+        // =====================================================
+        // SESIÓN ÚNICA: matar sesiones previas + limpiar antiguas
+        // =====================================================
         if (SINGLE_SESSION) {
             $model->limpiarSesionesExpiradas((int)(SESSION_LIFETIME / 60));
             $model->eliminarSesiones((int)$user['usuario_id']);
         }
 
+        // Regenerar id de sesión (evita fixation) y guardar estado
         session_regenerate_id(true);
         $newSid = session_id();
 
@@ -97,9 +113,12 @@ class ControllerAuth extends Controller
             $_SERVER['HTTP_USER_AGENT'] ?? ''
         );
 
+        // =====================================================
+        // DETERMINAR REDIRECT FINAL
+        // =====================================================
         $depId      = (int)$user['usuario_departamento_id'];
         $esEstacion = ($depId === (int)DEPARTAMENTO_ESTACION);
-        $redirect   = base_url('dashboard');
+        $redirect   = base_url('dashboard');   // ← valor por defecto SIEMPRE
 
         if ($esEstacion) {
             $mEst = new ModelEstacion();
@@ -110,20 +129,16 @@ class ControllerAuth extends Controller
             $estHabitual    = (int)($user['usuario_estacion_id'] ?? 0);
             $fechaUltimaEst = (string)($user['usuario_ultima_estacion'] ?? '');
 
-            error_log("Login estación: nick={$user['usuario_nick']} estHabitual={$estHabitual} fechaUltima={$fechaUltimaEst} hoy={$hoy}");
-
             if ($estHabitual > 0 && $fechaUltimaEst === $hoy) {
                 $est = $mEst->findEstacion($estHabitual);
                 if ($est) {
                     $idEst = $estHabitual;
-                    error_log("Login estación: usando estación habitual {$idEst} (confirmada hoy)");
                 }
             }
 
             if ($idEst > 0) {
                 $_SESSION['user']['estacion_id'] = $idEst;
 
-                // Traer el NOMBRE de la estación y guardarlo en la sesión
                 $estInfo = $mEst->findEstacion($idEst);
                 if ($estInfo) {
                     $_SESSION['user']['estacion'] = $estInfo['estacion'];
@@ -132,14 +147,18 @@ class ControllerAuth extends Controller
                 try {
                     $mEst->guardarEstacionSesion($newSid, $idEst);
                 } catch (\Throwable $e) {
-                    error_log('SITGO login estacion save: ' . $e->getMessage());
+                    Logger::exception('LOGIN_ESTACION_SAVE', $e, ['usuario_id' => $user['usuario_id']]);
                 }
                 $redirect = base_url('estacion/registrar');
             } else {
-                error_log("Login estación: redirigiendo a seleccionar (no hay estación confirmada hoy)");
                 $redirect = base_url('estacion/seleccionar');
             }
         }
+
+        Logger::info('LOGIN_OK', 'Inicio de sesión exitoso', [
+            'nick'     => $user['usuario_nick'],
+            'redirect' => $redirect,
+        ]);
 
         $this->json(['ok' => true, 'redirect' => $redirect]);
         return;
