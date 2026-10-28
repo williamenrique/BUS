@@ -81,7 +81,10 @@ document.addEventListener('DOMContentLoaded', () => {
             endId: 'endOpenSales',
             renderRow: (v) => `
                 <tr>
-                    <td>${esc(v.nombre)} ${esc(v.apellido)}</td>
+                    <td>
+                        ${esc(v.nombre)} ${esc(v.apellido)}
+                        ${v.estacion ? `<span style="color:#64748b; font-size:.78rem;">(${esc(v.estacion)})</span>` : ''}
+                    </td>
                     <td>${formatFecha(v.fecha_venta)}</td>
                     <td class="text-right">${fmtLitros(v.total_litros)} L</td>
                     <td class="text-right">
@@ -127,7 +130,10 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRow: (c) => `
                 <tr>
                     <td><strong>#${c.id_cierre}</strong></td>
-                    <td>${esc(c.usuario_nombres)} ${esc(c.usuario_apellidos)}</td>
+                    <td>
+                        ${esc(c.usuario_nombres)} ${esc(c.usuario_apellidos)}
+                        ${c.estacion ? `<span style="color:#64748b; font-size:.78rem;">(${esc(c.estacion)})</span>` : ''}
+                    </td>
                     <td>${fmtNum(c.tasa_dia, 2)}</td>
                     <td>${formatFecha(c.fecha_cierre)}</td>
                     <td class="text-right">${fmtNum(c.efectivo_bs, 2)}</td>
@@ -638,7 +644,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (dataCierre.ok && dataCierre.cierreData){
             ventasCierreActual = Object.assign({}, dataCierre.cierreData, { usuario_id: idUser, id_cierre: idCierre });
         }
-        $('cierreTitle').textContent = `Detalle del cierre #${idCierre} · ${formatFecha(fecha)}`;
+
+        const estNombre = ventasCierreActual?.estacion || '';
+        const empleado  = `${ventasCierreActual?.usuario_nombres || ''} ${ventasCierreActual?.usuario_apellidos || ''}`.trim();
+        const empleadoTxt = empleado
+            ? ` · ${empleado}${estNombre ? ' (' + estNombre + ')' : ''}`
+            : (estNombre ? ` · (${estNombre})` : '');
+
+        $('cierreTitle').textContent = `Detalle del cierre #${idCierre} · ${formatFecha(fecha)}${empleadoTxt}`;
         $('ventasCierreSection').style.display = '';
         $('ventasCierreSection').scrollIntoView({ behavior: 'smooth' });
         if (dtVentasCierre) dtVentasCierre.refresh();
@@ -653,7 +666,15 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ id_user: idUser, fecha })
         });
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
-        $('cierreTitle').textContent = `Ventas abiertas · ${formatFecha(fecha)}`;
+
+        // Estación desde la primera venta (todas son de la misma)
+        const estNombre = (d.data && d.data[0] && d.data[0].estacion) ? d.data[0].estacion : '';
+        const empleado  = (d.data && d.data[0] && d.data[0].operador) ? d.data[0].operador : '';
+        const empleadoTxt = empleado
+            ? ` · ${empleado}${estNombre ? ' (' + estNombre + ')' : ''}`
+            : (estNombre ? ` · (${estNombre})` : '');
+
+        $('cierreTitle').textContent = `Ventas abiertas · ${formatFecha(fecha)}${empleadoTxt}`;
         $('ventasCierreSection').style.display = '';
         $('ventasCierreSection').scrollIntoView({ behavior: 'smooth' });
         const tbody = $('tbodyVentasCierre');

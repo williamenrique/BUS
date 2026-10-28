@@ -102,7 +102,7 @@ if (!defined('PASSWORD_DEFAULT_RESET')) define('PASSWORD_DEFAULT_RESET', '123456
 if (!defined('SITENAME'))            define('SITENAME',            'SITGO');
 if (!defined('SITGO_APP_NAME'))      define('SITGO_APP_NAME',      'SITGO');
 if (!defined('SITGO_APP_FULLNAME'))  define('SITGO_APP_FULLNAME',  'Sistema Integral de Transporte y Gestión Operativa');
-if (!defined('SITGO_VERSION'))       define('SITGO_VERSION',       '1.0.0');
+if (!defined('SITGO_VERSION'))       define('SITGO_VERSION',       '3.0.0');
 
 // ============================================
 // Zona horaria

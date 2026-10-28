@@ -1624,9 +1624,9 @@ body{
 
 .form-section{
     margin-bottom: 1rem;
-    overflow: hidden;
+    overflow: visible;          /* ← permitir dropdown */
+    border-radius: .75rem;      /* ← mantener el borde redondeado */
 }
-
 .form-section-header{
     display: flex;
     align-items: center;
@@ -1636,6 +1636,7 @@ body{
     user-select: none;
     transition: background-color .15s;
     border-bottom: 1px solid #e2e8f0;
+    border-radius: .75rem .75rem 0 0;   /* ← redondeo arriba */
 }
 
 .form-section-header:hover{
@@ -1644,6 +1645,7 @@ body{
 
 .form-section.collapsed .form-section-header{
     border-bottom: none;
+     border-radius: .75rem;              /* ← redondeo completo cuando está colapsado */
 }
 
 .form-section-title{
@@ -1696,10 +1698,11 @@ body{
 
 .form-section-body{
     max-height: 1200px;
-    overflow: hidden;
+    overflow: visible;   /* ← ANTES: hidden */
     transition: max-height .35s ease, opacity .25s ease, padding .25s ease;
     opacity: 1;
     padding: 1rem;
+     border-radius: 0 0 .75rem .75rem;
 }
 
 .form-section.collapsed .form-section-body{
@@ -1707,6 +1710,7 @@ body{
     opacity: 0;
     padding-top: 0;
     padding-bottom: 0;
+    overflow: hidden;   /* ← agregar esta línea */
 }
 
 /* ============================================

@@ -13,7 +13,7 @@
 <!-- ============================================ -->
 <!-- SECCIÓN FORMULARIO (colapsable)               -->
 <!-- ============================================ -->
-<section id="seccionForm" class="card form-section collapsed">
+<section id="seccionForm" class="card form-section form-section-users collapsed">
     <header class="form-section-header" id="toggleForm">
         <div class="form-section-title">
             <span id="formSectionIconWrap">
@@ -56,13 +56,6 @@
                     <div id="wrapDepartamento"></div>
                     <input type="hidden" name="usuario_departamento_id" id="usuario_departamento_id">
                     <span class="error" data-error="usuario_departamento_id"></span>
-                </div>
-
-                <div class="form-group">
-                    <label>Estación <span class="text-muted" style="font-weight:400;">(opcional)</span></label>
-                    <div id="wrapEstacion"></div>
-                    <input type="hidden" name="usuario_estacion_id" id="usuario_estacion_id">
-                    <span class="error" data-error="usuario_estacion_id"></span>
                 </div>
 
                 <div class="form-group">
@@ -181,13 +174,12 @@
                     <th>Personal vinculado</th>
                     <th>Rol</th>
                     <th>Departamento</th>
-                    <th>Estación</th>
                     <th>Estatus</th>
                     <th class="text-right">Acciones</th>
                 </tr>
             </thead>
             <tbody id="tbodyUsuarios">
-                <tr><td colspan="8" class="dt-loading">Cargando...</td></tr>
+                <tr><td colspan="7" class="dt-loading">Cargando...</td></tr>
             </tbody>
         </table>
     </div>

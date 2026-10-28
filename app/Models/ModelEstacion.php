@@ -659,9 +659,13 @@ class ModelEstacion extends Model{
     }
 
     /* ============================================================
-       ESTACIÓN EN LA SESIÓN
+       ESTACIÓN EN LA SESIÓN + ESTACIÓN HABITUAL DEL DÍA
+       - Actualiza table_usuario_sessions.id_estacion (siempre).
+       - Si se pasa $idUser > 0, actualiza también:
+         · table_usuarios.usuario_estacion_id
+         · table_usuarios.usuario_ultima_estacion = CURDATE()
        ============================================================ */
-    public function guardarEstacionSesion(string $sessionId, int $idEstacion): bool{
+    public function guardarEstacionSesion(string $sessionId, int $idEstacion, int $idUser = 0): bool{
         $row = $this->fetchOne(
             "SELECT id FROM table_usuario_sessions WHERE session_id = :sid LIMIT 1",
             ['sid' => $sessionId]
@@ -671,13 +675,31 @@ class ModelEstacion extends Model{
             return false;
         }
 
-        $ok = $this->execute(
+        // 1) Actualizar la sesión activa
+        $okSesion = $this->execute(
             "UPDATE table_usuario_sessions
              SET id_estacion = :est
              WHERE session_id = :sid",
             ['est' => $idEstacion, 'sid' => $sessionId]
         );
-        return (bool)$ok;
+
+        // 2) Persistir estación habitual + fecha en table_usuarios
+        if ($idUser > 0) {
+            try {
+                $afectadas = $this->execute(
+                    "UPDATE table_usuarios
+                     SET usuario_estacion_id     = :est,
+                         usuario_ultima_estacion = CURDATE()
+                     WHERE usuario_id = :uid",
+                    ['est' => $idEstacion, 'uid' => $idUser]
+                );
+                error_log("ModelEstacion::guardarEstacionSesion — UPDATE table_usuarios uid={$idUser} est={$idEstacion} afectadas=" . ($afectadas ? '1' : '0'));
+            } catch (\Throwable $e) {
+                error_log('ModelEstacion::guardarEstacionSesion (usuarios) — ' . $e->getMessage());
+            }
+        }
+
+        return (bool)$okSesion;
     }
 
     public function obtenerEstacionSesion(string $sessionId): int{

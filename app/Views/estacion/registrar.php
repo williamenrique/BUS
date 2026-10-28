@@ -9,8 +9,12 @@ $esSistema = strtoupper($user['departamento_nombre'] ?? '') === 'SISTEMA' || (in
             <?= icon_tag('fuel', 'fuel', 'w-6 h-6') ?>
             Estación de Servicio
         </h2>
-        <p class="page-subtitle">
-            <?= $esSistema ? 'Vista de Administrador' : e($user['estacion'] ?? $user['departamento_nombre'] ?? 'Sin estación asignada') ?>
+        <p class="page-subtitle" id="estacionActualNombre">
+            <?php if ($esSistema): ?>
+                Vista de Administrador
+            <?php else: ?>
+                <?= e($user['estacion'] ?? $user['departamento_nombre'] ?? 'Sin estación asignada') ?>
+            <?php endif; ?>
         </p>
     </div>
     <div style="display:flex; gap:.5rem;">

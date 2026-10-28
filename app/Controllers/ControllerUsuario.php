@@ -116,6 +116,9 @@ class ControllerUsuario extends Controller{
 
     /* ============================================================
        GUARDAR (crear)
+       - Al crear SIEMPRE usuario_estacion_id = 0.
+       - Si el departamento es Estación, al loguearse se le
+         preguntará qué estación trabaja (flujo ya existente).
        ============================================================ */
     public function guardar(): void{
         AuthGuard::check();
@@ -132,9 +135,9 @@ class ControllerUsuario extends Controller{
             ], 422);
         }
 
-        $d['usuario_estacion_id'] = !empty($d['usuario_estacion_id'])
-            ? (int)$d['usuario_estacion_id']
-            : 0;
+        // Al crear, la estación SIEMPRE inicia en 0.
+        // El usuario de Estación la elegirá en su primer login.
+        $d['usuario_estacion_id'] = 0;
 
         $m = new ModelUsuario();
 
@@ -178,6 +181,9 @@ class ControllerUsuario extends Controller{
 
     /* ============================================================
        ACTUALIZAR
+       - Si el usuario cambia de departamento → estación se resetea a 0
+         (para que, si pasa a Estación, se le pregunte al loguearse).
+       - Si sigue en el mismo departamento → conserva la estación actual.
        ============================================================ */
     public function actualizar(string $id): void{
         AuthGuard::check();
@@ -188,10 +194,6 @@ class ControllerUsuario extends Controller{
         if (empty($d)) $d = $_POST;
         $d = $this->normalizar($d);
 
-        $d['usuario_estacion_id'] = !empty($d['usuario_estacion_id'])
-            ? (int)$d['usuario_estacion_id']
-            : 0;
-
         $v = new Validator();
         $v->required('usuario_rol_id',          $d['usuario_rol_id'] ?? '', 'Rol')
           ->required('usuario_departamento_id', $d['usuario_departamento_id'] ?? '', 'Departamento');
@@ -200,6 +202,11 @@ class ControllerUsuario extends Controller{
         $m = new ModelUsuario();
         $existente = $m->find($id);
         if (!$existente) $this->json(['ok' => false, 'message' => 'Usuario no encontrado.'], 404);
+
+        // ¿Cambió de departamento?
+        $deptoAnterior = (int)($existente['usuario_departamento_id'] ?? 0);
+        $deptoNuevo    = (int)($d['usuario_departamento_id'] ?? 0);
+        $d['resetEstacion'] = ($deptoAnterior !== $deptoNuevo);
 
         if (!empty($_FILES['usuario_imagen']['name'])){
             $img = $this->subirImagen($_FILES['usuario_imagen'], $existente['usuario_nick']);
@@ -740,21 +747,41 @@ class ControllerUsuario extends Controller{
         $baseDir    = $this->storageBase();
         $carpetaDir = $baseDir . $carpeta . DIRECTORY_SEPARATOR;
 
+        error_log("copiarDefault: nick={$nick}, carpetaDir={$carpetaDir}");
+
         if (!is_dir($carpetaDir)){
-            if (!mkdir($carpetaDir, 0755, true)) return '';
+            if (!mkdir($carpetaDir, 0755, true)) {
+                error_log("copiarDefault: FALLO mkdir({$carpetaDir})");
+                return '';
+            }
+            error_log("copiarDefault: creada carpeta {$carpetaDir}");
         }
 
-        $origen  = PUBLIC_PATH . 'img' . DIRECTORY_SEPARATOR . 'default.png';
+        // El default.png está en assets/img/default.png
+        $origen  = ASSETS_PATH . 'img' . DIRECTORY_SEPARATOR . 'default.png';
         $nombre  = $carpeta . '_default.png';
         $destino = $carpetaDir . $nombre;
 
-        if (!file_exists($origen)) return '';
+        error_log("copiarDefault: origen={$origen}, destino={$destino}");
 
-        if (!file_exists($destino)){
-            if (!copy($origen, $destino)) return '';
+        if (!file_exists($origen)) {
+            error_log("copiarDefault: NO EXISTE origen {$origen}");
+            return '';
         }
 
-        return $carpeta . '/' . $nombre;
+        if (!file_exists($destino)){
+            if (!copy($origen, $destino)) {
+                error_log("copiarDefault: FALLO copy({$origen} → {$destino})");
+                return '';
+            }
+            error_log("copiarDefault: copiado OK");
+        } else {
+            error_log("copiarDefault: destino ya existía, no copio");
+        }
+
+        $resultado = $carpeta . '/' . $nombre;
+        error_log("copiarDefault: retornando '{$resultado}'");
+        return $resultado;
     }
 
     private function borrarArchivo(string $rutaRelativa): void{

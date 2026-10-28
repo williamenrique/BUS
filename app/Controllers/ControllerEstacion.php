@@ -92,17 +92,26 @@ class ControllerEstacion extends Controller{
             return;
         }
 
-        $this->safe(function() use ($idEstacion, $est, $u){
+        $this->safe(function() use ($idEstacion, $est, $u, $idUser){
             $mEst = new ModelEstacion();
             $sid  = session_id();
-            $ok = $mEst->guardarEstacionSesion($sid, $idEstacion);
+
+            error_log("ControllerEstacion::guardarSeleccion — sid={$sid} idEstacion={$idEstacion} idUser={$idUser}");
+
+            $ok = $mEst->guardarEstacionSesion($sid, $idEstacion, $idUser);
             if (!$ok){
                 $this->json(['ok' => false, 'message' => 'No se pudo guardar la estación. La sesión no existe en BD.'], 500);
                 return;
             }
+
             $_SESSION['user']['estacion_id'] = $idEstacion;
             $_SESSION['user']['estacion']    = $est['estacion'];
-            $this->json(['ok' => true, 'message' => 'Estación seleccionada: ' . $est['estacion'], 'redirect' => base_url('estacion/registrar')]);
+
+            $this->json([
+                'ok'       => true,
+                'message'  => 'Estación seleccionada: ' . $est['estacion'],
+                'redirect' => base_url('estacion/registrar')
+            ]);
         });
     }
 

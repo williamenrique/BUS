@@ -18,8 +18,7 @@ class ControllerAuth extends Controller
         ], false);
     }
 
-    public function login(): void
-    {
+    public function login(): void {
         header('Content-Type: application/json');
 
         $nick = trim((string)$this->post('nick'));
@@ -37,20 +36,17 @@ class ControllerAuth extends Controller
         $model = new ModelUsuario();
         $user  = $model->findByNick($nick);
 
-        // 1) ¿Existe el usuario?
         if (!$user) {
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
             return;
         }
 
-        // 2) ¿La contraseña es correcta?
         $check = verify_password($pass, (string)$user['usuario_password']);
         if (!$check['ok']) {
             $this->json(['ok' => false, 'message' => 'Credenciales inválidas.'], 401);
             return;
         }
 
-        // 3) ¿Está habilitado?
         if ((int)$user['usuario_status'] !== 1) {
             $this->json([
                 'ok'      => false,
@@ -59,7 +55,6 @@ class ControllerAuth extends Controller
             return;
         }
 
-        // 4) Rehash si es legacy (solo si está activo)
         if ($check['needs_rehash']) {
             try {
                 $model->actualizarPassword((int)$user['usuario_id'], hash_password($pass));
@@ -68,15 +63,11 @@ class ControllerAuth extends Controller
             }
         }
 
-        // =====================================================
-        // SESIÓN ÚNICA: matar sesiones previas + limpiar antiguas
-        // =====================================================
         if (SINGLE_SESSION) {
             $model->limpiarSesionesExpiradas((int)(SESSION_LIFETIME / 60));
             $model->eliminarSesiones((int)$user['usuario_id']);
         }
 
-        // Regenerar id de sesión (evita fixation) y guardar estado
         session_regenerate_id(true);
         $newSid = session_id();
 
@@ -88,6 +79,7 @@ class ControllerAuth extends Controller
             'departamento_id'    => (int)$user['usuario_departamento_id'],
             'departamento_nombre'=> $user['departamento_nombre'],
             'estacion_id'        => 0,
+            'estacion'           => '',
             'personal_id'        => (int)($user['usuario_id_personal'] ?? 0),
             'nombre'             => trim(($user['personal_nombre'] ?? '') . ' ' . ($user['personal_apellido'] ?? '')),
             'email'              => $user['personal_email'] ?? '',
@@ -98,7 +90,6 @@ class ControllerAuth extends Controller
         $_SESSION['csrf_token']    = bin2hex(random_bytes(32));
         $_SESSION['db_session_id'] = $newSid;
 
-        // Registrar la NUEVA sesión (id_estacion queda NULL)
         $model->registrarSesion(
             $newSid,
             (int)$user['usuario_id'],
@@ -106,29 +97,38 @@ class ControllerAuth extends Controller
             $_SERVER['HTTP_USER_AGENT'] ?? ''
         );
 
-        // =====================================================
-        // DETERMINAR REDIRECT FINAL
-        // =====================================================
-        $depId     = (int)$user['usuario_departamento_id'];
-        $esSistema = ($depId === (int)DEPARTAMENTO_SISTEMA);
-        $esEstacion= ($depId === (int)DEPARTAMENTO_ESTACION);
-
-        $redirect = base_url('dashboard');
+        $depId      = (int)$user['usuario_departamento_id'];
+        $esEstacion = ($depId === (int)DEPARTAMENTO_ESTACION);
+        $redirect   = base_url('dashboard');
 
         if ($esEstacion) {
             $mEst = new ModelEstacion();
 
-            // 1) Si tiene ventas ABIERTAS hoy → usar esa estación (no preguntar)
-            $idEst = $mEst->estacionAbiertaHoy((int)$user['usuario_id']);
+            $idEst = 0;
+            $hoy   = date('Y-m-d');
 
-            // 2) Si no, revisar si la nueva sesión ya trae estación (raro en login nuevo)
-            if ($idEst <= 0) {
-                $idEst = $mEst->obtenerEstacionSesion($newSid);
+            $estHabitual    = (int)($user['usuario_estacion_id'] ?? 0);
+            $fechaUltimaEst = (string)($user['usuario_ultima_estacion'] ?? '');
+
+            error_log("Login estación: nick={$user['usuario_nick']} estHabitual={$estHabitual} fechaUltima={$fechaUltimaEst} hoy={$hoy}");
+
+            if ($estHabitual > 0 && $fechaUltimaEst === $hoy) {
+                $est = $mEst->findEstacion($estHabitual);
+                if ($est) {
+                    $idEst = $estHabitual;
+                    error_log("Login estación: usando estación habitual {$idEst} (confirmada hoy)");
+                }
             }
 
             if ($idEst > 0) {
-                // Fijar la estación en sesión y BD de sesión
                 $_SESSION['user']['estacion_id'] = $idEst;
+
+                // Traer el NOMBRE de la estación y guardarlo en la sesión
+                $estInfo = $mEst->findEstacion($idEst);
+                if ($estInfo) {
+                    $_SESSION['user']['estacion'] = $estInfo['estacion'];
+                }
+
                 try {
                     $mEst->guardarEstacionSesion($newSid, $idEst);
                 } catch (\Throwable $e) {
@@ -136,6 +136,7 @@ class ControllerAuth extends Controller
                 }
                 $redirect = base_url('estacion/registrar');
             } else {
+                error_log("Login estación: redirigiendo a seleccionar (no hay estación confirmada hoy)");
                 $redirect = base_url('estacion/seleccionar');
             }
         }

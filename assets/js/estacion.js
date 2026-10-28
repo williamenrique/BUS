@@ -59,6 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
         state.usuarioApellido  = d.usuarioApellido || '';
         state.estacionNombre   = d.estacionNombre  || '';
 
+        // Pintar el nombre de la estación en el encabezado (fallback por si la sesión no lo trae)
+        const elNom = document.getElementById('estacionActualNombre');
+        if (elNom && state.estacionNombre && !elNom.textContent.trim().match(/vista de administrador/i)) {
+            elNom.textContent = state.estacionNombre;
+        }
+
         llenar($('tipoVehiculo'), state.tiposVehiculo, 'Seleccione...');
         llenar($('tipoPago'),     state.tiposPago,     'Seleccione...');
 
@@ -171,9 +177,19 @@ document.addEventListener('DOMContentLoaded', () => {
         $('tiposPagosList').innerHTML = pagos.join('');
         $('tiposPagosContainer').style.display = pagos.length ? '' : 'none';
 
-        const veh = (r.tiposVehiculo || []).map(v =>
-            `<li>${icon('car')} ${esc(v.tipo_vehiculo)}: <strong>${v.cantidad}</strong></li>`
-        );
+        // Ícono dinámico por tipo de vehículo
+        const veh = (r.tiposVehiculo || []).map(v => {
+            const nombre = (v.tipo_vehiculo || '').toLowerCase();
+            let ico = 'car';
+            if (nombre.includes('moto')) {
+                ico = 'bike';
+            } else if (nombre.includes('camion') || nombre.includes('camión') || nombre.includes('gandola') || nombre.includes('autobús') || nombre.includes('autobus')) {
+                ico = 'truck';
+            } else if (nombre.includes('auto') || nombre.includes('carro') || nombre.includes('sedan') || nombre.includes('sedán')) {
+                ico = 'car';
+            }
+            return `<li>${icon(ico)} ${esc(v.tipo_vehiculo)}: <strong>${v.cantidad}</strong></li>`;
+        });
         $('tiposVehiculosList').innerHTML = veh.join('');
         $('tiposVehiculosContainer').style.display = veh.length ? '' : 'none';
 
@@ -261,18 +277,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const mt   = $('monto')?.value || '';
         const simbolo = $('tipoPago')?.value === '1' ? '$' : 'Bs';
 
-        $('ticketPreview').textContent = `====== ESTACIÓN DE SERVICIO ======
+        // Nombre de la estación: de state o del page-subtitle (fallback)
+        const estNombre = state.estacionNombre
+            || document.getElementById('estacionActualNombre')?.textContent?.trim()
+            || '';
 
-        TICKET DE VENTA
-        Fecha: ${new Date().toLocaleString('es-VE')}
-        ----------------------------------
-        Tipo Pago: ${pago}
-        Tipo Vehículo: ${veh}
-        Combustible: ${comb}
-        Cantidad: ${lts} Litros
-        Precio Total: ${mt} ${simbolo}
-        =============================
-        ¡Gracias por su compra!`;
+        // Ancho del ticket (en caracteres). 34 es el estándar para 80mm en fuente 9x9.
+        const ANCHO = 34;
+
+        // Centra una línea rellenando con espacios a los lados
+        const centrar = (texto) => {
+            const t = String(texto ?? '').trim();
+            if (t.length >= ANCHO) return t.substring(0, ANCHO);
+            const pad = Math.floor((ANCHO - t.length) / 2);
+            return ' '.repeat(pad) + t + ' '.repeat(ANCHO - t.length - pad);
+        };
+
+        const lineaSep = '-'.repeat(ANCHO);
+        const lineaEq  = '='.repeat(ANCHO);
+
+        const nombreEst = estNombre || 'ESTACIÓN DE SERVICIO';
+
+        $('ticketPreview').textContent =
+            `${lineaEq}\n` +
+            `${centrar(nombreEst)}\n` +
+            `${lineaEq}\n` +
+            `${centrar('TICKET DE VENTA')}\n` +
+            `${lineaSep}\n` +
+            `Fecha: ${new Date().toLocaleString('es-VE')}\n` +
+            `${lineaSep}\n` +
+            `Tipo Pago: ${pago}\n` +
+            `Tipo Vehículo: ${veh}\n` +
+            `Combustible: ${comb}\n` +
+            `Cantidad: ${lts} Litros\n` +
+            `Precio Total: ${mt} ${simbolo}\n` +
+            `${lineaEq}\n` +
+            `${centrar('¡Gracias por su compra!')}`;
     }
 
     /* ============================================================

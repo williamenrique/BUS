@@ -11,13 +11,13 @@ class ModelUsuario extends Model{
 
     /**
      * Busca un usuario por nick (case-insensitive).
-     * NO filtra por usuario_status aquí: el controlador decide
-     * si un usuario inhabilitado puede o no entrar.
+     * Incluye usuario_estacion_id y usuario_ultima_estacion.
      */
     public function findByNick(string $nick): ?array{
         $sql = "SELECT u.usuario_id, u.usuario_nick, u.usuario_password,
                        u.usuario_rol_id, u.usuario_departamento_id,
-                       u.usuario_estacion_id, u.usuario_status,
+                       u.usuario_estacion_id, u.usuario_ultima_estacion,
+                       u.usuario_status,
                        u.usuario_imagen, u.usuario_id_personal,
                        r.rol_nombre, d.departamento_nombre,
                        p.personal_nombre, p.personal_apellido,
@@ -158,6 +158,11 @@ class ModelUsuario extends Model{
     /* ============================================================
        CRUD
        ============================================================ */
+    /* ============================================================
+       CREATE
+       - SIEMPRE inserta usuario_estacion_id = 0.
+       - El usuario de Estación elegirá estación en su primer login.
+       ============================================================ */
     public function create(array $d): int{
         $sql = "INSERT INTO table_usuarios
                     (usuario_nick, usuario_password, usuario_rol_id,
@@ -172,9 +177,7 @@ class ModelUsuario extends Model{
             'pass'     => $d['usuario_password'],
             'rol'      => (int)$d['usuario_rol_id'],
             'depto'    => (int)$d['usuario_departamento_id'],
-            'estacion' => isset($d['usuario_estacion_id']) && $d['usuario_estacion_id'] !== ''
-                            ? (int)$d['usuario_estacion_id']
-                            : 0,
+            'estacion' => 0,
             'imagen'   => $d['usuario_imagen'] ?? null,
             'status'   => (int)($d['usuario_status'] ?? 1),
             'personal' => !empty($d['usuario_id_personal']) ? (int)$d['usuario_id_personal'] : null,
@@ -182,24 +185,33 @@ class ModelUsuario extends Model{
         return (int)$this->lastInsertId();
     }
 
+    /* ============================================================
+       UPDATE
+       - Actualiza rol, departamento, status, personal e imagen.
+       - usuario_estacion_id:
+         · Si $d['resetEstacion'] === true  → se resetea a 0.
+         · Si $d['resetEstacion'] === false → se conserva el valor actual
+           (no se toca la columna).
+       ============================================================ */
     public function update(int $id, array $d): bool{
+        $resetEstacion = !empty($d['resetEstacion']);
+
         $sql = "UPDATE table_usuarios SET
                     usuario_rol_id          = :rol,
                     usuario_departamento_id = :depto,
-                    usuario_estacion_id     = :estacion,
                     usuario_status          = :status,
                     usuario_id_personal     = :personal";
 
         $params = [
             'rol'      => (int)$d['usuario_rol_id'],
             'depto'    => (int)$d['usuario_departamento_id'],
-            'estacion' => isset($d['usuario_estacion_id']) && $d['usuario_estacion_id'] !== ''
-                            ? (int)$d['usuario_estacion_id']
-                            : 0,
             'status'   => (int)($d['usuario_status'] ?? 1),
             'personal' => !empty($d['usuario_id_personal']) ? (int)$d['usuario_id_personal'] : null,
-            'id'       => $id,
         ];
+
+        if ($resetEstacion){
+            $sql .= ", usuario_estacion_id = 0";
+        }
 
         if (!empty($d['usuario_imagen'])){
             $sql .= ", usuario_imagen = :imagen";
@@ -207,6 +219,7 @@ class ModelUsuario extends Model{
         }
 
         $sql .= " WHERE usuario_id = :id";
+        $params['id'] = $id;
 
         return $this->execute($sql, $params);
     }

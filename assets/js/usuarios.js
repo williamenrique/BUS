@@ -2,6 +2,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const API = (window.SITGO_BASE || '/') + 'usuarios';
     const $ = id => document.getElementById(id);
 
+    // Constante: departamento Estación (coincide con config.php DEPARTAMENTO_ESTACION = 2)
+    const DEPARTAMENTO_ESTACION = 2;
+
     let dt = null;
     let menusArbol = [];
     let menusSeleccionados = new Set();
@@ -10,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let ssPersonal       = null;
     let ssRol            = null;
     let ssDepartamento   = null;
-    let ssEstacion       = null;
     let ssFiltroRol      = null;
     let ssFiltroDepto    = null;
 
@@ -35,14 +37,20 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<img src="${avatarUrl}" alt="Avatar" class="user-avatar-sm" onerror="this.outerHTML='<div class=\\'user-avatar-sm user-avatar-fallback\\'>${inicial}</div>'">`
             : `<div class="user-avatar-sm user-avatar-fallback">${inicial}</div>`;
 
+        // Departamento + (Estación) si aplica
+        let deptoHtml = esc(u.departamento_nombre || '—');
+        if (u.estacion_nombre && Number(u.usuario_departamento_id) === DEPARTAMENTO_ESTACION) {
+            deptoHtml = `${esc(u.departamento_nombre || '')}
+                         <span style="color:#64748b; font-size:.78rem;">(${esc(u.estacion_nombre)})</span>`;
+        }
+
         return `
             <tr>
                 <td>${avatarHtml}</td>
                 <td><strong>${esc(u.usuario_nick)}</strong></td>
                 <td>${nombrePersonal}</td>
                 <td><span class="badge badge-info">${esc(u.rol_nombre || '—')}</span></td>
-                <td>${esc(u.departamento_nombre || '—')}</td>
-                <td>${esc(u.estacion_nombre || '—')}</td>
+                <td>${deptoHtml}</td>
                 <td><span class="badge ${badge}">${txt}</span></td>
                 <td class="text-right">
                     <div class="actions">
@@ -77,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dt = new DataTable({
                 tbodyId: 'tbodyUsuarios',
                 endpoint: API + '/listar',
-                columns: ['', 'Usuario', 'Personal', 'Rol', 'Departamento', 'Estación', 'Estatus', 'Acciones'],
+                columns: ['', 'Usuario', 'Personal', 'Rol', 'Departamento', 'Estatus', 'Acciones'],
                 renderRow: renderRow,
                 searchInputId: 'filtroBuscar',
                 limitSelectorId: 'filtroLimit',
@@ -125,13 +133,6 @@ document.addEventListener('DOMContentLoaded', () => {
             hiddenInputId: 'usuario_departamento_id',
             placeholder: 'Seleccione departamento...',
             noResultsText: 'Sin departamentos'
-        });
-
-        ssEstacion = new SearchSelect({
-            wrapperId: 'wrapEstacion',
-            hiddenInputId: 'usuario_estacion_id',
-            placeholder: 'Sin estación (0)',
-            noResultsText: 'Sin estaciones'
         });
 
         ssFiltroRol = new SearchSelect({
@@ -193,9 +194,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /**
-     * Carga combos (roles, departamentos, estaciones) y personal disponible.
+     * Carga combos (roles, departamentos) y personal disponible.
      * @param {number|null} usuarioId — ID del USUARIO (no del personal).
-     *                                  Si se pasa, incluye el personal ya vinculado.
      */
     async function cargarCombos(usuarioId = null){
         const url = API + '/combos' + (usuarioId ? '?personal_id=' + usuarioId : '');
@@ -218,15 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ssDepartamento.setOptions(deptosOpts);
         ssFiltroDepto.setOptions(deptosOpts);
 
-        const estOpts = [
-            { value: '0', label: 'Sin estación (0)', search: 'sin estacion 0' },
-            ...(d.estaciones || []).map(e => ({
-                value: e.id_estacion,
-                label: e.estacion,
-                search: e.estacion.toLowerCase()
-            }))
-        ];
-        ssEstacion.setOptions(estOpts);
+        // NOTA: ya no se cargan las estaciones en el formulario.
 
         actualizarOpcionesPersonal(d.personal, null);
     }
@@ -310,7 +302,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ssPersonal?.clear();
         ssRol?.clear();
         ssDepartamento?.clear();
-        ssEstacion?.clear();
 
         deshabilitarPersonal(false);
 
@@ -340,7 +331,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!d.ok) throw new Error(d.message);
             const u = d.data;
 
-            // Pasar el ID del USUARIO (no el ID del personal)
             await cargarCombos(u.usuario_id);
 
             $('usuario_id').value              = u.usuario_id;
@@ -348,9 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             ssRol.setValue(u.usuario_rol_id);
             ssDepartamento.setValue(u.usuario_departamento_id);
-            ssEstacion.setValue(u.usuario_estacion_id || 0);
 
-            // Setear el personal vinculado y bloquearlo
             if (u.usuario_id_personal){
                 ssPersonal.setValue(u.usuario_id_personal);
             }
@@ -447,7 +435,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
-            toast(d.message, 'success');
+            toast(msg || d.message, 'success');
             form.reset();
             $('usuario_id').value = '';
             cerrarFormulario();
@@ -579,7 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ssPersonal?.clear();
         ssRol?.clear();
         ssDepartamento?.clear();
-        ssEstacion?.clear();
         deshabilitarPersonal(false);
         limpiarErrores();
 
