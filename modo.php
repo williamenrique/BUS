@@ -1,5 +1,5 @@
 <?php
-// modo.php — Estado del sistema. NO editar a mano.
+// modo.php
 return [
-    'modo' => 'produccion',
+    'modo' => 'mantenimiento',
 ];

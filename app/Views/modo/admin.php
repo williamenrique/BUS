@@ -5,8 +5,9 @@
  *
  * - Solo usuarios del departamento Sistema (DEPARTAMENTO_SISTEMA) pueden entrar.
  * - La sesión de admin vive en $_SESSION['admin_panel'].
- * - Timeout de 8 horas (configurable en ADMIN_PANEL_LIFETIME).
+ * - Timeout de 8 horas (configurable en $ADMIN_PANEL_LIFETIME).
  * - Cada cambio de modo se audita en table_alm_historial_cambio.
+ * - Usa Post/Redirect/Get (PRG) para evitar el "reenviar" al refrescar.
  */
 
 session_name('SITGO_SESS');
@@ -34,13 +35,19 @@ $ADMIN_PANEL_LIFETIME = 8 * 3600;
 // ============================================================
 // LOGOUT
 // ============================================================
+// if (isset($_GET['logout'])) {
+//     unset($_SESSION['admin_panel']);
+//     session_regenerate_id(true); //cualquiier cosa cambiar a false
+//     header('Location: ' . $_SERVER['PHP_SELF']);
+//     exit;
+// }
+//mas limpio
 if (isset($_GET['logout'])) {
     unset($_SESSION['admin_panel']);
-    session_regenerate_id(true);
+    session_destroy();
     header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
-
 // ============================================================
 // VALIDAR SESIÓN EXISTENTE (con timeout)
 // ============================================================
@@ -101,7 +108,7 @@ if (!$esAdmin && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['nick'], 
             }
 
             if ($valido) {
-                session_regenerate_id(true);
+                session_regenerate_id(false);// cualquier cosa cambiar a true
                 $_SESSION['admin_panel'] = [
                     'id'   => (int)$u['usuario_id'],
                     'nick' => $u['usuario_nick'],
@@ -261,40 +268,43 @@ $archivoModo = $ROOT . '/modo.php';
 $modoConfig  = require $archivoModo;
 $modoActual  = $modoConfig['modo'] ?? 'produccion';
 
-$mensaje = '';
+// Mensajes flash (PRG)
+$mensaje = $_SESSION['admin_flash'] ?? '';
 $tipoMsg = 'success';
+unset($_SESSION['admin_flash']);
 
+if (isset($_SESSION['admin_flash_error'])) {
+    $mensaje = $_SESSION['admin_flash_error'];
+    $tipoMsg = 'error';
+    unset($_SESSION['admin_flash_error']);
+}
+
+// ============================================================
+// PROCESAR CAMBIO DE MODO (POST → Redirect → GET)
+// ============================================================
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modo'])) {
     $nuevo = $_POST['modo'];
     if (in_array($nuevo, ['produccion', 'mantenimiento', 'suspendido'], true)) {
-        $contenido = "<?php\n// modo.php — Estado del sistema. NO editar a mano.\nreturn [\n    'modo' => '" . $nuevo . "',\n];\n";
+        $contenido = "<?php\n// modo.php\nreturn [\n    'modo' => '" . $nuevo . "',\n];\n";
 
-        if (file_put_contents($archivoModo, $contenido, LOCK_EX) !== false) {
-            $modoActual = $nuevo;
-            $mensaje = 'Modo actualizado a: ' . strtoupper($nuevo);
-            $tipoMsg = 'success';
+        $escrito = @file_put_contents($archivoModo, $contenido);
+        clearstatcache(true, $archivoModo);
 
-            // Auditoría
-            try {
-                $db = \App\Core\Database::getConnection();
-                $db->prepare(
-                    "INSERT INTO table_alm_historial_cambio (obs, info, id_user)
-                     VALUES (:obs, :info, :uid)"
-                )->execute([
-                    'obs'  => 'CAMBIO DE MODO',
-                    'info' => 'Modo: ' . $nuevo,
-                    'uid'  => (int)$_SESSION['admin_panel']['id'],
-                ]);
-            } catch (\Throwable $e) {
-                error_log('admin.php auditoría: ' . $e->getMessage());
+        if ($escrito !== false) {
+            // Verificar que el archivo realmente se escribió
+            $modoConfig = require $archivoModo;
+            if (($modoConfig['modo'] ?? '') === $nuevo) {
+                // Éxito: Redirigir para evitar el reenvío (PRG)
+                $_SESSION['admin_flash'] = 'Modo actualizado a: ' . strtoupper($nuevo);
+                header('Location: ' . $_SERVER['PHP_SELF']);
+                exit;
             }
-        } else {
-            $mensaje = 'Error: no se pudo escribir modo.php. Revisa permisos.';
-            $tipoMsg = 'error';
         }
-    } else {
-        $mensaje = 'Modo inválido.';
-        $tipoMsg = 'error';
+
+        // Error
+        $_SESSION['admin_flash_error'] = 'No se pudo escribir modo.php.';
+        header('Location: ' . $_SERVER['PHP_SELF']);
+        exit;
     }
 }
 
