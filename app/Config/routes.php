@@ -228,6 +228,8 @@ return [
     ['path' => '/estacion/reporte-pdf',           'method' => 'POST', 'handler' => 'ControllerEstacion@generarReportePdf'],
     ['path' => '/estacion/tasa-actual',           'method' => 'GET',  'handler' => 'ControllerEstacion@getTasaCurrent'],
     ['path' => '/estacion/litros-reporte',        'method' => 'POST', 'handler' => 'ControllerEstacion@getLitrosReporte'],
+    ['path' => '/estacion/resumen-litros', 'method' => 'POST', 'handler' => 'ControllerEstacion@getResumenLitros'],
+    ['path' => '/estacion/estaciones', 'method' => 'GET', 'handler' => 'ControllerEstacion@getEstaciones'],
 
     // DataVenta (por asignación de menú, no por departamento)
     ['path' => '/estacion/dataventa',             'method' => 'GET',  'handler' => 'ControllerEstacion@dataventa'],

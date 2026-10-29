@@ -379,7 +379,61 @@ class ControllerEstacion extends Controller{
             $this->json(['ok' => true, 'total' => (new ModelEstacion())->litrosPorFecha($fecha, $type)]);
         });
     }
+        /* ============================================================
+       DATAVENTA · Resumen completo de litros
+       Devuelve: total sistema, total período, y desglose por estación
+       Body JSON: { tipo, fecha, id_estacion }
+       ============================================================ */
+    public function getResumenLitros(): void{
+        AuthGuard::check();
+        MenuGuard::check();
 
+        $d          = $this->input();
+        $tipo       = (string)($d['tipo'] ?? 'day');
+        $fecha      = (string)($d['fecha'] ?? date('Y-m-d'));
+        $idEstacion = (int)($d['id_estacion'] ?? 0);
+
+        if (!in_array($tipo, ['day', 'month'], true)) $tipo = 'day';
+        if ($fecha === '') $fecha = date('Y-m-d');
+
+        // Si es mes, la fecha debe ser 'YYYY-MM'
+        if ($tipo === 'month' && !preg_match('/^\d{4}-\d{2}$/', $fecha)){
+            $this->json(['ok' => false, 'message' => 'Formato de mes inválido (YYYY-MM).'], 422);
+            return;
+        }
+        if ($tipo === 'day' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)){
+            $this->json(['ok' => false, 'message' => 'Formato de fecha inválido (YYYY-MM-DD).'], 422);
+            return;
+        }
+
+        $this->safe(function() use ($tipo, $fecha, $idEstacion){
+            $m = new ModelEstacion();
+
+            $totalSistema = $m->litrosTotalesSistema();
+            $totalPeriodo = $m->litrosPeriodoTotal($fecha, $tipo, $idEstacion);
+            $porEstacion  = $m->litrosPorEstacionPeriodo($fecha, $tipo, $idEstacion);
+
+            $this->json([
+                'ok'           => true,
+                'tipo'         => $tipo,
+                'fecha'        => $fecha,
+                'id_estacion'  => $idEstacion,
+                'totalSistema' => $totalSistema,
+                'totalPeriodo' => $totalPeriodo,
+                'porEstacion'  => $porEstacion,
+            ]);
+        });
+    }
+        /* ============================================================
+       Estaciones activas (para combos)
+       ============================================================ */
+    public function getEstaciones(): void{
+        AuthGuard::check();
+        MenuGuard::check();
+        $this->safe(function(){
+            $this->json(['ok' => true, 'data' => (new ModelEstacion())->estaciones()]);
+        });
+    }
     public function getHistorialCierres(): void{
         AuthGuard::check();
         MenuGuard::check();

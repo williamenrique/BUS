@@ -12,12 +12,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let tablaVentasCtx = { tipo: null, id_user: null, fecha: null, id_cierre: null };
 
+    // Gráfico de litros por estación
+    let chartLitros = null;
+
     /* ============================================================
        INIT
        ============================================================ */
     (async () => {
-        await cargarLitrosTotales();
-        await cargarFechaPorDefecto();
+        initFiltrosLitros();
+        initChartToggle();
+        await cargarEstacionesFiltro();
+        await cargarResumenLitros();
         initDataTables();
         bindEventos();
         bindModalPdf();
@@ -35,33 +40,189 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       CARGA INICIAL
+       RESUMEN DE LITROS · Filtros + Tarjetas + Gráfico
        ============================================================ */
-    async function cargarLitrosTotales(){
-        const litros = await fetchJSON(API + '/litros-totales');
-        if (litros.ok) $('totalLitrosSistema').textContent = fmtLitros(litros.total) + ' L';
+
+    function initFiltrosLitros(){
+        const hoy  = new Date();
+        const yyyy = hoy.getFullYear();
+        const mm   = String(hoy.getMonth() + 1).padStart(2, '0');
+        const dd   = String(hoy.getDate()).padStart(2, '0');
+
+        if ($('litrosFecha')) $('litrosFecha').value = `${yyyy}-${mm}-${dd}`;
+        if ($('litrosTipo'))  $('litrosTipo').value = 'day';
+
+        // Cambio día/mes → actualizar tipo de input y recargar
+        $('litrosTipo')?.addEventListener('change', (e) => {
+            const esMes = e.target.value === 'month';
+            const inp = $('litrosFecha');
+            if (!inp) return;
+            if (esMes){
+                inp.type = 'month';
+                inp.value = `${yyyy}-${mm}`;
+            } else {
+                inp.type = 'date';
+                inp.value = `${yyyy}-${mm}-${dd}`;
+            }
+            cargarResumenLitros();
+        });
+
+        $('litrosFecha')?.addEventListener('change', cargarResumenLitros);
+        $('litrosEstacion')?.addEventListener('change', cargarResumenLitros);
+        $('btnLitrosActualizar')?.addEventListener('click', cargarResumenLitros);
+    }
+    /* ============================================================
+       CHART COLAPSABLE
+       ============================================================ */
+    function initChartToggle(){
+        const btn = $('btnToggleChart');
+        const section = $('litrosChartSection');
+        if (!btn || !section) return;
+
+        // Estado inicial: expandido
+        section.classList.remove('collapsed');
+        btn.setAttribute('aria-expanded', 'true');
+
+        btn.addEventListener('click', () => {
+            const colapsado = section.classList.toggle('collapsed');
+            btn.setAttribute('aria-expanded', colapsado ? 'false' : 'true');
+
+            // Redibujar el chart al expandir (Chart.js necesita recalcular el tamaño)
+            if (!colapsado && chartLitros){
+                setTimeout(() => chartLitros.resize(), 50);
+            }
+        });
+    }
+    async function cargarEstacionesFiltro(){
+        const sel = $('litrosEstacion');
+        if (!sel) return;
+
+        const d = await fetchJSON(API + '/estaciones');
+        if (!d.ok) return;
+
+        sel.innerHTML = '<option value="0">Todas las estaciones</option>';
+        (d.data || []).forEach(e => {
+            const o = document.createElement('option');
+            o.value = e.id_estacion;
+            o.textContent = e.estacion;
+            sel.appendChild(o);
+        });
     }
 
-    async function cargarFechaPorDefecto(){
-        const d = new Date();
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        $('searchDateDay').value = `${yyyy}-${mm}-${dd}`;
-        $('searchDateMonth').value = `${yyyy}-${mm}`;
-        await cargarLitrosFecha();
-    }
+    async function cargarResumenLitros(){
+        const tipo  = $('litrosTipo')?.value || 'day';
+        const fecha = $('litrosFecha')?.value || fechaHoy();
+        const idEst = parseInt($('litrosEstacion')?.value || '0');
 
-    async function cargarLitrosFecha(){
-        const type = $('searchType').value;
-        const fecha = type === 'month' ? $('searchDateMonth').value : $('searchDateDay').value;
-        if (!fecha) return;
-        const d = await fetchJSON(API + '/litros-por-fecha', {
+        if (!fecha){
+            toast('Selecciona una fecha.', 'error');
+            return;
+        }
+
+        const d = await fetchJSON(API + '/resumen-litros', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, type })
+            body: JSON.stringify({ tipo, fecha, id_estacion: idEst })
         });
-        if (d.ok) $('totalLitrosFecha').textContent = fmtLitros(d.total) + ' L';
+
+        if (!d.ok){
+            toast(d.message || 'Error al cargar litros.', 'error');
+            return;
+        }
+
+        // Tarjeta 1: total del período
+        $('litrosPeriodo').textContent = fmtLitros(d.totalPeriodo) + ' L';
+
+        const fechaLabel = tipo === 'month' ? formatMesLabel(fecha) : formatFecha(fecha);
+        const estLabel   = idEst > 0
+            ? (d.porEstacion[0]?.estacion || 'Estación seleccionada')
+            : 'Todas las estaciones';
+        $('litrosPeriodoLabel').textContent = `${fechaLabel} · ${estLabel}`;
+
+        // Tarjeta 2: estación seleccionada
+        if (idEst > 0){
+            const est = d.porEstacion[0];
+            $('litrosEstacionSel').textContent = est ? fmtLitros(est.total_litros) + ' L' : '0.00 L';
+            $('litrosEstacionLabel').textContent = est ? est.estacion : 'Sin ventas';
+        } else {
+            $('litrosEstacionSel').textContent = '—';
+            $('litrosEstacionLabel').textContent = 'Selecciona una estación';
+        }
+
+        // Tarjeta 3: estaciones con ventas
+        const totalEstaciones = (d.porEstacion || []).length;
+        $('litrosEstacionesCount').textContent = totalEstaciones;
+        $('litrosEstacionesLabel').textContent = totalEstaciones === 1
+            ? 'Estación con ventas'
+            : 'Estaciones con ventas';
+
+        renderChartLitros(d.porEstacion || []);
+    }
+
+    function renderChartLitros(items){
+        const canvas = $('litrosPorEstacionChart');
+        const empty  = $('litrosChartEmpty');
+        if (!canvas) return;
+
+        if (chartLitros){ chartLitros.destroy(); chartLitros = null; }
+
+        if (!items.length){
+            canvas.style.display = 'none';
+            if (empty) empty.style.display = 'block';
+            return;
+        }
+
+        canvas.style.display = 'block';
+        if (empty) empty.style.display = 'none';
+
+        const labels = items.map(i => i.estacion || 'Sin estación');
+        const data   = items.map(i => parseFloat(i.total_litros || 0));
+        const colors = labels.map((_, i) => `hsl(${210 + i * 30}, 70%, 55%)`);
+
+        chartLitros = new Chart(canvas.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels,
+                datasets: [{
+                    label: 'Litros',
+                    data,
+                    backgroundColor: colors,
+                    borderColor: colors.map(c => c.replace('55%', '45%')),
+                    borderWidth: 1,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${parseFloat(ctx.raw || 0).toLocaleString('es-VE')} L`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => v.toLocaleString('es-VE') + ' L' }
+                    }
+                }
+            }
+        });
+    }
+
+    function formatMesLabel(f){
+        if (!f) return '—';
+        const [y, m] = f.split('-');
+        const meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        return `${meses[parseInt(m) - 1] || m} ${y}`;
+    }
+
+    function fechaHoy(){
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     }
 
     /* ============================================================
@@ -244,15 +405,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (action === 'eliminar-ticket') await eliminarTicket(id, user, fecha, b);
         });
     }
-        /* ============================================================
+
+    /* ============================================================
        PDF DESDE LA FILA DEL CIERRE
-       ------------------------------------------------------------
-       Setea el cierre actual y abre el modal selector (resumen /
-       ventas / gasolina / diésel). Al elegir sección, se ejecuta
-       generarPdfCierre(seccion) con el cierre ya cargado.
        ============================================================ */
     async function abrirPdfCierreDesdeFila(idCierre, idUser, fecha){
-        // Cargar los datos del cierre ANTES de abrir el modal
         const dataCierre = await fetchJSON(API + '/data-cierre', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -264,20 +421,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Guardar contexto para que generarPdfCierre() sepa qué cierre usar
         ventasCierreActual = Object.assign({}, dataCierre.cierreData, {
             usuario_id: idUser,
             id_cierre:  parseInt(idCierre),
         });
         tablaVentasCtx = { tipo: 'cierre', id_user: idUser, fecha, id_cierre: idCierre };
 
-        // Abrir el MISMO modal de PDF (tipo='cierre')
         abrirModalPdf('cierre');
     }
+
     /* ============================================================
-       REIMPRIMIR TICKET (tolerante: solo id_venta)
-       ------------------------------------------------------------
-       Siempre envía copia:1 para que el ticket diga "COPIA".
+       REIMPRIMIR TICKET
        ============================================================ */
     async function reimprimirTicket(idVenta){
         if (!idVenta){
@@ -285,7 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Mostrar feedback inmediato
         toast('Preparando ticket para reimpresión…', 'success');
 
         const t = await fetchJSON(API + '/ticket-by-venta/' + idVenta, {
@@ -299,7 +452,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Llamar al impresor con copia:1 (obligatorio para que salga "COPIA")
         if (typeof fntImprimirTicket === 'function'){
             try{
                 await fntImprimirTicket({ ticketData: t.ticketData, copia: 1 });
@@ -314,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ============================================================
-       ELIMINAR TICKET (usa sitgoConfirm global)
+       ELIMINAR TICKET
        ============================================================ */
     async function eliminarTicket(idVenta, idUser, fecha, btnEl){
         const tipoCtx = tablaVentasCtx.tipo;
@@ -378,12 +530,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const esMes = e.target.value === 'month';
             $('searchDateDay').style.display   = esMes ? 'none' : '';
             $('searchDateMonth').style.display = esMes ? '' : 'none';
-            cargarLitrosFecha();
             filtroFechaActivo = true;
             dtCierres?.changePage(1);
         });
-        $('searchDateDay')?.addEventListener('change', () => { cargarLitrosFecha(); filtroFechaActivo = true; dtCierres?.changePage(1); });
-        $('searchDateMonth')?.addEventListener('change', () => { cargarLitrosFecha(); filtroFechaActivo = true; dtCierres?.changePage(1); });
+        $('searchDateDay')?.addEventListener('change', () => { filtroFechaActivo = true; dtCierres?.changePage(1); });
+        $('searchDateMonth')?.addEventListener('change', () => { filtroFechaActivo = true; dtCierres?.changePage(1); });
 
         $('btnImprimirCierre')?.addEventListener('click', async () => {
             if (!ventasCierreActual) return;
@@ -594,14 +745,21 @@ document.addEventListener('DOMContentLoaded', () => {
        GENERAR PDF · LITROS
        ============================================================ */
     async function generarPdfLitros(){
-        const type = $('searchType')?.value || 'day';
-        const fecha = type === 'month' ? $('searchDateMonth')?.value : $('searchDateDay')?.value;
+        const tipo  = $('litrosTipo')?.value || 'day';
+        const fecha = $('litrosFecha')?.value || fechaHoy();
+        const idEst = parseInt($('litrosEstacion')?.value || '0');
+
         if (!fecha){ toast('Selecciona una fecha.', 'error'); return; }
 
         const d = await fetchJSON(API + '/litros-reporte', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fecha, type, fechaFin: null })
+            body: JSON.stringify({
+                fecha,
+                type: tipo,
+                fechaFin: null,
+                id_estacion: idEst > 0 ? idEst : null
+            })
         });
         if (!d.ok){ toast(d.message || 'Error al cargar los datos.', 'error'); return; }
 
@@ -667,7 +825,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (!d.ok){ toast(d.message || 'Error', 'error'); return; }
 
-        // Estación desde la primera venta (todas son de la misma)
         const estNombre = (d.data && d.data[0] && d.data[0].estacion) ? d.data[0].estacion : '';
         const empleado  = (d.data && d.data[0] && d.data[0].operador) ? d.data[0].operador : '';
         const empleadoTxt = empleado

@@ -5924,3 +5924,145 @@ body{
 .btn-warning:hover:not(:disabled) {
     background: #d97706;
 }
+
+.stat-dark{
+    background: linear-gradient(135deg, #334155, #1e293b);
+}
+/* ============================================
+   DATAVENTA · Filtros y resumen de litros
+   ============================================ */
+.litros-filtros{
+    display: grid;
+    grid-template-columns: 140px 160px 220px 150px;
+    gap: .75rem;
+    align-items: end;
+    margin-bottom: 1rem;
+}
+
+.litros-filtro{
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    min-width: 0;
+}
+
+.litros-filtro-label{
+    font-size: .7rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+}
+
+.litros-filtro .filter-select{
+    width: 100%;
+    min-width: 0;
+    padding: .5rem .65rem;
+    font-size: .82rem;
+    height: 38px;
+}
+
+.litros-btn-actualizar{
+    height: 38px;
+    padding: 0 1rem;
+    font-size: .82rem;
+    justify-content: center;
+    width: 100%;
+}
+
+.litros-stats{
+    grid-template-columns: repeat(3, 1fr);
+    margin-bottom: 1rem;
+}
+
+.litros-stat-label{
+    display: block;
+    font-size: .68rem;
+    opacity: .75;
+    margin-top: .15rem;
+}
+
+/* ============================================
+   Chart colapsable
+   ============================================ */
+
+.litros-chart-section{
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1rem;
+}
+
+.litros-chart-toggle{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: .65rem .85rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: .5rem;
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+    transition: background-color .15s, border-color .15s;
+}
+
+.litros-chart-toggle:hover{
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.litros-chart-toggle-left{
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+    color: #334155;
+}
+
+.litros-chart-toggle-icon{
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform .25s ease;
+    color: #64748b;
+}
+
+.litros-chart-section.collapsed .litros-chart-toggle-icon{
+    transform: rotate(180deg);
+}
+
+.litros-chart-body{
+    max-height: 400px;
+    overflow: hidden;
+    transition: max-height .35s ease, opacity .25s ease, padding .25s ease;
+    opacity: 1;
+    padding-top: .75rem;
+}
+
+.litros-chart-section.collapsed .litros-chart-body{
+    max-height: 0;
+    opacity: 0;
+    padding-top: 0;
+}
+
+/* Responsive */
+@media (max-width: 900px){
+    .litros-filtros{
+        grid-template-columns: 1fr 1fr;
+    }
+    .litros-filtro-btn{
+        grid-column: 1 / -1;
+    }
+    .litros-btn-actualizar{
+        width: 100%;
+    }
+    .litros-stats{
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 560px){
+    .litros-filtros{
+        grid-template-columns: 1fr;
+    }
+}

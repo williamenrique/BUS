@@ -16,20 +16,86 @@ $user = auth_user();
     </div>
 </div>
 
-<!-- Tarjetas de estadísticas -->
-<div class="estacion-stats" style="grid-template-columns: 1fr 1fr;">
-    <div class="estacion-stat stat-blue">
-        <div class="estacion-stat-icon"><?= icon_tag('fuel', 'fuel', 'w-6 h-6') ?></div>
-        <div>
-            <span class="estacion-stat-label">Litros vendidos (Total sistema)</span>
-            <strong id="totalLitrosSistema">0.00 L</strong>
+<!-- ============================================ -->
+<!-- FILTROS Y RESUMEN DE LITROS                   -->
+<!-- ============================================ -->
+<div class="card mb-4">
+    <div class="card-body" style="padding:1rem 1.25rem;">
+
+        <!-- Fila 1: Filtros -->
+        <div class="litros-filtros">
+            <div class="litros-filtro">
+                <label class="litros-filtro-label">Agrupar por</label>
+                <select id="litrosTipo" class="filter-select">
+                    <option value="day" selected>Día</option>
+                    <option value="month">Mes</option>
+                </select>
+            </div>
+            <div class="litros-filtro">
+                <label class="litros-filtro-label">Fecha</label>
+                <input type="date" id="litrosFecha" class="filter-select">
+            </div>
+            <div class="litros-filtro">
+                <label class="litros-filtro-label">Estación</label>
+                <select id="litrosEstacion" class="filter-select">
+                    <option value="0">Todas las estaciones</option>
+                </select>
+            </div>
+            <div class="litros-filtro litros-filtro-btn">
+                <label class="litros-filtro-label" style="visibility:hidden;">.</label>
+                <button type="button" id="btnLitrosActualizar" class="btn btn-primary litros-btn-actualizar">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>Actualizar</span>
+                </button>
+            </div>
         </div>
-    </div>
-    <div class="estacion-stat stat-green">
-        <div class="estacion-stat-icon"><?= icon_tag('calendar', 'calendar', 'w-6 h-6') ?></div>
-        <div>
-            <span class="estacion-stat-label">Litros por fecha</span>
-            <strong id="totalLitrosFecha">0.00 L</strong>
+
+        <!-- Fila 2: Tarjetas resumen -->
+        <div class="estacion-stats litros-stats">
+            <div class="estacion-stat stat-blue">
+                <div class="estacion-stat-icon"><i data-lucide="calendar" class="w-6 h-6"></i></div>
+                <div>
+                    <span class="estacion-stat-label">Litros en el período</span>
+                    <strong id="litrosPeriodo">0.00 L</strong>
+                    <small id="litrosPeriodoLabel" class="litros-stat-label">—</small>
+                </div>
+            </div>
+            <div class="estacion-stat stat-green">
+                <div class="estacion-stat-icon"><i data-lucide="fuel" class="w-6 h-6"></i></div>
+                <div>
+                    <span class="estacion-stat-label">Estación seleccionada</span>
+                    <strong id="litrosEstacionSel">—</strong>
+                    <small id="litrosEstacionLabel" class="litros-stat-label">Selecciona una estación</small>
+                </div>
+            </div>
+            <div class="estacion-stat stat-amber">
+                <div class="estacion-stat-icon"><i data-lucide="bar-chart-3" class="w-6 h-6"></i></div>
+                <div>
+                    <span class="estacion-stat-label">Estaciones con ventas</span>
+                    <strong id="litrosEstacionesCount">0</strong>
+                    <small id="litrosEstacionesLabel" class="litros-stat-label">En el período</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fila 3: Gráfico comparativo (colapsable) -->
+        <div class="litros-chart-section" id="litrosChartSection">
+            <button type="button" class="litros-chart-toggle" id="btnToggleChart" aria-expanded="true">
+                <span class="litros-chart-toggle-left">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4" style="color:#2563eb;"></i>
+                    <strong>Comparativo de litros por estación</strong>
+                </span>
+                <span class="litros-chart-toggle-icon" id="litrosChartChevron">
+                    <i data-lucide="chevron-up" class="w-4 h-4"></i>
+                </span>
+            </button>
+
+            <div class="litros-chart-body" id="litrosChartBody">
+                <canvas id="litrosPorEstacionChart" style="max-height:280px;"></canvas>
+                <div id="litrosChartEmpty" style="text-align:center; padding:2rem 1rem; color:#94a3b8; font-size:.85rem; display:none;">
+                    Sin datos para mostrar en el período seleccionado.
+                </div>
+            </div>
         </div>
     </div>
 </div>

@@ -966,4 +966,80 @@ class ModelEstacion extends Model{
         $sql .= " ORDER BY v.id_venta ASC";
         return $this->fetchAll($sql, $params);
     }
+
+        /* ============================================================
+       DATAVENTA · Litros totales del sistema (todos los tiempos)
+       ============================================================ */
+    public function litrosTotalesSistema(): float{
+        return (float)($this->fetchOne(
+            "SELECT COALESCE(SUM(CAST(litros AS DECIMAL(10,2))), 0) AS t FROM table_es_venta"
+        )['t'] ?? 0);
+    }
+
+    /* ============================================================
+       DATAVENTA · Litros agrupados por estación en un período
+       - $tipo: 'day' (fecha exacta) o 'month' (mes)
+       - $idEstacion: 0 = todas
+       ============================================================ */
+    public function litrosPorEstacionPeriodo(string $fecha, string $tipo = 'day', int $idEstacion = 0): array{
+        $where  = [];
+        $params = [];
+
+        if ($tipo === 'month'){
+            $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') = :f";
+            $params['f'] = $fecha;
+        } else {
+            $where[] = "v.fecha_venta = :f";
+            $params['f'] = $fecha;
+        }
+
+        if ($idEstacion > 0){
+            $where[] = "v.id_estacion = :est";
+            $params['est'] = $idEstacion;
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        $sql = "SELECT v.id_estacion,
+                       COALESCE(e.estacion, 'Sin estación') AS estacion,
+                       COUNT(v.id_venta) AS total_ventas,
+                       COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS total_litros
+                FROM table_es_venta v
+                LEFT JOIN table_es_estacion e ON e.id_estacion = v.id_estacion
+                WHERE {$whereSql}
+                GROUP BY v.id_estacion, e.estacion
+                ORDER BY total_litros DESC";
+
+        return $this->fetchAll($sql, $params);
+    }
+
+    /* ============================================================
+       DATAVENTA · Total de litros en un período (con filtro opcional)
+       ============================================================ */
+    public function litrosPeriodoTotal(string $fecha, string $tipo = 'day', int $idEstacion = 0): float{
+        $where  = [];
+        $params = [];
+
+        if ($tipo === 'month'){
+            $where[] = "DATE_FORMAT(v.fecha_venta, '%Y-%m') = :f";
+            $params['f'] = $fecha;
+        } else {
+            $where[] = "v.fecha_venta = :f";
+            $params['f'] = $fecha;
+        }
+
+        if ($idEstacion > 0){
+            $where[] = "v.id_estacion = :est";
+            $params['est'] = $idEstacion;
+        }
+
+        $whereSql = implode(' AND ', $where);
+
+        return (float)($this->fetchOne(
+            "SELECT COALESCE(SUM(CAST(v.litros AS DECIMAL(10,2))), 0) AS t
+             FROM table_es_venta v
+             WHERE {$whereSql}",
+            $params
+        )['t'] ?? 0);
+    }
 }
