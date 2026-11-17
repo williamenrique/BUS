@@ -31,8 +31,6 @@ $estacion = $c['estacion'] ?? 'ESTACIÓN';
 
 /* ============================================================
    Nombre del responsable/vendedor
-   Puede venir en $c['usuario_nombres'] + $c['usuario_apellidos']
-   o dentro de las ventas (campo 'operador' o 'vendedor').
    ============================================================ */
 $empleado = trim(($c['usuario_nombres'] ?? '') . ' ' . ($c['usuario_apellidos'] ?? ''));
 if ($empleado === '' && !empty($ventas)) {
@@ -106,13 +104,27 @@ $subtitulo = [
     .est-info { display: table; width: 100%; font-size: 9px; margin-bottom: 8px; color: #334155; }
     .est-info .izq { display: table-cell; text-align: left; }
 
-    .est-tabla { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    .est-tabla { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
     .est-tabla th { background: #1e40af; color: #fff; padding: 5px 6px; font-size: 7.5px; text-transform: uppercase; text-align: left; }
     .est-tabla th.r, .est-tabla td.r { text-align: right; }
     .est-tabla th.c, .est-tabla td.c { text-align: center; }
     .est-tabla td { padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 8.5px; }
     .est-tabla tr:nth-child(even) td { background: #f8fafc; }
     .est-tabla .total td { background: #dbeafe; font-weight: 700; border-top: 2px solid #1e40af; }
+
+    /* Cabecera "flotante" de la tabla de tickets (solo primera página) */
+    .est-tabla-cabecera { width: 100%; border-collapse: collapse; margin-bottom: 0; table-layout: fixed; }
+    .est-tabla-cabecera th { background: #1e40af; color: #fff; padding: 5px 6px; font-size: 7.5px; text-transform: uppercase; text-align: left; }
+    .est-tabla-cabecera th.r { text-align: right; }
+    .est-tabla-cabecera th.c { text-align: center; }
+
+    /* La tabla de datos ya no lleva margen superior para pegarla a la cabecera */
+    .est-tabla-datos { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; }
+    .est-tabla-datos td { padding: 4px 6px; border-bottom: 1px solid #e2e8f0; font-size: 8.5px; }
+    .est-tabla-datos tr:nth-child(even) td { background: #f8fafc; }
+    .est-tabla-datos td.r { text-align: right; }
+    .est-tabla-datos td.c { text-align: center; }
+    .est-tabla-datos .total td { background: #dbeafe; font-weight: 700; border-top: 2px solid #1e40af; }
 
     .est-sec-title { font-size: 9.5px; font-weight: 800; color: #1e40af; background: #eff6ff; padding: 5px 8px; border-left: 3px solid #1e40af; margin: 10px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
 
@@ -243,38 +255,50 @@ $subtitulo = [
 
         <?php $conColumnaComb = ($seccion === 'ventas'); ?>
 
-        <table class="est-tabla">
-            <thead>
-                <tr>
-                    <th class="c" width="10%">Ticket</th>
-                    <th width="22%">Vehículo</th>
-                    <?php if ($conColumnaComb): ?><th width="15%">Combustible</th><?php endif; ?>
-                    <th class="c" width="12%">Litros</th>
-                    <th class="r" width="15%">Efectivo (Bs)</th>
-                    <th class="r" width="14%">Débito (Bs)</th>
-                </tr>
-            </thead>
+        <?php
+        /* ============================================================
+           CABECERA DE TICKETS · SOLO PRIMERA PÁGINA
+           ------------------------------------------------------------
+           Se saca el <thead> de la tabla de datos y se coloca en una
+           tabla aparte. DomPDF NO repite esta tabla porque no fluye
+           con el contenido: solo aparece una vez, al inicio.
+           Los anchos son fijos (%) y coinciden con la tabla de datos
+           para que las columnas queden alineadas.
+           ============================================================ */
+        ?>
+        <table class="est-tabla-cabecera">
+            <tr>
+                <th class="c" width="10%">Ticket</th>
+                <th width="22%">Vehículo</th>
+                <?php if ($conColumnaComb): ?><th width="15%">Combustible</th><?php endif; ?>
+                <th class="c" width="12%">Litros</th>
+                <th class="r" width="15%">Efectivo (Bs)</th>
+                <th class="r" width="14%">Débito (Bs)</th>
+            </tr>
+        </table>
+
+        <table class="est-tabla-datos">
             <tbody>
                 <?php if (empty($ventas)): ?>
                     <tr><td colspan="<?= $conColumnaComb ? 6 : 5 ?>" class="c" style="padding: 20px; color:#94a3b8;">No hay ventas para mostrar.</td></tr>
                 <?php else: ?>
                     <?php foreach ($ventas as $v): ?>
                         <tr>
-                            <td class="c"><?= $esc($v['numero_venta'] ?? '') ?></td>
-                            <td><?= $esc($v['tipo_vehiculo'] ?? '') ?></td>
+                            <td class="c" width="10%"><?= $esc($v['numero_venta'] ?? '') ?></td>
+                            <td width="22%"><?= $esc($v['tipo_vehiculo'] ?? '') ?></td>
                             <?php if ($conColumnaComb): ?>
-                                <td><?= $esc($v['tipo_combustible'] ?? '') ?></td>
+                                <td width="15%"><?= $esc($v['tipo_combustible'] ?? '') ?></td>
                             <?php endif; ?>
-                            <td class="c"><?= $fmt($v['cantidad_litros'] ?? 0) ?> L</td>
-                            <td class="r"><?= $fmt($v['efectivob'] ?? 0) ?></td>
-                            <td class="r"><?= $fmt($v['tarjeta_debito'] ?? 0) ?></td>
+                            <td class="c" width="12%"><?= $fmt($v['cantidad_litros'] ?? 0) ?> L</td>
+                            <td class="r" width="15%"><?= $fmt($v['efectivob'] ?? 0) ?></td>
+                            <td class="r" width="14%"><?= $fmt($v['tarjeta_debito'] ?? 0) ?></td>
                         </tr>
                     <?php endforeach; ?>
                     <tr class="total">
                         <td colspan="<?= $conColumnaComb ? 3 : 2 ?>" class="r">TOTAL GENERAL:</td>
-                        <td class="c"><?= $fmt($totLitros) ?> L</td>
-                        <td class="r"><?= $fmt($totEfectivo) ?></td>
-                        <td class="r"><?= $fmt($totDebito) ?></td>
+                        <td class="c" width="12%"><?= $fmt($totLitros) ?> L</td>
+                        <td class="r" width="15%"><?= $fmt($totEfectivo) ?></td>
+                        <td class="r" width="14%"><?= $fmt($totDebito) ?></td>
                     </tr>
                 <?php endif; ?>
             </tbody>
