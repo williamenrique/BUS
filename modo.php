@@ -1,5 +1,5 @@
 <?php
 // modo.php
 return [
-    'modo' => 'mantenimiento',
+    'modo' => 'produccion',
 ];
