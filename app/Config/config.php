@@ -60,6 +60,16 @@ if (!defined('DB_NAME'))    define('DB_NAME',    getenv('SITGO_DB_NAME') ?: 'bus
 if (!defined('DB_USER'))    define('DB_USER',    getenv('SITGO_DB_USER') ?: 'busyarac_data');
 if (!defined('DB_PASS'))    define('DB_PASS',    getenv('SITGO_DB_PASS') ?: '+bus2026+');
 if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
+// ============================================
+// Módulo Backup · rutas de binarios mysqldump / mysql
+// Se autodetectan si no se definen aquí.
+// Puedes sobrescribirlas en config.local.php
+// ============================================
+if (!defined('BACKUP_MYSQLDUMP_PATH')) define('BACKUP_MYSQLDUMP_PATH', getenv('SITGO_MYSQLDUMP') ?: '');
+if (!defined('BACKUP_MYSQL_PATH'))     define('BACKUP_MYSQL_PATH',     getenv('SITGO_MYSQL')     ?: '');
+if (!defined('BACKUP_DIR'))            define('BACKUP_DIR',            ROOT_PATH . 'storage' . DIRECTORY_SEPARATOR . 'backup' . DIRECTORY_SEPARATOR);
+if (!defined('BACKUP_LOGS_DIR'))       define('BACKUP_LOGS_DIR',       BACKUP_DIR . 'logs' . DIRECTORY_SEPARATOR);
+if (!defined('BACKUP_MAX_FILES'))      define('BACKUP_MAX_FILES',      30);   // máximo de archivos a listar en tabla
 
 // ============================================
 // Sesión

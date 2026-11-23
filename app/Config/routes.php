@@ -286,5 +286,15 @@ return [
     ['path' => '/bienes-publico/i/{inst}/departamentos',  'method' => 'GET',  'handler' => 'ControllerPublico@bienesDepartamentos'],
     ['path' => '/bienes-publico/i/{inst}/pdf',            'method' => 'POST', 'handler' => 'ControllerPublico@bienesPdf'],
 
-    
+    // ============================================================
+    // Backup / Restore (solo depto Sistema)
+    // ============================================================
+    ['path' => '/backup',                 'method' => 'GET',  'handler' => 'ControllerBackup@index'],
+    ['path' => '/backup/listar',          'method' => 'GET',  'handler' => 'ControllerBackup@listar'],
+    ['path' => '/backup/stats',           'method' => 'GET',  'handler' => 'ControllerBackup@stats'],
+    ['path' => '/backup/crear',           'method' => 'POST', 'handler' => 'ControllerBackup@crear'],
+    ['path' => '/backup/descargar/{archivo}', 'method' => 'GET',  'handler' => 'ControllerBackup@descargar'],
+    ['path' => '/backup/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerBackup@eliminar'],
+    ['path' => '/backup/restaurar',       'method' => 'POST', 'handler' => 'ControllerBackup@restaurar'],
+    ['path' => '/backup/subir',           'method' => 'POST', 'handler' => 'ControllerBackup@subir'],
 ];
