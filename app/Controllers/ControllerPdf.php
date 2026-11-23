@@ -37,6 +37,7 @@ class ControllerPdf extends Controller
             'compras_por_unidad', 'compras_orden_costeada', 'compras_costeadas_filtrado',
             'productos_inventario', 'productos_historial',
             'bienes_reporte',
+            'sistemas_ficha',
             'flota_hoja_vida', 'flota_operatividad', 'flota_aceite',
             'estacion_reporte_dia', 'estacion_litros',
             'publico_movimientos', 'publico_ventas_estacion', 'publico_aceite',

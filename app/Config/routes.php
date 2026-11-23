@@ -297,4 +297,21 @@ return [
     ['path' => '/backup/eliminar/{id}',       'method' => 'POST', 'handler' => 'ControllerBackup@eliminar'],
     ['path' => '/backup/restaurar',       'method' => 'POST', 'handler' => 'ControllerBackup@restaurar'],
     ['path' => '/backup/subir',           'method' => 'POST', 'handler' => 'ControllerBackup@subir'],
+    // ============================================================
+    // Sistemas · Ficha Técnica y Mantenimiento (multi-institución)
+    // ============================================================
+    ['path' => '/sistemas/i/{inst}',                          'method' => 'GET',  'handler' => 'ControllerSistemas@index'],
+    ['path' => '/sistemas/i/{inst}/listar',                   'method' => 'GET',  'handler' => 'ControllerSistemas@listar'],
+    ['path' => '/sistemas/i/{inst}/combos',                   'method' => 'GET',  'handler' => 'ControllerSistemas@combos'],
+    ['path' => '/sistemas/i/{inst}/obtener/{id}',             'method' => 'GET',  'handler' => 'ControllerSistemas@obtener'],
+    ['path' => '/sistemas/i/{inst}/guardar',                  'method' => 'POST', 'handler' => 'ControllerSistemas@guardar'],
+    ['path' => '/sistemas/i/{inst}/actualizar/{id}',          'method' => 'POST', 'handler' => 'ControllerSistemas@actualizar'],
+    ['path' => '/sistemas/i/{inst}/eliminar/{id}',            'method' => 'POST', 'handler' => 'ControllerSistemas@eliminar'],
+    ['path' => '/sistemas/i/{inst}/ficha/{id}',               'method' => 'GET',  'handler' => 'ControllerSistemas@ficha'],
+    ['path' => '/sistemas/i/{inst}/mantenimiento/listar',     'method' => 'GET',  'handler' => 'ControllerSistemas@listarMantenimiento'],
+    ['path' => '/sistemas/i/{inst}/mantenimiento/guardar',    'method' => 'POST', 'handler' => 'ControllerSistemas@guardarMantenimiento'],
+    ['path' => '/sistemas/i/{inst}/mantenimiento/eliminar/{id}','method' => 'POST','handler' => 'ControllerSistemas@eliminarMantenimiento'],
+    ['path' => '/sistemas/i/{inst}/mantenimiento/obtener/{id}',   'method' => 'GET',  'handler' => 'ControllerSistemas@obtenerMantenimiento'],
+    ['path' => '/sistemas/i/{inst}/mantenimiento/actualizar/{id}','method' => 'POST', 'handler' => 'ControllerSistemas@actualizarMantenimiento'],
+    ['path' => '/sistemas/i/{inst}/mantenimiento/cerrar/{id}',    'method' => 'POST', 'handler' => 'ControllerSistemas@cerrarMantenimiento'],
 ];
