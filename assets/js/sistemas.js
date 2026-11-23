@@ -106,11 +106,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 getExtraParams: () => ({
                     departamento: ssFiltroDepto ? ssFiltroDepto.getValue() : '',
                     tipo: $('filtroTipo')?.value || '',
-                    status: $('filtroStatus')?.value || ''
+                    status: $('filtroStatus')?.value || '',
+                    fecha_desde: $('filtroFechaDesde')?.value || '',
+                    fecha_hasta: $('filtroFechaHasta')?.value || ''
                 }),
-                onDataLoaded: () => {
+                onDataLoaded: (res) => {
                     bindTableActions();
                     cargarComboEquipos();
+                    const btnPdf = $('btnExportarTablaPdf');
+                    const sinDatos = Number(res?.totalFiltrados ?? res?.data?.length ?? 0) === 0;
+                    if (btnPdf) {
+                        btnPdf.disabled = sinDatos;
+                        btnPdf.style.opacity = sinDatos ? '0.5' : '1';
+                        btnPdf.style.cursor  = sinDatos ? 'not-allowed' : 'pointer';
+                    }
                 }
             });
 
@@ -201,6 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function bindEvents() {
+        $('btnReporteGlobalPdf')?.addEventListener('click', exportarPdfGlobal);
         $('btnNuevoEquipo')?.addEventListener('click', abrirCrearEquipo);
         $('btnCancelarEquipo')?.addEventListener('click', cerrarFormularioEquipo);
         $('toggleFormEquipo')?.addEventListener('click', toggleSeccionEquipo);
@@ -211,6 +221,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         $('filtroTipo')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
         $('filtroStatus')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
+        $('filtroFechaDesde')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
+        $('filtroFechaHasta')?.addEventListener('change', () => dt?.changePage(1) || dt?.reload());
+
+        $('btnLimpiarFiltros')?.addEventListener('click', () => {
+            ssFiltroDepto?.clear();
+            if ($('filtroTipo'))       $('filtroTipo').value = '';
+            if ($('filtroStatus'))     $('filtroStatus').value = '';
+            if ($('filtroFechaDesde')) $('filtroFechaDesde').value = '';
+            if ($('filtroFechaHasta')) $('filtroFechaHasta').value = '';
+            if ($('filtroBuscar'))     $('filtroBuscar').value = '';
+            if (dt) {
+                dt.state.search = '';
+                dt.state.page = 1;
+                dt.reload(true);
+            }
+        });
+
+        $('btnReporteGlobalPdf')?.addEventListener('click', () => exportarPdfGlobal('btnReporteGlobalPdf'));
+        $('btnExportarTablaPdf')?.addEventListener('click', () => exportarPdfGlobal('btnExportarTablaPdf'));
 
         $('btnNuevaIntervencionTop')?.addEventListener('click', () => abrirModalMantenimiento(null));
         $('btnAgregarMantDesdeFicha')?.addEventListener('click', () => abrirModalMantenimiento(fichaActualId));
@@ -704,7 +733,51 @@ function renderTablaMantenimientos(rows) {
             notifyToast('Error al generar PDF: ' + e.message, 'error');
         }
     }
+    async function exportarPdfGlobal(btnId = 'btnExportarTablaPdf') {
+        if (typeof window.SITGO_PDF?.generar !== 'function') {
+            notifyToast('El generador PDF no está disponible.', 'error');
+            return;
+        }
 
+        const btn = $(btnId);
+        if (btn) btn.disabled = true;
+
+        try {
+            const params = new URLSearchParams({
+                q: dt?.state?.search || ($('filtroBuscar')?.value.trim() || ''),
+                departamento: ssFiltroDepto ? ssFiltroDepto.getValue() : '',
+                tipo: $('filtroTipo')?.value || '',
+                status: $('filtroStatus')?.value || '',
+                fecha_desde: $('filtroFechaDesde')?.value || '',
+                fecha_hasta: $('filtroFechaHasta')?.value || ''
+            });
+
+            const res = await fetchJSON(`${API}/reporte-global?${params.toString()}`);
+            if (!res.ok || !res.data) {
+                throw new Error(res.message || 'No se pudo obtener información para el reporte.');
+            }
+
+            const equiposFiltrados = Array.isArray(res.data.equipos) ? res.data.equipos : [];
+            if (equiposFiltrados.length === 0) {
+                notifyToast('No hay registros con los filtros actuales para exportar a PDF.', 'warning');
+                return;
+            }
+
+            await window.SITGO_PDF.generar(
+                'sistemas_global',
+                res.data,
+                `reporte_sistemas_${new Date().toISOString().slice(0, 10)}.pdf`,
+                {
+                    titulo_documento: 'REPORTE DE SISTEMAS · EQUIPOS Y MANTENIMIENTO',
+                    subtitulo: `Institución #${INST}`,
+                }
+            );
+        } catch (e) {
+            notifyToast('Error al generar PDF: ' + e.message, 'error');
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    }
     function mostrarErrores(form, errors) {
         if (!form || !errors) return;
         Object.entries(errors).forEach(([field, msg]) => {

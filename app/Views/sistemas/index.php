@@ -22,8 +22,18 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
         </h2>
         <p class="page-subtitle">Ficha técnica de equipos, soporte, mantenimiento y reemplazo de componentes</p>
     </div>
-    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
-        <button type="button" id="btnNuevaIntervencionTop" class="btn btn-secondary">
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+        <button type="button" id="btnReporteGlobalPdf" class="btn"
+                style="background:#ffffff; color:#0f172a; border:1px solid #cbd5e1; box-shadow:0 1px 2px rgba(15,23,42,.05);"
+                onmouseover="this.style.background='#f1f5f9'; this.style.borderColor='#94a3b8';"
+                onmouseout="this.style.background='#ffffff'; this.style.borderColor='#cbd5e1';">
+            <?= icon_tag('file-text', 'file-text', 'w-4 h-4') ?>
+            <span>PDF Global</span>
+        </button>
+        <button type="button" id="btnNuevaIntervencionTop" class="btn"
+                style="background:#0f766e; color:#ffffff; border:1px solid #0f766e; box-shadow:0 1px 2px rgba(15,118,110,.2);"
+                onmouseover="this.style.background='#115e59'; this.style.borderColor='#115e59';"
+                onmouseout="this.style.background='#0f766e'; this.style.borderColor='#0f766e';">
             <?= icon_tag('wrench', 'wrench', 'w-4 h-4') ?>
             <span>Registrar Soporte / Mant.</span>
         </button>
@@ -385,10 +395,10 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
 <!-- TABLA PRINCIPAL DE EQUIPOS                   -->
 <!-- ============================================ -->
 <div class="card">
-    <div class="dt-toolbar">
-        <div class="dt-toolbar-left">
+   <div class="dt-toolbar" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem;">
+        <div class="dt-toolbar-left" style="display:flex; align-items:center; gap:.4rem; flex:0 0 auto;">
             <span class="dt-toolbar-label">Mostrar</span>
-            <select id="filtroLimit" class="filter-select" style="min-width:70px;">
+            <select id="filtroLimit" class="filter-select" style="width:68px; min-width:68px;">
                 <option value="5">5</option>
                 <option value="10" selected>10</option>
                 <option value="25">25</option>
@@ -398,11 +408,11 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
             <span class="dt-toolbar-label">equipos</span>
         </div>
 
-        <div class="dt-toolbar-right" style="gap:.5rem;">
-            <div id="wrapFiltroDepto" style="min-width:190px;"></div>
+        <div class="dt-toolbar-right" style="display:flex; align-items:center; justify-content:flex-end; flex-wrap:wrap; gap:.45rem; flex:1 1 auto;">
+            <div id="wrapFiltroDepto" style="width:190px; min-width:190px; max-width:190px; flex:0 0 190px;"></div>
             <input type="hidden" id="filtroDepartamento">
 
-            <select id="filtroTipo" class="filter-select">
+            <select id="filtroTipo" class="filter-select" style="width:142px; min-width:130px; flex:0 0 auto;">
                 <option value="">Todos los tipos</option>
                 <option value="PC ESCRITORIO">PC Escritorio</option>
                 <option value="LAPTOP">Laptop</option>
@@ -414,7 +424,7 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 <option value="OTRO">Otro</option>
             </select>
 
-            <select id="filtroStatus" class="filter-select">
+            <select id="filtroStatus" class="filter-select" style="width:142px; min-width:130px; flex:0 0 auto;">
                 <option value="">Todos los estatus</option>
                 <option value="ACTIVO">Activo</option>
                 <option value="EN_MANTENIMIENTO">En mantenimiento</option>
@@ -422,10 +432,29 @@ $instNombreCorto = inst_nombre_corto($instNombreFull);
                 <option value="BAJA">Baja</option>
             </select>
 
-            <div class="filter-search" style="min-width:230px;">
-                <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
-                <input type="text" id="filtroBuscar" placeholder="Buscar código, serial, IP, depto...">
+            <div style="display:flex; align-items:center; gap:.3rem; flex:0 0 auto;">
+                <input type="date" id="filtroFechaDesde" class="filter-select" title="Desde fecha" style="width:128px; min-width:128px; padding:.38rem .45rem;">
+                <span class="dt-toolbar-label">—</span>
+                <input type="date" id="filtroFechaHasta" class="filter-select" title="Hasta fecha" style="width:128px; min-width:128px; padding:.38rem .45rem;">
             </div>
+
+            <div class="filter-search" style="width:185px; min-width:165px; max-width:200px; flex:0 1 185px;">
+                <span class="filter-search-icon"><?= icon_tag('search', 'search', 'w-4 h-4') ?></span>
+                <input type="text" id="filtroBuscar" placeholder="Buscar equipo, IP, serial..." style="width:100%;">
+            </div>
+
+            <button type="button" id="btnLimpiarFiltros" class="btn btn-sm"
+                    title="Limpiar filtros"
+                    style="background:#f8fafc; color:#475569; border:1px solid #cbd5e1; flex:0 0 auto;">
+                <?= icon_tag('rotate-ccw', 'rotate-ccw', 'w-4 h-4') ?>
+            </button>
+
+            <button type="button" id="btnExportarTablaPdf" class="btn btn-sm"
+                    title="Exportar a PDF los resultados filtrados en la tabla"
+                    style="background:#1e293b; color:#ffffff; border:1px solid #1e293b; box-shadow:0 1px 2px rgba(15,23,42,.15); flex:0 0 auto; white-space:nowrap;">
+                <?= icon_tag('file-down', 'file-down', 'w-4 h-4') ?>
+                <span>Exportar PDF</span>
+            </button>
         </div>
     </div>
 

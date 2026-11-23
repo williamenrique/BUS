@@ -20,14 +20,14 @@ class ModelSistemas extends Model
 
         if ($q !== '') {
             $where .= " AND (
-                            e.codigo_equipo     LIKE :q1
-                         OR e.tipo_equipo       LIKE :q2
-                         OR e.marca             LIKE :q3
-                         OR e.modelo            LIKE :q4
-                         OR e.serial_equipo     LIKE :q5
-                         OR e.nombre_host       LIKE :q6
-                         OR e.direccion_ip      LIKE :q7
-                         OR d.departamento_nombre LIKE :q8
+                            e.codigo_equipo        LIKE :q1
+                         OR e.tipo_equipo          LIKE :q2
+                         OR e.marca                LIKE :q3
+                         OR e.modelo               LIKE :q4
+                         OR e.serial_equipo        LIKE :q5
+                         OR e.nombre_host          LIKE :q6
+                         OR e.direccion_ip         LIKE :q7
+                         OR d.departamento_nombre  LIKE :q8
                          OR CONCAT(COALESCE(p.personal_nombre,''), ' ', COALESCE(p.personal_apellido,'')) LIKE :q9
                        )";
             $like = "%{$q}%";
@@ -49,6 +49,35 @@ class ModelSistemas extends Model
         if (!empty($filtros['status'])) {
             $where .= " AND e.status_equipo = :status";
             $params['status'] = $filtros['status'];
+        }
+
+        $fechaDesde = !empty($filtros['fecha_desde']) ? trim((string)$filtros['fecha_desde']) : '';
+        $fechaHasta = !empty($filtros['fecha_hasta']) ? trim((string)$filtros['fecha_hasta']) : '';
+
+        if ($fechaDesde !== '' || $fechaHasta !== '') {
+            $condMant = [];
+            $condEq   = [];
+
+            if ($fechaDesde !== '') {
+                $condMant[] = "mf.fecha_intervencion >= :f_desde_m";
+                $condEq[]   = "DATE(e.fecha_creacion) >= :f_desde_e";
+                $params['f_desde_m'] = $fechaDesde;
+                $params['f_desde_e'] = $fechaDesde;
+            }
+            if ($fechaHasta !== '') {
+                $condMant[] = "mf.fecha_intervencion <= :f_hasta_m";
+                $condEq[]   = "DATE(e.fecha_creacion) <= :f_hasta_e";
+                $params['f_hasta_m'] = $fechaHasta;
+                $params['f_hasta_e'] = $fechaHasta;
+            }
+
+            $where .= " AND (
+                EXISTS (
+                    SELECT 1 FROM table_sistemas_mantenimiento mf
+                    WHERE mf.id_equipo = e.id_equipo AND " . implode(' AND ', $condMant) . "
+                )
+                OR (" . implode(' AND ', $condEq) . ")
+            )";
         }
 
         $totalParams = [];
@@ -476,5 +505,77 @@ class ModelSistemas extends Model
         }
 
         return $ok;
+    }
+
+    public function datosReporteGlobal(array $filtros = [], int $inst = 0, string $q = ''): array
+    {
+        $resumen = $this->listarEquiposPaginado($q, 1000, 0, $filtros, $inst);
+        $equipos = $resumen['data'] ?? [];
+
+        $whereMant  = "1=1";
+        $paramsMant = [];
+        if ($inst > 0) {
+            $whereMant .= " AND m.id_institucion = :inst";
+            $paramsMant['inst'] = $inst;
+        }
+
+        $hayFiltros = ($q !== ''
+            || !empty($filtros['departamento'])
+            || !empty($filtros['tipo'])
+            || !empty($filtros['status'])
+            || !empty($filtros['fecha_desde'])
+            || !empty($filtros['fecha_hasta']));
+
+        if (!empty($equipos)) {
+            $ids = array_map(fn($row) => (int)$row['id_equipo'], $equipos);
+            $placeholders = [];
+            foreach ($ids as $idx => $eqId) {
+                $key = "eq{$idx}";
+                $placeholders[] = ":{$key}";
+                $paramsMant[$key] = $eqId;
+            }
+            $whereMant .= " AND m.id_equipo IN (" . implode(',', $placeholders) . ")";
+        } elseif ($hayFiltros) {
+            $whereMant .= " AND 1=0";
+        }
+
+        if (!empty($filtros['fecha_desde'])) {
+            $whereMant .= " AND m.fecha_intervencion >= :f_desde";
+            $paramsMant['f_desde'] = trim((string)$filtros['fecha_desde']);
+        }
+        if (!empty($filtros['fecha_hasta'])) {
+            $whereMant .= " AND m.fecha_intervencion <= :f_hasta";
+            $paramsMant['f_hasta'] = trim((string)$filtros['fecha_hasta']);
+        }
+
+        $sqlMant = "SELECT m.*,
+                           e.codigo_equipo,
+                           e.tipo_equipo,
+                           TRIM(CONCAT(COALESCE(p.personal_nombre,''), ' ', COALESCE(p.personal_apellido,''))) AS tecnico_nombre
+                    FROM table_sistemas_mantenimiento m
+                    INNER JOIN table_sistemas_equipos e ON e.id_equipo = m.id_equipo
+                    LEFT JOIN table_personal p ON p.id_personal = m.tecnico_id
+                    WHERE {$whereMant}
+                    ORDER BY m.fecha_intervencion DESC, m.id_mantenimiento DESC";
+
+        $mantenimientos = $this->fetchAll($sqlMant, $paramsMant);
+
+        $deptoNombre = '';
+        if (!empty($filtros['departamento'])) {
+            $rowDep = $this->fetchOne(
+                "SELECT departamento_nombre FROM table_departamentos WHERE departamento_id = :id LIMIT 1",
+                ['id' => (int)$filtros['departamento']]
+            );
+            $deptoNombre = $rowDep['departamento_nombre'] ?? '';
+        }
+
+        return [
+            'equipos'        => $equipos,
+            'mantenimientos' => $mantenimientos,
+            'filtros'        => array_merge($filtros, [
+                'q'                   => $q,
+                'departamento_nombre' => $deptoNombre,
+            ]),
+        ];
     }
 }

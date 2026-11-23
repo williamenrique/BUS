@@ -41,6 +41,8 @@ class ControllerSistemas extends Controller
             'departamento' => $_GET['departamento'] ?? '',
             'tipo'         => $_GET['tipo']         ?? '',
             'status'       => $_GET['status']       ?? '',
+            'fecha_desde'  => $_GET['fecha_desde']  ?? '',
+            'fecha_hasta'  => $_GET['fecha_hasta']  ?? '',
         ];
 
         $this->safe(function () use ($q, $limit, $offset, $filtros, $instId) {
@@ -387,6 +389,30 @@ class ControllerSistemas extends Controller
                 return;
             }
             $this->json(['ok' => true, 'message' => 'Intervención cerrada correctamente.']);
+        });
+    }
+    public function reporteGlobal(string $inst = '1'): void
+    {
+        AuthGuard::check();
+        MenuGuard::check();
+        $instId = inst_actual((int)$inst);
+
+        $q = trim((string)($_GET['q'] ?? ''));
+        $filtros = [
+            'departamento' => $_GET['departamento'] ?? '',
+            'tipo'         => $_GET['tipo']         ?? '',
+            'status'       => $_GET['status']       ?? '',
+            'fecha_desde'  => $_GET['fecha_desde']  ?? '',
+            'fecha_hasta'  => $_GET['fecha_hasta']  ?? '',
+        ];
+
+        $this->safe(function () use ($filtros, $instId, $q) {
+            $m = new ModelSistemas();
+            $datos = $m->datosReporteGlobal($filtros, $instId, $q);
+            $this->json([
+                'ok'   => true,
+                'data' => $datos,
+            ]);
         });
     }
 }

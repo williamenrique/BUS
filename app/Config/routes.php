@@ -314,4 +314,5 @@ return [
     ['path' => '/sistemas/i/{inst}/mantenimiento/obtener/{id}',   'method' => 'GET',  'handler' => 'ControllerSistemas@obtenerMantenimiento'],
     ['path' => '/sistemas/i/{inst}/mantenimiento/actualizar/{id}','method' => 'POST', 'handler' => 'ControllerSistemas@actualizarMantenimiento'],
     ['path' => '/sistemas/i/{inst}/mantenimiento/cerrar/{id}',    'method' => 'POST', 'handler' => 'ControllerSistemas@cerrarMantenimiento'],
+    ['path' => '/sistemas/i/{inst}/reporte-global',         'method' => 'GET',  'handler' => 'ControllerSistemas@reporteGlobal'],
 ];
